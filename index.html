@@ -55,7 +55,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Courier New', mo
 .progress-fill { height: 100%; background: var(--orange); transition: width 0.4s; width: 0%; }
 
 /* ── DASHBOARD ── */
-#view-dashboard { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; background: var(--border); }
+#view-dashboard { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; background: var(--border); }
 .stock-card { background: var(--bg2); padding: 20px; cursor: pointer; transition: background 0.12s; min-height: 220px; }
 .stock-card:hover { background: var(--bg3); }
 .ticker-label { font-size: 22px; font-weight: bold; letter-spacing: 2px; color: #ffffff; }
@@ -64,6 +64,9 @@ body { background: var(--bg); color: var(--text); font-family: 'Courier New', mo
 .s-change { font-size: 15px; margin-top: 5px; font-weight: bold; }
 .up { color: var(--green); }
 .dn { color: var(--red); }
+.range-bar { margin-top: 14px; height: 5px; background: linear-gradient(to right, var(--red), var(--yellow), var(--green)); border-radius: 3px; position: relative; }
+.range-dot { position: absolute; top: -5px; width: 15px; height: 15px; border-radius: 50%; background: #fff; border: 3px solid var(--bg2); transform: translateX(-50%); }
+.range-labels { display: flex; justify-content: space-between; margin-top: 6px; color: #bbbbbb; font-size: 11px; }
 .rsi-sma-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .tag { padding: 4px 9px; font-size: 11px; border-radius: 2px; font-weight: bold; }
 .tag-o { background: rgba(255,170,0,0.18); color: var(--orange); border: 1px solid rgba(255,170,0,0.4); }
@@ -77,7 +80,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Courier New', mo
 .sort-label { color: var(--muted); font-size: 11px; letter-spacing: 1px; }
 .sort-btn { background: none; border: 1px solid var(--border); color: var(--muted); padding: 5px 12px; cursor: pointer; font-family: 'Courier New', monospace; font-size: 11px; letter-spacing: 1px; transition: all 0.15s; }
 .sort-btn:hover, .sort-btn.active { border-color: var(--orange); color: var(--orange); background: rgba(255,170,0,0.08); }
-.score-badge { display: inline-block; padding: 3px 8px; border-radius: 2px; font-size: 11px; font-weight: bold; margin-top: 8px; }
+.score-badge { display: inline-block; padding: 6px 14px; border-radius: 2px; font-size: 14px; font-weight: bold; letter-spacing: 0.5px; }
 .score-ideal { background: rgba(0,230,118,0.15); color: var(--green); border: 1px solid rgba(0,230,118,0.4); }
 .score-good  { background: rgba(255,170,0,0.15); color: var(--orange); border: 1px solid rgba(255,170,0,0.4); }
 .score-low   { background: rgba(255,82,82,0.12); color: var(--red); border: 1px solid rgba(255,82,82,0.35); }
@@ -131,8 +134,9 @@ body { background: var(--bg); color: var(--text); font-family: 'Courier New', mo
 .opts-table tr:hover td { background: var(--bg3); }
 .disclaimer { text-align: center; color: var(--muted); font-size: 11px; padding: 20px; letter-spacing: .5px; border-top: 1px solid var(--border); margin-top: 10px; }
 
-@media(max-width:900px){ #view-dashboard{grid-template-columns:repeat(2,1fr);} }
-@media(max-width:500px){ #view-dashboard{grid-template-columns:1fr;} .key-field input{width:170px;} }
+@media(max-width:1100px){ #view-dashboard{grid-template-columns:repeat(3,1fr);} }
+@media(max-width:700px){ #view-dashboard{grid-template-columns:repeat(2,1fr);} }
+@media(max-width:400px){ #view-dashboard{grid-template-columns:1fr;} .key-field input{width:170px;} }
 </style>
 </head>
 <body>
@@ -543,7 +547,7 @@ async function calcFullScore(t) {
     const scoreObj = { put: putScore, cc: ccScore, total: best, type, label, rsi, chgPct: d.chgPct || 0, partial: false, outOf: 7 };
     optionsScoreData[t] = scoreObj;
 
-    // Update badge on card
+    // Update badge and criteria boxes on card
     const card = document.getElementById('card-' + t);
     if (card) {
       const badgeEl = card.querySelector('.score-badge');
@@ -551,6 +555,39 @@ async function calcFullScore(t) {
         const badgeClass = label === 'IDEAL' ? 'score-ideal' : label === 'WATCH' ? 'score-good' : 'score-low';
         badgeEl.className = 'score-badge ' + badgeClass;
         badgeEl.textContent = `${label} · ${type} ${best}/7`;
+      }
+      // Update grade box
+      const gradeEl = card.querySelector('.grade-box');
+      if (gradeEl) {
+        const gMap = { 7:'A', 6:'B', 5:'C', 4:'D' };
+        const g = gMap[best] || 'F';
+        const gc = g==='A'||g==='B' ? '#00e676' : g==='C'||g==='D' ? '#ffaa00' : '#ff5252';
+        gradeEl.style.borderColor = gc;
+        gradeEl.style.color = gc;
+        gradeEl.textContent = g;
+      }
+      const criteriaWrap = card.querySelector('.criteria-boxes');
+      if (criteriaWrap) {
+        const earDteLocal = EARNINGS[t] ? Math.round((new Date(EARNINGS[t]) - new Date()) / 86400000) : 999;
+        const price2 = parseFloat(tickerData[t]?.quote?.close || 0);
+        const rsi2 = tickerData[t]?.rsi || 50;
+        const sma2 = tickerData[t]?.sma;
+        const abv2 = sma2 ? price2 > sma2 : null;
+        const checks = [
+          { lbl: 'IV',     pass: iv!=null && iv>=90 },
+          { lbl: 'RSI',    pass: type==='CC' ? rsi2>70 : rsi2<30 },
+          { lbl: 'EARN',   pass: earDteLocal > 45 },
+          { lbl: 'PREM',   pass: prem>=2 },
+          { lbl: 'SMA',    pass: type==='CC' ? abv2===true : abv2===false },
+          { lbl: 'DTE',    pass: finalDte>=30 && finalDte<=50 },
+          { lbl: 'STRIKE', pass: !!strike }
+        ];
+        criteriaWrap.innerHTML = checks.map(c => {
+          const bg = c.pass ? 'rgba(0,230,118,0.15)' : 'rgba(255,82,82,0.15)';
+          const col = c.pass ? '#00e676' : '#ff5252';
+          const icon = c.pass ? '✓' : '✗';
+          return `<div style="background:${bg};padding:4px 2px;border-radius:2px;text-align:center;flex:1;"><div style="font-size:8px;color:${col};letter-spacing:.5px;">${c.lbl}</div><div style="font-size:11px;font-weight:bold;color:${col};">${icon}</div></div>`;
+        }).join('');
       }
     }
   } catch(e) {}
@@ -598,7 +635,6 @@ function sortDashboard(mode, btn) {
 
 
 function buildCard(t, quote, rsi, sma) {
-  // Store data for sorting
   const price = parseFloat(quote?.close || 0);
   const open  = parseFloat(quote?.open  || price);
   tickerData[t] = { quote, rsi, sma, chgPct: open ? (price-open)/open*100 : 0 };
@@ -609,61 +645,66 @@ function buildCard(t, quote, rsi, sma) {
   const h=parseFloat(quote.fifty_two_week?.high||p*1.3), l=parseFloat(quote.fifty_two_week?.low||p*0.7);
   const rangePct = Math.max(0, Math.min(100, ((p-l)/(h-l)*100)));
   const abv=sma?p>sma:null;
-
-  // Position badge
-  let posLabel, posColor, posStyle;
-  if (rangePct >= 80) {
-    posLabel = `NEAR 52W HIGH · ${rangePct.toFixed(0)}%`;
-    posColor = 'var(--orange)';
-    posStyle = 'background:rgba(255,170,0,0.15);color:var(--orange);border:1px solid rgba(255,170,0,0.4);';
-  } else if (rangePct <= 25) {
-    posLabel = `NEAR 52W LOW · ${rangePct.toFixed(0)}%`;
-    posColor = 'var(--green)';
-    posStyle = 'background:rgba(0,230,118,0.12);color:var(--green);border:1px solid rgba(0,230,118,0.35);';
-  } else {
-    posLabel = `MID RANGE · ${rangePct.toFixed(0)}%`;
-    posColor = '#ffffff';
-    posStyle = 'background:rgba(255,255,255,0.1);color:#ffffff;border:1px solid rgba(255,255,255,0.3);';
-  }
-
-  // Color-code the price based on range position
   const priceColor = rangePct >= 80 ? 'var(--orange)' : rangePct <= 25 ? 'var(--green)' : '#ffffff';
 
-  // Trade score badge
   const score = calcTradeScore(t);
   const badgeClass = score.label==='IDEAL'?'score-ideal':score.label==='WATCH'?'score-good':'score-low';
   const badgeText = score.partial ? `${score.label} · ${score.type} ⟳` : `${score.label} · ${score.type} ${score.total}/7`;
 
+  // 7 criteria mini boxes — use full score if available, partial if not
+  const sd = optionsScoreData[t];
+  const earDte2 = EARNINGS[t] ? Math.round((new Date(EARNINGS[t]) - new Date()) / 86400000) : 999;
+  const criteria = sd ? [
+    { lbl: 'IV',     pass: sd.total >= 6 },
+    { lbl: 'RSI',    pass: score.type==='CC' ? rsi>70 : rsi<30 },
+    { lbl: 'EARN',   pass: earDte2 > 45 },
+    { lbl: 'PREM',   pass: sd.total >= 4 },
+    { lbl: 'SMA',    pass: score.type==='CC' ? abv===true : abv===false },
+    { lbl: 'DTE',    pass: sd.total >= 4 },
+    { lbl: 'STRIKE', pass: true }
+  ] : [
+    { lbl: 'IV',     pass: null },
+    { lbl: 'RSI',    pass: score.type==='CC' ? rsi>70 : rsi<30 },
+    { lbl: 'EARN',   pass: earDte2 > 45 },
+    { lbl: 'PREM',   pass: null },
+    { lbl: 'SMA',    pass: score.type==='CC' ? abv===true : abv===false },
+    { lbl: 'DTE',    pass: null },
+    { lbl: 'STRIKE', pass: null }
+  ];
+
+  const cBox = (c) => {
+    const bg = c.pass===true ? 'rgba(0,230,118,0.15)' : c.pass===false ? 'rgba(255,82,82,0.15)' : 'rgba(255,255,255,0.05)';
+    const col = c.pass===true ? '#00e676' : c.pass===false ? '#ff5252' : '#555';
+    const icon = c.pass===true ? '✓' : c.pass===false ? '✗' : '·';
+    return `<div style="background:${bg};padding:4px 2px;border-radius:2px;text-align:center;flex:1;">
+      <div style="font-size:8px;color:${col};letter-spacing:.5px;">${c.lbl}</div>
+      <div style="font-size:11px;font-weight:bold;color:${col};">${icon}</div>
+    </div>`;
+  };
+
+  // Letter grade
+  const gradeMap = { 7:'A', 6:'B', 5:'C', 4:'D' };
+  const grade = score.partial ? '?' : (gradeMap[score.total] || 'F');
+  const gradeColor = grade==='A'||grade==='B' ? 'var(--green)' : grade==='C'||grade==='D' ? 'var(--orange)' : grade==='?' ? '#555' : 'var(--red)';
+
   return `<div class="stock-card" id="card-${t}" onclick="openDash('${t}')">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-      <div><div class="ticker-label">${t}</div><div class="co-name">${(CO[t]||'').toUpperCase()}</div></div>
-      <span class="score-badge ${badgeClass}">${badgeText}</span>
+      <div>
+        <div class="ticker-label">${t}</div>
+        <div class="co-name">${(CO[t]||'').toUpperCase()}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;">
+        <div style="background:#111;border:1px solid ${gradeColor};border-radius:4px;width:70px;height:70px;display:flex;align-items:center;justify-content:center;">
+          <span class="grade-box" style="font-size:42px;font-weight:bold;color:${gradeColor};font-family:'Courier New',monospace;">${grade}</span>
+        </div>
+        <span class="score-badge ${badgeClass}" style="text-align:center;white-space:nowrap;font-size:11px;padding:4px 8px;">${badgeText}</span>
+      </div>
     </div>
     <div class="s-price" style="color:${priceColor};">${p.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
     <div class="s-change ${up?'up':'dn'}">${up?'+':''}${chg.toFixed(2)} &nbsp; (${up?'+':''}${pct.toFixed(2)}%) &nbsp; ${up?'▲':'▼'}</div>
-    <div style="display:flex;align-items:center;gap:8px;margin-top:12px;">
-      <div style="flex:1;height:4px;background:#333;border-radius:2px;">
-        <div style="width:${rangePct.toFixed(0)}%;height:100%;border-radius:2px;background:linear-gradient(to right,#ff5252,#ffee58,#00e676);"></div>
-      </div>
-      <div style="font-size:11px;color:#bbbbbb;min-width:32px;text-align:right;">${rangePct.toFixed(0)}%</div>
-    </div>
-    <div style="display:flex;justify-content:space-between;font-size:10px;color:#666;margin-top:3px;">
-      <span>L $${l.toFixed(2)}</span><span>H $${h.toFixed(2)}</span>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:12px;text-align:center;">
-      <div style="background:#242424;padding:6px 4px;border-radius:2px;">
-        <div style="font-size:9px;color:#555;letter-spacing:1px;">RSI(10)</div>
-        <div style="font-size:13px;font-weight:bold;color:#ffaa00;margin-top:2px;">${rsi?rsi.toFixed(1):'—'}</div>
-      </div>
-      <div style="background:#242424;padding:6px 4px;border-radius:2px;">
-        <div style="font-size:9px;color:#555;letter-spacing:1px;">52W POS</div>
-        <div style="font-size:13px;font-weight:bold;color:${rangePct>=80?'var(--orange)':rangePct<=25?'var(--green)':'#e8e8e8'};margin-top:2px;">${rangePct.toFixed(0)}%</div>
-      </div>
-      <div style="background:#242424;padding:6px 4px;border-radius:2px;">
-        <div style="font-size:9px;color:#555;letter-spacing:1px;">200 SMA</div>
-        <div style="font-size:13px;font-weight:bold;color:${abv===true?'var(--green)':abv===false?'var(--red)':'#888'};margin-top:2px;">${abv===true?'▲ ABOVE':abv===false?'▼ BELOW':'—'}</div>
-      </div>
-    </div>
+    <div class="range-bar" style="margin-top:14px;"><div class="range-dot" style="left:${rangePct.toFixed(0)}%"></div></div>
+    <div class="range-labels"><span>52W L: ${l.toFixed(2)}</span><span>52W H: ${h.toFixed(2)}</span></div>
+    <div class="criteria-boxes" style="display:flex;gap:4px;margin-top:12px;">${criteria.map(cBox).join('')}</div>
   </div>`;
 }
 
