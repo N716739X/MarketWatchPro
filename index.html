@@ -302,17 +302,25 @@ async function mdFetch(ep, params={}) {
   } catch(e) { return null; }
 }
 
+// In-memory cache (5 min TTL)
 function cget(k){ const c=cache[k]; return(c&&Date.now()-c.ts<300000)?c.v:null; }
-function cset(k,v){ cache[k]={v,ts:Date.now()}; return v; }
+function cset(k,v){ cache[k]={v,ts:Date.now()}; lsSet(k,v); return v; }
+
+// localStorage persistence — survives page refresh, used as fallback after market close
+function lsSet(k,v){ try{ localStorage.setItem('mw_'+k, JSON.stringify({v,ts:Date.now()})); }catch(e){} }
+function lsGet(k){ try{ const c=JSON.parse(localStorage.getItem('mw_'+k)); return c?c.v:null; }catch(e){ return null; } }
+
+// Get from memory cache first, then localStorage fallback
+function cgetWithFallback(k){ return cget(k) || lsGet(k); }
 
 async function fetchOne(sym){
-  let quote=cget('q_'+sym);
+  let quote=cgetWithFallback('q_'+sym);
   if(!quote){ const d=await tdFetch('quote',{symbol:sym}); if(d&&d.close) quote=cset('q_'+sym,d); }
   await sleep(100);
-  let rsi=cget('rsi_'+sym);
+  let rsi=cgetWithFallback('rsi_'+sym);
   if(!rsi){ const d=await tdFetch('rsi',{symbol:sym,interval:'1day',time_period:10,series_type:'close',outputsize:1}); if(d&&d.values) rsi=cset('rsi_'+sym,parseFloat(d.values[0].rsi)); }
   await sleep(100);
-  let sma=cget('sma_'+sym);
+  let sma=cgetWithFallback('sma_'+sym);
   if(!sma){ const d=await tdFetch('sma',{symbol:sym,interval:'1day',time_period:200,series_type:'close',outputsize:1}); if(d&&d.values) sma=cset('sma_'+sym,parseFloat(d.values[0].sma)); }
   return{quote,rsi,sma};
 }
@@ -596,9 +604,12 @@ async function startDashboard(){
   document.getElementById('load-prog').textContent=`${n}/${TICKERS.length} loaded ✓`;
   setStatus('td','ok','● CONNECTED');
   document.getElementById('live-dot').classList.remove('dead');
+  // Show last updated time
+  const now = new Date().toLocaleTimeString('en-US',{timeZone:'America/Chicago',hour:'2-digit',minute:'2-digit',hour12:true});
+  document.getElementById('td-credits').textContent=`Last updated: ${now} CST`;
   // Auto sort by trade score once all loaded
   sortDashboard('score', document.getElementById('sort-score'));
-  setTimeout(()=>{document.getElementById('load-prog').textContent='';document.getElementById('prog-fill').style.width='0%';},5000);
+  setTimeout(()=>{document.getElementById('prog-fill').style.width='0%';},5000);
 }
 
 function showView(v,btn){
