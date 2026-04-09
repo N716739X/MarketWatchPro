@@ -428,11 +428,34 @@ async function getChainMD(sym, side) {
 
 async function getLeapsMD(sym){
   const k=`md_leaps_${sym}`; const h=cget(k); if(h) return h;
-  const minE=new Date(Date.now()+540*86400000).toISOString().split('T')[0];
-  const maxE=new Date(Date.now()+1100*86400000).toISOString().split('T')[0];
-  const d=await mdFetch(`options/chain/${sym}/`,{side:'call',minExpiry:minE,maxExpiry:maxE});
-  if(d&&d.s==='ok'){ setStatus('md','ok','● CONNECTED'); return cset(k,parseMD(d)); }
-  return [];
+  try {
+    // Step 1: get all expirations
+    const expData = await mdFetch(`options/expirations/${sym}/`, {});
+    if (!expData || expData.s !== 'ok' || !expData.expirations) return [];
+
+    // Step 2: filter to 18+ months (540+ days)
+    const today = new Date();
+    const leapsExp = expData.expirations.filter(e => {
+      const d2 = Math.round((new Date(e) - today) / 86400000);
+      return d2 >= 540;
+    });
+    if (!leapsExp.length) return [];
+
+    // Step 3: fetch chain for ALL valid LEAPS expiries (up to 4)
+    let allContracts = [];
+    for (const exp of leapsExp.slice(0, 4)) {
+      const d = await mdFetch(`options/chain/${sym}/`, { side:'call', expiration: exp, limit: 20 });
+      if (d && d.s === 'ok') {
+        allContracts = allContracts.concat(parseMD(d));
+      }
+      await sleep(300);
+    }
+    if (allContracts.length > 0) {
+      setStatus('md', 'ok', '● CONNECTED');
+      return cset(k, allContracts);
+    }
+    return [];
+  } catch(e) { return []; }
 }
 
 function parseMD(data){
@@ -708,7 +731,7 @@ async function calcFullScore(t) {
       if (gradeEl) {
         const gMap = { 7:'A', 6:'B', 5:'C', 4:'D' };
         const g = gMap[best] || 'F';
-        const gc = g==='A'||g==='B' ? 'var(--cyan)' : g==='C'||g==='D' ? '#ffaa00' : '#ff5252';
+        const gc = g==='A' ? '#00ffff' : g==='B' ? '#00ffff' : g==='C' ? '#ff8800' : g==='D' ? '#ff00ff' : '#7b00ff';
         gradeEl.style.borderColor = gc;
         gradeEl.style.color = gc;
         gradeEl.textContent = g;
@@ -849,7 +872,7 @@ function buildCard(t, quote, rsi, sma) {
   // Letter grade
   const gradeMap = { 7:'A', 6:'B', 5:'C', 4:'D' };
   const grade = score.partial ? '?' : (gradeMap[score.total] || 'F');
-  const gradeColor = grade==='A'||grade==='B' ? 'var(--cyan)' : grade==='C'||grade==='D' ? 'var(--orange)' : grade==='?' ? '#555' : 'var(--red)';
+  const gradeColor = grade==='A' ? 'var(--cyan)' : grade==='B' ? 'var(--cyan)' : grade==='C' ? '#ff8800' : grade==='D' ? 'var(--magenta)' : grade==='?' ? '#330066' : 'var(--purple)';
 
   return `<div class="stock-card" id="card-${t}" onclick="openDash('${t}')">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
@@ -1032,22 +1055,98 @@ function renderCC(d,el){
 }
 
 function renderLeaps(d,el){
-  const by27=d.chain.filter(o=>{ const e=o.expiration; return (typeof e==='number'?new Date(e*1000):new Date(e+'T00:00:00')).getFullYear()===2027; });
-  const by28=d.chain.filter(o=>{ const e=o.expiration; return (typeof e==='number'?new Date(e*1000):new Date(e+'T00:00:00')).getFullYear()===2028; });
-  const b27=bestContract(by27,0.65), b28=bestContract(by28,0.65), sel=b28||b27;
-  const sm=sel?parseFloat(sel.mid||(parseFloat(sel.bid||0)+parseFloat(sel.ask||0))/2||0):0;
-  const ss=sel?parseFloat(sel.strike||0):Math.round(d.price/5)*5;
-  const seRaw=sel?.expiration;
-  const se=seRaw?(typeof seRaw==='number'?new Date(seRaw*1000).toISOString().split('T')[0]:seRaw):null;
-  const sd2=se?dte(se):0;
-  const sdlt=sel?.delta?Math.abs(parseFloat(sel.delta)).toFixed(2):null;
-  const siv=sel?.iv?parseFloat(sel.iv)*100:null;
-  const soi=sel?.openInterest||null;
-  const sbe=sm?(ss+sm).toFixed(2):null;
-  const scagr=sbe&&sd2>0?(((parseFloat(sbe)/d.price)**(1/(sd2/365))-1)*100).toFixed(1):null;
+  // Use delta 0.75 target (deep ITM — deep ITM)
+  const DELTA_TGT = 0.75;
 
-  function oRow(opt,label){
-    if(!opt) return null;
+  // Group chain by year
+  const byYear = {};
+  d.chain.forEach(o => {
+    const eRaw = o.expiration;
+    const yr = (typeof eRaw==='number' ? new Date(eRaw*1000) : new Date(eRaw+'T00:00:00')).getFullYear();
+    if (!byYear[yr]) byYear[yr] = [];
+    byYear[yr].push(o);
+  });
+
+  // Best contract per year
+  const years = Object.keys(byYear).sort();
+  const bestByYear = years.map(yr => ({ yr, opt: bestContract(byYear[yr], DELTA_TGT) })).filter(x => x.opt);
+  const sel = bestByYear[bestByYear.length-1]?.opt || bestByYear[0]?.opt || null;
+
+  const sm  = sel ? parseFloat(sel.mid||(parseFloat(sel.bid||0)+parseFloat(sel.ask||0))/2||0) : 0;
+  const ss  = sel ? parseFloat(sel.strike||0) : Math.round(d.price/5)*5;
+  const sb  = sel ? parseFloat(sel.bid||0) : 0;
+  const sa  = sel ? parseFloat(sel.ask||0) : 0;
+  const spread = sa - sb;
+  const spreadPct = sm > 0 ? (spread/sm*100).toFixed(1) : null;
+  const seRaw = sel?.expiration;
+  const se  = seRaw ? (typeof seRaw==='number' ? new Date(seRaw*1000).toISOString().split('T')[0] : seRaw) : null;
+  const sd2 = se ? dte(se) : 0;
+  const sdlt = sel?.delta ? Math.abs(parseFloat(sel.delta)).toFixed(2) : null;
+  const siv  = sel?.iv ? parseFloat(sel.iv)*100 : null;
+  const soi  = sel?.openInterest || null;
+  const sbe  = sm ? (ss+sm).toFixed(2) : null;
+  const scagr = sbe&&sd2>0 ? (((parseFloat(sbe)/d.price)**(1/(sd2/365))-1)*100).toFixed(1) : null;
+  const costPerContract = sm ? (sm*100) : null;
+  const pctOfStock = sm && d.price ? (sm/d.price*100).toFixed(1) : null;
+
+  // ── 8 Criteria (deep ITM) ──
+  const checks = [
+    {
+      pass: d.rsi<30,
+      name: 'Timing — RSI < 30 (Mean Reversion −2)',
+      desc: `RSI(10) ${d.rsi.toFixed(1)} — ${d.rsi<30?'deep oversold dip, ideal LEAPS entry':'not yet oversold — wait for RSI < 30 for better entry price'}`,
+      val: `RSI ${d.rsi.toFixed(1)}`
+    },
+    {
+      pass: siv ? siv<55 : null,
+      name: 'IV < 55% (Buy Low IV)',
+      desc: siv ? `IV ${siv.toFixed(0)}% — ${siv<55?'low IV, options priced fairly — good time to buy':'elevated IV, options expensive — wait for IV to drop'}` : 'IV not available',
+      val: siv ? `${siv.toFixed(0)}% IV` : '—'
+    },
+    {
+      pass: sdlt ? parseFloat(sdlt)>=0.70 : null,
+      name: 'Strike — Deep ITM (Δ 0.70–0.90, Deep ITM style)',
+      desc: `Strike $${ss} · ${sdlt?'Δ'+sdlt:'—'} · Deep ITM acts like owning shares with less capital. Higher delta = lower time decay risk.`,
+      val: `$${ss}${sdlt?'\nΔ'+sdlt:''}`
+    },
+    {
+      pass: sd2>=540,
+      name: 'Duration — Minimum 18 Months (540+ DTE)',
+      desc: `${fmtD(se)} (${sd2} DTE) · Best practice — 2-3 years — more time = less theta decay per day`,
+      val: `${fmtD(se)}\n${sd2} DTE`
+    },
+    {
+      pass: soi ? soi>=300 : null,
+      name: 'Liquidity — OI ≥ 300',
+      desc: soi ? `OI: ${soi.toLocaleString()} contracts · ${soi>=300?'Sufficient liquidity for clean entry/exit':'Low liquidity — wide spreads may hurt your fill price'}` : 'OI unavailable',
+      val: soi ? `OI: ${soi.toLocaleString()}` : '—'
+    },
+    {
+      pass: spreadPct ? parseFloat(spreadPct)<=10 : null,
+      name: 'Bid/Ask Spread ≤ 10%',
+      desc: spreadPct ? `Bid $${sb.toFixed(2)} · Ask $${sa.toFixed(2)} · Spread ${spreadPct}% · ${parseFloat(spreadPct)<=10?'Tight spread, fair fill likely':'Wide spread — use limit orders at mid or better'}` : 'Spread unavailable',
+      val: spreadPct ? `${spreadPct}% spread` : '—'
+    },
+    {
+      pass: scagr ? parseFloat(scagr)<=35 : null,
+      name: 'Breakeven CAGR ≤ 35%/yr',
+      desc: sbe&&scagr ? `Stock must reach $${sbe} by expiry · Requires ${scagr}%/yr growth · ${parseFloat(scagr)<=35?'Realistic target':'High bar — stock needs aggressive growth to break even'}` : 'Calculate after selecting contract',
+      val: scagr ? `BE $${sbe}\n${scagr}%/yr` : '—'
+    },
+    {
+      pass: costPerContract ? costPerContract<=d.price*10 : null,
+      name: 'Position Size — Cost ≤ 10× Stock Price',
+      desc: costPerContract ? `$${costPerContract.toLocaleString('en-US',{maximumFractionDigits:0})}/contract · Best practice: never risk more than 5-10% of portfolio on a single LEAPS position` : 'Cost unavailable',
+      val: costPerContract ? `$${costPerContract.toLocaleString('en-US',{maximumFractionDigits:0})}` : '—'
+    }
+  ];
+
+  const fails = checks.filter(c=>c.pass===false).length;
+  const vc = fails===0?'good':fails<=2?'warn':'bad';
+
+  // Build table rows for all years
+  function oRow(opt, label) {
+    if (!opt) return null;
     const b=parseFloat(opt.bid||0), a=parseFloat(opt.ask||0), mid=parseFloat(opt.mid||(b+a)/2||0);
     const sk=parseFloat(opt.strike||0);
     const eRaw=opt.expiration; const ed=typeof eRaw==='number'?new Date(eRaw*1000).toISOString().split('T')[0]:eRaw;
@@ -1057,41 +1156,34 @@ function renderLeaps(d,el){
     const oi=opt.openInterest?.toLocaleString()||'—';
     const be=(sk+mid).toFixed(2);
     const cagr=d2>0?(((parseFloat(be)/d.price)**(1/(d2/365))-1)*100).toFixed(1):'—';
+    const sprd=a-b; const sprdPct=mid>0?(sprd/mid*100).toFixed(0):'—';
     return `<tr>
       <td style="color:var(--orange);font-weight:bold;">${label}</td>
       <td style="color:#fff;">$${sk} Call · ${fmtD(ed)}</td>
       <td style="color:var(--orange);">Δ${dlt}</td>
       <td style="color:var(--text2);">~${iv2}%</td>
       <td style="color:var(--text2);">${oi}</td>
+      <td style="color:var(--text2);">${sprdPct}%</td>
       <td style="color:#fff;">$${be}</td>
       <td style="color:var(--cyan);font-weight:bold;">${cagr}%/yr</td>
-      <td style="color:var(--orange);font-weight:bold;">$${mid.toFixed(2)} (${d.price?(mid/d.price*100).toFixed(1):'—'}%)</td>
+      <td style="color:var(--orange);font-weight:bold;">$${mid.toFixed(2)}</td>
       <td style="color:var(--cyan);font-weight:bold;">$${(mid*100).toLocaleString('en-US',{maximumFractionDigits:0})}</td>
     </tr>`;
   }
 
-  const checks=[
-    {pass:d.rsi<30,name:'Timing — RSI < 30 (Mean Reversion −2)',desc:`RSI(10) ${d.rsi.toFixed(1)} — ${d.rsi<30?'deep dip, LEAPS entry ideal':'not yet oversold, waiting for RSI < 30'}`,val:`RSI ${d.rsi.toFixed(1)}`},
-    {pass:siv?siv<55:true,name:'IV (buy low)',desc:siv?`IV ${siv.toFixed(0)}% — ${siv<55?'reasonable, LEAPS priced fairly':'elevated, more expensive'}`:'IV estimated',val:siv?`${siv.toFixed(0)}% IV`:'~55% est.'},
-    {pass:true,name:'Strike — ATM / slightly ITM (Δ 0.50–0.65)',desc:`Strike $${ss} · ${sdlt?'Δ'+sdlt:'ATM'}`,val:`$${ss}${sdlt?'\nΔ'+sdlt:''}`},
-    {pass:sd2>=540,name:'Duration — min. 18 months',desc:`${fmtD(se)} (${sd2} DTE)`,val:`${fmtD(se)}\n${sd2} DTE`},
-    {pass:soi?soi>=300:true,name:'Liquidity — OI ≥ 300',desc:soi?`OI: ${soi.toLocaleString()}`:'OI unavailable',val:soi?`OI: ${soi.toLocaleString()}`:'—'}
-  ];
-  const fails=checks.filter(c=>c.pass===false).length;
-  const vc=fails===0?'good':fails===1?'warn':'bad';
-  const r27=oRow(b27,'2027'), r28=oRow(b28,'2028');
-  const opraNote=d.chain.length===0?`<div class="info-msg">⚠ No LEAPS data found — may be outside market hours or no contracts available in 18+ month window.</div>`:'';
+  const tableRows = bestByYear.map(({yr, opt}) => oRow(opt, yr)).filter(Boolean).join('');
+  const opraNote = d.chain.length===0 ? `<div class="info-msg">⚠ No LEAPS data found — may be outside market hours or no contracts in 18+ month window.</div>` : '';
 
   el.innerHTML=`
     <div class="result-box ${vc}">
-      <div class="result-src">${d.ticker} · $${d.price.toFixed(2)} · TWELVE DATA + MARKETDATA.APP · LIVE</div>
-      <div class="verdict">${fails===0?'IDEAL ENTRY':fails===1?'WAIT — NOT YET IDEAL':'DO NOT ENTER'}</div>
+      <div class="result-src">${d.ticker} · $${d.price.toFixed(2)} · TWELVE DATA + MARKETDATA.APP · LIVE · DEEP ITM RULES</div>
+      <div class="verdict">${fails===0?'IDEAL LEAPS ENTRY':fails<=2?'WAIT — NOT YET IDEAL':'DO NOT ENTER'}</div>
       <div class="verdict-sub">${fails} criteri${fails===1?'on':'a'} not yet optimal.</div>
     </div>
     ${opraNote}
-    <div class="checklist"><div class="cl-head">CHECKLIST — 5 LEAPS ENTRY CRITERIA</div>${checks.map(c=>clRow(c.pass,c.name,c.desc,c.val)).join('')}</div>
-    ${(r27||r28)?`<div class="checklist"><div class="cl-head">AVAILABLE LEAPS — CALLS (MARKETDATA.APP)</div><table class="opts-table"><thead><tr><th>YEAR</th><th>CONTRACT</th><th>DELTA</th><th>IV</th><th>OI</th><th>BREAKEVEN</th><th>CAGR</th><th>MID</th><th>COST/CONTRACT</th></tr></thead><tbody>${[r27,r28].filter(Boolean).join('')}</tbody></table></div>`:opraNote||'<div class="error-msg">No LEAPS data returned.</div>'}
-    ${sm&&sbe?`<div class="setup-box"><div class="box-label">RECOMMENDED SETUP</div><div class="setup-val">${d.ticker} $${ss} Call · ${fmtD(se)} · ${sd2} DTE · ${sdlt?'Δ'+sdlt:'Δ~0.65'} · Mid $${sm.toFixed(2)} (${d.price?(sm/d.price*100).toFixed(1):'—'}%) · Cost $${(sm*100).toLocaleString('en-US',{maximumFractionDigits:0})}/contract · BE: $${sbe} · CAGR ${scagr}%/yr</div></div>`:''}`;
+    <div class="checklist"><div class="cl-head">CHECKLIST — 8 LEAPS ENTRY CRITERIA (DEEP ITM STRATEGY)</div>${checks.map(c=>clRow(c.pass,c.name,c.desc,c.val)).join('')}</div>
+    ${tableRows?`<div class="checklist"><div class="cl-head">AVAILABLE LEAPS — DEEP ITM CALLS BY YEAR (MARKETDATA.APP)</div><table class="opts-table"><thead><tr><th>YEAR</th><th>CONTRACT</th><th>DELTA</th><th>IV</th><th>OI</th><th>SPREAD</th><th>BREAKEVEN</th><th>CAGR</th><th>MID</th><th>COST/CONTRACT</th></tr></thead><tbody>${tableRows}</tbody></table></div>`:opraNote||'<div class="error-msg">No LEAPS data returned.</div>'}
+    ${sm&&sbe?`<div class="setup-box"><div class="box-label">RECOMMENDED SETUP (DEEP ITM STYLE)</div><div class="setup-val">${d.ticker} $${ss} Call · ${fmtD(se)} · ${sd2} DTE · Δ${sdlt||'~0.75'} · Mid $${sm.toFixed(2)} (${pctOfStock}% of stock) · Cost $${(sm*100).toLocaleString('en-US',{maximumFractionDigits:0})}/contract · Breakeven: $${sbe} · CAGR needed: ${scagr}%/yr</div></div>`:''}`;
 }
 
 
