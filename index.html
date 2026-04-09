@@ -170,6 +170,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Courier New', mo
   <button class="nav-btn" id="btn-put" onclick="showView('put',this)">PUT ANALYZER</button>
   <button class="nav-btn" id="btn-cc" onclick="showView('cc',this)">CC ANALYZER</button>
   <button class="nav-btn" id="btn-leaps" onclick="showView('leaps',this)">LEAPS ANALYZER</button>
+  <button class="nav-btn" id="btn-synth" onclick="showView('synth',this)">SYNTHETIC LONG</button>
   <div class="nav-right"><button class="nav-btn" onclick="startDashboard()">↺ REFRESH</button> <button class="nav-btn" onclick="toggleTickerMgr()">⚙ TICKERS</button> <button class="nav-btn" id="theme-btn" onclick="toggleTheme()">◑ THEME</button></div>
 </div>
 
@@ -241,6 +242,14 @@ body { background: var(--bg); color: var(--text); font-family: 'Courier New', mo
   <div class="ticker-row"><input class="ticker-input" id="leaps-input" value="TSLA" onkeydown="if(event.key==='Enter')runAnalyzer('leaps')"><button class="analyze-btn" id="leaps-btn" onclick="runAnalyzer('leaps')">ANALYZE →</button></div>
   <div class="quick-tickers" id="leaps-qt"></div>
   <div id="leaps-result"></div>
+</div>
+
+<div id="view-synth" class="analyzer">
+  <div class="panel-title">SYNTHETIC LONG ANALYZER</div>
+  <div class="panel-sub">BUY ATM CALL + SELL ATM PUT · SAME STRIKE · SAME EXPIRY · STOCK-LIKE EXPOSURE WITH LESS CAPITAL</div>
+  <div class="ticker-row"><input class="ticker-input" id="synth-input" value="TSLA" onkeydown="if(event.key==='Enter')runAnalyzer('synth')"><button class="analyze-btn" id="synth-btn" onclick="runAnalyzer('synth')">ANALYZE →</button></div>
+  <div class="quick-tickers" id="synth-qt"></div>
+  <div id="synth-result"></div>
 </div>
 
 <div class="disclaimer">OptionsWatch Pro · Live data: Twelve Data (price/RSI/SMA) · MarketData.app (options/Greeks/IV) · Not investment advice</div>
@@ -939,7 +948,7 @@ async function startDashboard(){
 
 function showView(v,btn){
   loadAbort=true;
-  ['dashboard','put','cc','leaps'].forEach(x=>{ const e=document.getElementById('view-'+x); if(e){e.style.display='none';e.classList.remove('active');} });
+  ['dashboard','put','cc','leaps','synth'].forEach(x=>{ const e=document.getElementById('view-'+x); if(e){e.style.display='none';e.classList.remove('active');} });
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
   if(v==='dashboard'){ loadAbort=false; document.getElementById('view-dashboard').style.display='grid'; }
@@ -949,9 +958,8 @@ function buildQt(p){ const c=document.getElementById(p+'-qt'); if(!c) return; co
 function selTick(p,t){ document.getElementById(p+'-input').value=t; buildQt(p); runAnalyzer(p); }
 function openDash(t) {
   const score = calcTradeScore(t);
-  // Route to the analyzer that gave the best score
   const targetView = score.type === 'CC' ? 'cc' : 'put';
-  ['put','cc','leaps'].forEach(v => {
+  ['put','cc','leaps','synth'].forEach(v => {
     document.getElementById(v+'-input').value = t;
     document.getElementById(v+'-result').innerHTML = '';
   });
@@ -969,7 +977,9 @@ async function runAnalyzer(type){
     const q=await tdFetch('quote',{symbol:ticker}); await sleep(100);
     const rd=await tdFetch('rsi',{symbol:ticker,interval:tf.interval,time_period:tf.rsiPeriod,series_type:'close',outputsize:1}); await sleep(100);
     const sd=await tdFetch('sma',{symbol:ticker,interval:tf.interval,time_period:tf.smaPeriod,series_type:'close',outputsize:1}); await sleep(100);
-    const chain=type==='leaps'?await getLeapsMD(ticker):await getChainMD(ticker,type==='cc'?'call':'put');
+    const chain = type==='leaps' ? await getLeapsMD(ticker) :
+                  type==='synth' ? await getSynthChain(ticker) :
+                  await getChainMD(ticker, type==='cc'?'call':'put');
     if(!q||q.status==='error'||!q.close) throw new Error(`Quote failed for ${ticker} — check Twelve Data key`);
     const price=parseFloat(q.close);
     const rsi=rd?.values?.[0]?parseFloat(rd.values[0].rsi):null;
@@ -977,6 +987,7 @@ async function runAnalyzer(type){
     const d={ticker,price,rsi:rsi||50,sma:sma||null,earnings:EARNINGS[ticker]||null,chain:chain||[]};
     if(type==='put') renderPut(d,el);
     else if(type==='cc') renderCC(d,el);
+    else if(type==='synth') renderSynth(d,el);
     else renderLeaps(d,el);
     setStatus('td','ok','● CONNECTED');
   }catch(e){
@@ -985,6 +996,212 @@ async function runAnalyzer(type){
   }
   btn.disabled=false;
 }
+
+// ── Synthetic Long ─────────────────────────────────────────
+async function getSynthChain(sym) {
+  const k = `md_synth_${sym}`; const h = cget(k); if (h) return h;
+  try {
+    const expData = await mdFetch(`options/expirations/${sym}/`, {});
+    if (!expData || expData.s !== 'ok') return { calls: [], puts: [] };
+
+    const today = new Date();
+    const expirations = expData.expirations || [];
+
+    // Filter to minimum 365 DTE — must be at least 1 year out
+    const validExp = expirations.filter(e => {
+      const d2 = Math.round((new Date(e) - today) / 86400000);
+      return d2 >= 365;
+    });
+
+    if (!validExp.length) {
+      // Fallback: nothing 365+ days out, warn but use longest available
+      console.warn(`${sym}: No expiry >= 365 days. Longest available used as fallback.`);
+      const fallback = expirations[expirations.length - 1];
+      if (!fallback) return { calls: [], puts: [], warn: 'No long-dated options available' };
+      const [cd, pd] = await Promise.all([
+        mdFetch(`options/chain/${sym}/`, { side:'call', expiration: fallback, limit: 20 }),
+        mdFetch(`options/chain/${sym}/`, { side:'put',  expiration: fallback, limit: 20 })
+      ]);
+      return cset(k, {
+        calls: cd?.s==='ok' ? parseMD(cd) : [],
+        puts:  pd?.s==='ok' ? parseMD(pd) : [],
+        expiry: fallback,
+        dte: Math.round((new Date(fallback)-today)/86400000),
+        warn: 'Best available — under 365 days'
+      });
+    }
+
+    // Pick the FURTHEST expiry that is >= 365 days
+    const bestExp = validExp[validExp.length - 1];
+    const daysOut = Math.round((new Date(bestExp) - today) / 86400000);
+
+    const [callData, putData] = await Promise.all([
+      mdFetch(`options/chain/${sym}/`, { side: 'call', expiration: bestExp, limit: 20 }),
+      mdFetch(`options/chain/${sym}/`, { side: 'put',  expiration: bestExp, limit: 20 })
+    ]);
+    const calls = callData?.s === 'ok' ? parseMD(callData) : [];
+    const puts  = putData?.s  === 'ok' ? parseMD(putData)  : [];
+    setStatus('md', 'ok', '● CONNECTED');
+    return cset(k, { calls, puts, expiry: bestExp, dte: daysOut });
+  } catch(e) { return { calls: [], puts: [] }; }
+}
+
+function renderSynth(d, el) {
+  const chain = d.chain || { calls: [], puts: [] };
+  const calls = chain.calls || [];
+  const puts  = chain.puts  || [];
+
+  // Find ATM call and put (closest to current price, delta ~0.50)
+  const atmCall = bestContract(calls,  0.50);
+  const atmPut  = bestContract(puts,  -0.50);
+
+  const callMid = atmCall ? parseFloat(atmCall.mid||(parseFloat(atmCall.bid||0)+parseFloat(atmCall.ask||0))/2||0) : 0;
+  const putMid  = atmPut  ? parseFloat(atmPut.mid |(parseFloat(atmPut.bid ||0)+parseFloat(atmPut.ask ||0))/2||0) : 0;
+  const strike  = atmCall ? parseFloat(atmCall.strike||0) : Math.round(d.price/5)*5;
+  const netDebit = callMid - putMid;
+  const netType  = netDebit >= 0 ? 'DEBIT' : 'CREDIT';
+  const netAbs   = Math.abs(netDebit);
+  const breakeven = (strike + netDebit).toFixed(2);
+  const callIV  = atmCall?.iv ? parseFloat(atmCall.iv)*100 : null;
+  const putIV   = atmPut?.iv  ? parseFloat(atmPut.iv)*100  : null;
+  const callDelta = atmCall?.delta ? Math.abs(parseFloat(atmCall.delta)).toFixed(2) : null;
+  const putDelta  = atmPut?.delta  ? Math.abs(parseFloat(atmPut.delta)).toFixed(2)  : null;
+  const expRaw  = atmCall?.expiration;
+  const expDate = expRaw ? (typeof expRaw==='number' ? new Date(expRaw*1000).toISOString().split('T')[0] : expRaw) : chain.expiry || null;
+  const expDte  = expDate ? Math.round((new Date(expDate) - new Date()) / 86400000) : 0;
+  const callOI  = atmCall?.openInterest || 0;
+  const putOI   = atmPut?.openInterest  || 0;
+  const callSpread = atmCall ? parseFloat(atmCall.ask||0) - parseFloat(atmCall.bid||0) : 0;
+  const putSpread  = atmPut  ? parseFloat(atmPut.ask ||0) - parseFloat(atmPut.bid ||0)  : 0;
+  const earOK = !d.earnings || dte(d.earnings) > expDte;
+  const abv = d.sma ? d.price > d.sma : null;
+  const maxLoss = (strike + Math.max(0, netDebit)) * 100;
+
+  const checks = [
+    {
+      pass: d.rsi < 40,
+      name: 'Bullish Momentum — RSI < 40 (Stock beaten down)',
+      desc: `RSI(10) ${d.rsi.toFixed(1)} — ${d.rsi<40?'oversold/dipping, good synthetic long entry — strong bounce potential':'RSI elevated, wait for pullback before entering synthetic long'}`,
+      val: `RSI ${d.rsi.toFixed(1)}`
+    },
+    {
+      pass: abv === true,
+      name: '200 SMA — Price Above (Uptrend confirmed)',
+      desc: abv===true ? `$${d.price.toFixed(2)} above SMA $${d.sma?.toFixed(2)} — confirmed uptrend, synthetic long aligned with trend` : abv===false ? `$${d.price.toFixed(2)} below SMA — counter-trend trade, higher risk` : 'SMA unavailable',
+      val: d.sma ? `${abv?'▲ ABOVE':'▼ BELOW'}\n$${d.sma.toFixed(2)}` : '—'
+    },
+    {
+      pass: callDelta ? parseFloat(callDelta)>=0.45 && parseFloat(callDelta)<=0.55 : null,
+      name: 'ATM Strike — Call Delta 0.45–0.55',
+      desc: `Strike $${strike} · Call Δ${callDelta||'—'} · Put Δ${putDelta||'—'} · ATM gives best synthetic stock replication`,
+      val: `$${strike}\nΔ${callDelta||'—'}`
+    },
+    {
+      pass: expDte >= 365,
+      name: 'Duration — Minimum 365 Days (1 Year+)',
+      desc: expDte >= 365
+        ? `${fmtD(expDate)} (${expDte} DTE · ${(expDte/365).toFixed(1)} years) ✓ Sufficient time for position to develop · More time = less daily theta decay`
+        : `${fmtD(expDate)} (${expDte} DTE) ✗ Under 365 days — not ideal for synthetic long · Look for longer dated expiry or wait for one to become available`,
+      val: `${fmtD(expDate)}\n${expDte} DTE · ${(expDte/365).toFixed(1)} yrs`
+    },
+    {
+      pass: netAbs <= d.price * 0.03,
+      name: 'Net Cost — Debit/Credit ≤ 3% of Stock Price',
+      desc: atmCall && atmPut ? `Buy Call $${callMid.toFixed(2)} · Sell Put $${putMid.toFixed(2)} · Net ${netType}: $${netAbs.toFixed(2)} · ${netAbs<=d.price*0.03?'Low cost entry — efficient synthetic':'High net debit — less capital efficient than expected'}` : 'Options data unavailable',
+      val: atmCall && atmPut ? `Net ${netType}\n$${netAbs.toFixed(2)}` : '—'
+    },
+    {
+      pass: Math.min(callOI, putOI) >= 200,
+      name: 'Liquidity — Both Legs OI ≥ 200',
+      desc: `Call OI: ${callOI.toLocaleString()} · Put OI: ${putOI.toLocaleString()} · Need liquidity on BOTH legs for clean entry/exit`,
+      val: `Call ${callOI.toLocaleString()}\nPut ${putOI.toLocaleString()}`
+    },
+    {
+      pass: Math.max(callSpread, putSpread) <= 1.00,
+      name: 'Bid/Ask Spread — Both Legs ≤ $1.00',
+      desc: `Call spread: $${callSpread.toFixed(2)} · Put spread: $${putSpread.toFixed(2)} · Wide spreads cost more to enter and exit`,
+      val: `C: $${callSpread.toFixed(2)}\nP: $${putSpread.toFixed(2)}`
+    },
+    {
+      pass: earOK,
+      name: 'No Earnings Before Expiry',
+      desc: d.earnings ? (earOK ? `Earnings ${fmtD(d.earnings)} — after expiry, safe` : `Earnings ${fmtD(d.earnings)} BEFORE expiry — massive risk, avoid`) : 'No earnings date on file',
+      val: d.earnings ? fmtD(d.earnings) : '—'
+    }
+  ];
+
+  const fails = checks.filter(c => c.pass===false).length;
+  const vc = fails===0?'good':fails<=2?'warn':'bad';
+  const noData = calls.length===0 && puts.length===0;
+
+  el.innerHTML = `
+    <div class="result-box ${vc}">
+      <div class="result-src">${d.ticker} · $${d.price.toFixed(2)} · SYNTHETIC LONG · BUY CALL + SELL PUT · ${fmtD(expDate)} · LIVE</div>
+      <div class="verdict">${fails===0?'IDEAL SYNTHETIC LONG':fails<=2?'WAIT — NOT YET IDEAL':'DO NOT ENTER'}</div>
+      <div class="verdict-sub">${fails} criteri${fails===1?'on':'a'} not met.</div>
+    </div>
+    <div class="info-msg" style="margin-bottom:12px;">
+      ℹ SYNTHETIC LONG = Buy ATM Call + Sell ATM Put at same strike and expiry. Acts like owning 100 shares with far less capital. Unlimited upside · Substantial downside risk · Requires margin for short put.
+    </div>
+    ${noData?`<div class="info-msg">⚠ No options data — check MarketData.app connection.</div>`:''}
+    <div class="checklist"><div class="cl-head">CHECKLIST — 8 SYNTHETIC LONG ENTRY CRITERIA</div>${checks.map(c=>clRow(c.pass,c.name,c.desc,c.val)).join('')}</div>
+    ${calls.length&&puts.length?`
+    <div class="checklist">
+      <div class="cl-head">TOP 3 SYNTHETIC LONG SCENARIOS — ${d.ticker} · ${fmtD(expDate)} · ${expDte} DTE (${(expDte/365).toFixed(1)} YRS)</div>
+      <table class="opts-table">
+        <thead><tr>
+          <th>SCENARIO</th><th>STRIKE</th><th>CALL Δ</th><th>BUY CALL</th><th>SELL PUT</th><th>NET</th><th>BREAKEVEN</th><th>MAX LOSS</th><th>COST/CONTRACT</th>
+        </tr></thead>
+        <tbody>${(() => {
+          // Sort calls by strike ascending, find unique strikes
+          const sortedCalls = [...calls].filter(o=>o.delta!=null).sort((a,b)=>parseFloat(a.strike)-parseFloat(b.strike));
+          const sortedPuts  = [...puts].filter(o=>o.delta!=null).sort((a,b)=>parseFloat(a.strike)-parseFloat(b.strike));
+
+          // Find ATM strike (closest to current price)
+          const atmIdx = sortedCalls.reduce((best,o,i)=>Math.abs(parseFloat(o.strike)-d.price)<Math.abs(parseFloat(sortedCalls[best].strike)-d.price)?i:best,0);
+
+          // Pick 3 different strikes: ATM, one below, one further below
+          const scenarios = [
+            { label:'ATM (Δ~0.50)', note:'Closest to stock price', idx: atmIdx },
+            { label:'Slight ITM (Δ~0.65)', note:'One strike below ATM', idx: Math.max(0, atmIdx-1) },
+            { label:'Deep ITM (Δ~0.80)', note:'Two strikes below ATM', idx: Math.max(0, atmIdx-2) }
+          ];
+
+          return scenarios.map(s => {
+            const c = sortedCalls[s.idx];
+            const sk = parseFloat(c?.strike||0);
+            // Match put at same strike
+            const p = sortedPuts.find(o=>parseFloat(o.strike||0)===sk) || bestContract(puts, -0.50);
+            if (!c || !p) return '';
+            const cMid = parseFloat(c.mid||(parseFloat(c.bid||0)+parseFloat(c.ask||0))/2||0);
+            const pMid = parseFloat(p.mid||(parseFloat(p.bid||0)+parseFloat(p.ask||0))/2||0);
+            const net  = cMid - pMid;
+            const be   = (sk + net).toFixed(2);
+            const ml   = ((sk + Math.max(0,net))*100).toFixed(0);
+            const cDlt = c.delta ? Math.abs(parseFloat(c.delta)).toFixed(2) : '—';
+            const netType = net>=0 ? 'DEBIT' : 'CREDIT';
+            const netColor = net>=0 ? 'var(--magenta)' : 'var(--cyan)';
+            const isSame = s.idx === scenarios[0].idx && s.label !== scenarios[0].label;
+            if (isSame) return ''; // skip duplicate strikes
+            return `<tr>
+              <td style="color:var(--text2);font-size:11px;">${s.label}<br><span style="color:var(--dim);font-size:9px;">${s.note}</span></td>
+              <td style="color:#fff;font-weight:bold;">$${sk.toFixed(0)}</td>
+              <td style="color:var(--orange);">Δ${cDlt}</td>
+              <td style="color:var(--cyan);">$${cMid.toFixed(2)}</td>
+              <td style="color:var(--magenta);">$${pMid.toFixed(2)}</td>
+              <td style="color:${netColor};font-weight:bold;">${netType} $${Math.abs(net).toFixed(2)}</td>
+              <td style="color:#fff;font-weight:bold;">$${be}</td>
+              <td style="color:var(--red);">$${parseInt(ml).toLocaleString()}</td>
+              <td style="color:var(--cyan);font-weight:bold;">$${(Math.abs(net)*100).toFixed(0)}</td>
+            </tr>`;
+          }).join('');
+        })()}
+        </tbody>
+      </table>
+    </div>
+    <div class="info-msg">★ RECOMMENDED: Deep ITM — most stock-like behavior, lowest time decay risk. Net cost is higher but position moves almost 1:1 with the stock.</div>`:''}`;
+}
+
 
 function renderPut(d,el){
   const{bid,ask,mid,strike,expDate,expDte,delta,iv,oi}=getInfo(d.chain,-0.25);
@@ -1132,12 +1349,6 @@ function renderLeaps(d,el){
       name: 'Breakeven CAGR ≤ 35%/yr',
       desc: sbe&&scagr ? `Stock must reach $${sbe} by expiry · Requires ${scagr}%/yr growth · ${parseFloat(scagr)<=35?'Realistic target':'High bar — stock needs aggressive growth to break even'}` : 'Calculate after selecting contract',
       val: scagr ? `BE $${sbe}\n${scagr}%/yr` : '—'
-    },
-    {
-      pass: costPerContract ? costPerContract<=d.price*10 : null,
-      name: 'Position Size — Cost ≤ 10× Stock Price',
-      desc: costPerContract ? `$${costPerContract.toLocaleString('en-US',{maximumFractionDigits:0})}/contract · Best practice: never risk more than 5-10% of portfolio on a single LEAPS position` : 'Cost unavailable',
-      val: costPerContract ? `$${costPerContract.toLocaleString('en-US',{maximumFractionDigits:0})}` : '—'
     }
   ];
 
@@ -1243,7 +1454,7 @@ setInterval(() => {
 updateClock(); setInterval(updateClock, 1000);
 applyTheme(currentTheme);
 document.getElementById('view-dashboard').style.display='grid';
-['put','cc','leaps'].forEach(v=>document.getElementById('view-'+v).style.display='none');
+['put','cc','leaps','synth'].forEach(v=>document.getElementById('view-'+v).style.display='none');
 startDashboard();
 </script>
 </body>
