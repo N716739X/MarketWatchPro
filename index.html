@@ -201,7 +201,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Courier New', mo
   <button class="tf-btn active" id="tf-4h" onclick="setTimeframe('4h',this)">4H</button>
   <button class="tf-btn" id="tf-12h" onclick="setTimeframe('12h',this)">12H</button>
   <button class="tf-btn" id="tf-1day" onclick="setTimeframe('1day',this)">1D</button>
-  <span class="tf-note" id="tf-note">RSI(10) · 200 SMA · 4-Hour candles</span>
+  <span class="tf-note" id="tf-note"></span>
 </div>
 
 <div class="sort-bar">
@@ -708,7 +708,6 @@ function setTimeframe(tf, btn) {
   currentTF = tf;
   document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById('tf-note').textContent = TF_CONFIG[tf].label;
   // Clear cache so new timeframe data is fetched fresh
   cache = {}; tickerData = {}; optionsScoreData = {};
   startDashboard();
