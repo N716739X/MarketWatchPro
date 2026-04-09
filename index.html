@@ -632,31 +632,26 @@ let tickerData = {};
 let optionsScoreData = {}; // stores full 7-criteria scores after background fetch
 
 function calcTradeScore(t) {
-  // If we have full options data, use 7-criteria score
   if (optionsScoreData[t]) return optionsScoreData[t];
 
-  // Otherwise use 3-criteria score from dashboard data
   const d = tickerData[t];
   if (!d || !d.quote) return { put: 0, cc: 0, total: 0, label: '—', type: 'CC', partial: true };
   const price = parseFloat(d.quote.close || 0);
   const rsi = d.rsi || 50;
-  const sma = d.sma || null;
-  const abvSMA = sma ? price > sma : null;
   const earDte = EARNINGS[t] ? Math.round((new Date(EARNINGS[t]) - new Date()) / 86400000) : 999;
 
+  // Partial score — known criteria only (no SMA, no options data yet)
   let putScore = 0;
   if (rsi < 30) putScore++;
-  if (abvSMA === false) putScore++;
   if (earDte > 45) putScore++;
 
   let ccScore = 0;
-  if (rsi > 70) ccScore++;
-  if (abvSMA === true) ccScore++;
+  if (rsi > 65) ccScore++;
   if (earDte > 45) ccScore++;
 
   const best = Math.max(putScore, ccScore);
-  const type = putScore >= ccScore ? 'PUT' : 'CC';
-  let label = best >= 3 ? 'IDEAL' : best >= 2 ? 'WATCH' : 'NOT READY';
+  const type = ccScore > putScore ? 'CC' : 'PUT';
+  let label = best >= 2 ? 'WATCH' : 'NOT READY';
   return { put: putScore, cc: ccScore, total: best, type, label, rsi, chgPct: d.chgPct || 0, partial: true };
 }
 
@@ -669,13 +664,12 @@ async function calcFullScore(t) {
   const abvSMA = sma ? price > sma : null;
   const earDte = EARNINGS[t] ? Math.round((new Date(EARNINGS[t]) - new Date()) / 86400000) : 999;
 
-  // Determine if PUT or CC candidate based on RSI/SMA
-  const isCCCandidate = rsi > 55 && abvSMA;
+  // Determine if PUT or CC candidate based on RSI
+  const isCCCandidate = rsi > 55;
   const side = isCCCandidate ? 'call' : 'put';
-  const deltaTgt = isCCCandidate ? 0.22 : -0.25;
+  const deltaTgt = isCCCandidate ? 0.18 : -0.20;
 
   try {
-    // Fetch expirations
     const expData = await mdFetch(`options/expirations/${t}/`, {});
     if (!expData || expData.s !== 'ok') return;
 
@@ -689,7 +683,6 @@ async function calcFullScore(t) {
     const bestExp = validExp.find(e => isStandardExpiry(e)) || validExp[0];
     const expDte = Math.round((new Date(bestExp) - today) / 86400000);
 
-    // Fetch chain for that expiry
     const chainData = await mdFetch(`options/chain/${t}/`, { side, expiration: bestExp, limit: 20 });
     if (!chainData || chainData.s !== 'ok') return;
 
@@ -699,31 +692,29 @@ async function calcFullScore(t) {
     const finalDte = cDte || expDte;
     const earOK = !EARNINGS[t] || dte(EARNINGS[t]) > finalDte;
 
-    // Full 7-criteria CC score
+    // 6-criteria CC score (matches renderCC)
     let ccScore = 0;
-    if (rsi > 70) ccScore++;
-    if (abvSMA === true) ccScore++;
-    if (strike) ccScore++; // strike calculable
-    if (finalDte >= 30 && finalDte <= 50) ccScore++;
-    if (prem >= 2) ccScore++;
-    if (iv && iv >= 90) ccScore++;
-    if (earOK) ccScore++;
+    if (iv && iv >= 90) ccScore++;          // IV > 90%
+    if (rsi > 65) ccScore++;               // RSI > 65
+    if (earOK) ccScore++;                  // No earnings
+    if (prem >= 2) ccScore++;              // Premium > 2%
+    if (strike) ccScore++;                 // Strike found
+    if (finalDte >= 30 && finalDte <= 50) ccScore++; // DTE
 
-    // Full 7-criteria PUT score
+    // 6-criteria PUT score (matches renderPut)
     let putScore = 0;
-    if (rsi < 30) putScore++;
-    if (abvSMA === false) putScore++;
-    if (strike) putScore++;
-    if (finalDte >= 30 && finalDte <= 50) putScore++;
-    if (prem >= 2) putScore++;
-    if (iv && iv >= 90) putScore++;
-    if (earOK) putScore++;
+    if (iv && iv >= 90) putScore++;         // IV > 90%
+    if (rsi < 30) putScore++;              // RSI < 30
+    if (earOK) putScore++;                 // No earnings
+    if (prem >= 2) putScore++;             // Premium > 2%
+    if (strike) putScore++;                // Strike found
+    if (finalDte >= 30 && finalDte <= 50) putScore++; // DTE
 
     const best = Math.max(putScore, ccScore);
-    const type = putScore >= ccScore ? 'PUT' : 'CC';
+    const type = ccScore >= putScore ? 'CC' : 'PUT';
     let label = best >= 6 ? 'IDEAL' : best >= 4 ? 'WATCH' : 'NOT READY';
 
-    const scoreObj = { put: putScore, cc: ccScore, total: best, type, label, rsi, chgPct: d.chgPct || 0, partial: false, outOf: 7 };
+    const scoreObj = { put: putScore, cc: ccScore, total: best, type, label, rsi, chgPct: d.chgPct || 0, partial: false, outOf: 6 };
     optionsScoreData[t] = scoreObj;
 
     // Update badge and criteria boxes on card
@@ -733,12 +724,12 @@ async function calcFullScore(t) {
       if (badgeEl) {
         const badgeClass = label === 'IDEAL' ? 'score-ideal' : label === 'WATCH' ? 'score-good' : 'score-low';
         badgeEl.className = 'score-badge ' + badgeClass;
-        badgeEl.textContent = `${label} · ${type} ${best}/7`;
+        badgeEl.textContent = `${label} · ${type} ${best}/6`;
       }
       // Update grade box
       const gradeEl = card.querySelector('.grade-box');
       if (gradeEl) {
-        const gMap = { 7:'A', 6:'B', 5:'C', 4:'D' };
+        const gMap = { 6:'A', 5:'B', 4:'C', 3:'D' };
         const g = gMap[best] || 'F';
         const gc = g==='A' ? '#00ffff' : g==='B' ? '#00ffff' : g==='C' ? '#ff8800' : g==='D' ? '#ff00ff' : '#7b00ff';
         gradeEl.style.borderColor = gc;
@@ -754,10 +745,9 @@ async function calcFullScore(t) {
         const abv2 = sma2 ? price2 > sma2 : null;
         const checks = [
           { lbl: 'IV',     pass: iv!=null && iv>=90 },
-          { lbl: 'RSI',    pass: type==='CC' ? rsi2>70 : rsi2<30 },
+          { lbl: 'RSI',    pass: type==='CC' ? rsi2>65 : rsi2<30 },
           { lbl: 'EARN',   pass: earDteLocal > 45 },
           { lbl: 'PREM',   pass: prem>=2 },
-          { lbl: 'SMA',    pass: type==='CC' ? abv2===true : abv2===false },
           { lbl: 'DTE',    pass: finalDte>=30 && finalDte<=50 },
           { lbl: 'STRIKE', pass: !!strike }
         ];
@@ -780,7 +770,7 @@ async function backgroundScoreUpdate() {
   }
   // Re-sort after all scores updated
   sortDashboard(currentSort, document.querySelector('.sort-btn.active'));
-  document.getElementById('load-prog').textContent = '✓ All scores updated (7/7)';
+  document.getElementById('load-prog').textContent = '✓ All scores updated (6/6)';
   setTimeout(() => { document.getElementById('load-prog').textContent = ''; }, 4000);
 }
 
@@ -845,25 +835,23 @@ function buildCard(t, quote, rsi, sma) {
 
   const score = calcTradeScore(t);
   const badgeClass = score.label==='IDEAL'?'score-ideal':score.label==='WATCH'?'score-good':'score-low';
-  const badgeText = score.partial ? `${score.label} · ${score.type} ⟳` : `${score.label} · ${score.type} ${score.total}/7`;
+  const badgeText = score.partial ? `${score.label} · ${score.type} ⟳` : `${score.label} · ${score.type} ${score.total}/6`;
 
-  // 7 criteria mini boxes — use full score if available, partial if not
+  // 6 criteria mini boxes — IV · RSI · EARN · PREM · DTE · STRIKE
   const sd = optionsScoreData[t];
   const earDte2 = EARNINGS[t] ? Math.round((new Date(EARNINGS[t]) - new Date()) / 86400000) : 999;
   const criteria = sd ? [
-    { lbl: 'IV',     pass: sd.total >= 6 },
-    { lbl: 'RSI',    pass: score.type==='CC' ? rsi>70 : rsi<30 },
+    { lbl: 'IV',     pass: sd.iv ? sd.iv >= 90 : sd.total >= 5 },
+    { lbl: 'RSI',    pass: score.type==='CC' ? rsi>65 : rsi<30 },
     { lbl: 'EARN',   pass: earDte2 > 45 },
-    { lbl: 'PREM',   pass: sd.total >= 4 },
-    { lbl: 'SMA',    pass: score.type==='CC' ? abv===true : abv===false },
-    { lbl: 'DTE',    pass: sd.total >= 4 },
+    { lbl: 'PREM',   pass: sd.prem ? sd.prem >= 2 : sd.total >= 4 },
+    { lbl: 'DTE',    pass: true },
     { lbl: 'STRIKE', pass: true }
   ] : [
     { lbl: 'IV',     pass: null },
-    { lbl: 'RSI',    pass: score.type==='CC' ? rsi>70 : rsi<30 },
+    { lbl: 'RSI',    pass: score.type==='CC' ? rsi>65 : rsi<30 },
     { lbl: 'EARN',   pass: earDte2 > 45 },
     { lbl: 'PREM',   pass: null },
-    { lbl: 'SMA',    pass: score.type==='CC' ? abv===true : abv===false },
     { lbl: 'DTE',    pass: null },
     { lbl: 'STRIKE', pass: null }
   ];
@@ -879,7 +867,7 @@ function buildCard(t, quote, rsi, sma) {
   };
 
   // Letter grade
-  const gradeMap = { 7:'A', 6:'B', 5:'C', 4:'D' };
+  const gradeMap = { 6:'A', 5:'B', 4:'C', 3:'D' };
   const grade = score.partial ? '?' : (gradeMap[score.total] || 'F');
   const gradeColor = grade==='A' ? 'var(--cyan)' : grade==='B' ? 'var(--cyan)' : grade==='C' ? '#ff8800' : grade==='D' ? 'var(--magenta)' : grade==='?' ? '#330066' : 'var(--purple)';
 
@@ -1198,23 +1186,21 @@ function renderSynth(d, el) {
 
 
 function renderPut(d,el){
-  const{bid,ask,mid,strike,expDate,expDte,delta,iv,oi}=getInfo(d.chain,-0.25);
-  const sk=strike||Math.round(d.price*0.91/5)*5;
+  const{bid,ask,mid,strike,expDate,expDte,delta,iv,oi}=getInfo(d.chain,-0.20);
+  const sk=strike||Math.round(d.price*0.88/5)*5;
   const ed=expDate||'2026-05-15'; const dt=expDte||42;
   const prem=mid&&d.price?(mid/d.price*100).toFixed(2):null;
   const cap=sk*100, btc=mid?(mid*0.20).toFixed(2):null;
   const profit=mid&&btc?((mid-parseFloat(btc))*100).toFixed(0):null;
-  const abv=d.sma?d.price>d.sma:null;
   const earOK=!d.earnings||dte(d.earnings)>dt;
+  const otmPct=((d.price-sk)/d.price*100).toFixed(1);
   const checks=[
-    {pass:d.rsi<30,name:'Mean Reversion (−2 Zone)',desc:`RSI(10) ${d.rsi.toFixed(1)} — ${d.rsi<30?'dip confirmed, put entry valid':'waiting for RSI < 30 oversold signal'}`,val:`RSI ${d.rsi.toFixed(1)}`},
-    {pass:abv===null?'warn':!abv,name:'200 SMA',desc:abv===null?'SMA unavailable':abv?`$${d.price.toFixed(2)} above SMA $${d.sma.toFixed(2)} — uptrend, put riskier`:`$${d.price.toFixed(2)} below SMA $${d.sma.toFixed(2)} — downtrend confirmed`,val:d.sma?`${abv?'Above':'Below'} SMA\n$${d.sma.toFixed(2)}`:'N/A'},
-    {pass:true,name:'Strike (Δ 0.20–0.30)',desc:`Strike $${sk} · ${delta?'Δ'+delta:'~0.25'} · ~${((d.price-sk)/d.price*100).toFixed(1)}% OTM`,val:`$${sk}${delta?'\nΔ'+delta:''}`},
-    {pass:dt>=30&&dt<=50,name:'Duration 30–45 DTE',desc:`${fmtD(ed)} (${dt} DTE) · OI: ${oi?.toLocaleString()||'—'}`,val:`${fmtD(ed)}\n${dt} DTE`},
-    {pass:prem?parseFloat(prem)>=2:null,name:'Premium > 2% of Stock Price',desc:mid?`Bid $${bid.toFixed(2)} · Ask $${ask.toFixed(2)} · Mid $${mid.toFixed(2)} · ${prem}% of stock`:'No options data — upgrade MarketData.app to Trader + sign OPRA',val:mid?`Mid $${mid.toFixed(2)}\n${prem}%`:'—'},
-    {pass:iv?(iv>=90?true:iv>=70?'warn':false):null,name:'IV Rank > 90%',desc:iv?`IV ${iv.toFixed(0)}% — ${iv>=90?'excellent — high IV, maximum premium for put entry':iv>=70?'moderate — acceptable but wait for IV > 90% for best premium':'low IV — not enough premium to justify the risk. Wait.'}`:'IV not available — upgrade MarketData.app to Trader + sign OPRA',val:iv?`${iv.toFixed(0)}% IV`:'—'},
-    {pass:earOK,name:'No Earnings Before Expiry',desc:d.earnings?(earOK?`Earnings ${fmtD(d.earnings)} — after expiry, safe`:`Earnings ${fmtD(d.earnings)} BEFORE expiry — shorten DTE`):'No earnings date',val:d.earnings?fmtD(d.earnings):'—'},
-    {pass:true,name:'Capital (Strike × 100)',desc:`$${sk} × 100 = $${cap.toLocaleString()} cash reserve per contract`,val:`$${cap.toLocaleString()}`}
+    {pass:iv?(iv>=90?true:iv>=70?'warn':false):null,name:'IV Rank > 90%',desc:iv?`IV ${iv.toFixed(0)}% — ${iv>=90?'excellent — maximum premium for put entry':iv>=70?'moderate — acceptable but wait for IV > 90%':'low IV — not enough premium to justify the risk. Wait.'}`:'IV not available',val:iv?`${iv.toFixed(0)}% IV`:'—'},
+    {pass:d.rsi<30,name:'Mean Reversion (−2 Zone · RSI < 30)',desc:`RSI(10) ${d.rsi.toFixed(1)} — ${d.rsi<30?'oversold dip confirmed, put entry valid — high probability bounce':'waiting for RSI < 30 oversold signal'}`,val:`RSI ${d.rsi.toFixed(1)}`},
+    {pass:earOK,name:'No Earnings Before Expiry',desc:d.earnings?(earOK?`Earnings ${fmtD(d.earnings)} — after expiry, safe`:`Earnings ${fmtD(d.earnings)} BEFORE expiry — shorten DTE or skip`):'No earnings date',val:d.earnings?fmtD(d.earnings):'—'},
+    {pass:prem?parseFloat(prem)>=2:null,name:'Premium > 2% of Stock Price',desc:mid?`Bid $${bid.toFixed(2)} · Ask $${ask.toFixed(2)} · Mid $${mid.toFixed(2)} · ${prem}% of stock`:'No options data',val:mid?`Mid $${mid.toFixed(2)}\n${prem}%`:'—'},
+    {pass:true,name:'Strike (Δ 0.15–0.25 · 10–15% OTM)',desc:`Strike $${sk} · ${delta?'Δ'+delta:'~0.20'} · ${otmPct}% OTM — further OTM reduces assignment risk on high-conviction names`,val:`$${sk}${delta?'\nΔ'+delta:''}`},
+    {pass:dt>=30&&dt<=50,name:'Duration 30–45 DTE',desc:`${fmtD(ed)} (${dt} DTE) · OI: ${oi?.toLocaleString()||'—'} · Theta decay sweet spot`,val:`${fmtD(ed)}\n${dt} DTE`}
   ];
   const fails=checks.filter(c=>c.pass===false).length;
   const vc=fails===0?'good':fails<=2?'warn':'bad';
@@ -1226,33 +1212,57 @@ function renderPut(d,el){
       <div class="verdict-sub">${fails} criteri${fails===1?'on':'a'} not met.</div>
     </div>
     ${opraNote}
-    <div class="checklist"><div class="cl-head">CHECKLIST — 7 PUT ENTRY CRITERIA</div>${checks.map(c=>clRow(c.pass,c.name,c.desc,c.val)).join('')}</div>
-    ${chainTable(d.chain,-0.25,d.price,'OPTIONS CHAIN — PUTS')}
-    ${mid?`<div class="setup-box"><div class="box-label">RECOMMENDED SETUP</div><div class="setup-val">${d.ticker} $${sk} Put · ${fmtD(ed)} · ${dt} DTE · ${delta?'Δ'+delta:'Δ~0.25'} · Mid $${mid.toFixed(2)} (${prem}%) · Capital $${cap.toLocaleString()}</div></div><div class="setup-box"><div class="box-label">BUY-TO-CLOSE AT 80% PROFIT (OR 21 DTE)</div><div class="btc-val">${d.ticker} $${sk} Put ${fmtD(ed)} · BTC @ $${btc} · 80% Profit = $${profit} per contract</div></div>`:''}`;
+    <div class="checklist"><div class="cl-head">CHECKLIST — 6 PUT ENTRY CRITERIA</div>${checks.map(c=>clRow(c.pass,c.name,c.desc,c.val)).join('')}</div>
+    <div class="info-msg">ℹ ASSIGNMENT CAPITAL: If assigned on this put, you must buy 100 shares at $${sk} = <strong>$${cap.toLocaleString()}</strong> cash needed per contract. Only sell puts on stocks you are happy to own at this price.</div>
+    ${chainTable(d.chain,-0.20,d.price,'OPTIONS CHAIN — PUTS')}
+    ${mid?`<div class="setup-box"><div class="box-label">RECOMMENDED SETUP</div><div class="setup-val">${d.ticker} $${sk} Put · ${fmtD(ed)} · ${dt} DTE · ${delta?'Δ'+delta:'Δ~0.20'} · Mid $${mid.toFixed(2)} (${prem}%) · Assignment capital: $${cap.toLocaleString()}</div></div><div class="setup-box"><div class="box-label">BUY-TO-CLOSE AT 80% PROFIT (OR 21 DTE)</div><div class="btc-val">${d.ticker} $${sk} Put ${fmtD(ed)} · BTC @ $${btc} · 80% Profit = $${profit} per contract</div></div>`:''}`;
 }
 
 function renderCC(d,el){
-  const{bid,ask,mid,strike,expDate,expDte,delta,iv,oi}=getInfo(d.chain,0.22);
-  const sk=strike||Math.round(d.price*1.155/5)*5;
+  const{bid,ask,mid,strike,expDate,expDte,delta,iv,oi}=getInfo(d.chain,0.18);
+  const sk=strike||Math.round(d.price*1.18/5)*5;
   const ed=expDate||'2026-05-15'; const dt=expDte||42;
   const prem=mid&&d.price?(mid/d.price*100).toFixed(2):null;
   const otm=((sk-d.price)/d.price*100).toFixed(1);
   const btc=mid?(mid*0.20).toFixed(2):null;
   const profit=mid&&btc?((mid-parseFloat(btc))*100).toFixed(0):null;
-  const abv=d.sma?d.price>d.sma:null;
   const earOK=!d.earnings||dte(d.earnings)>dt;
+  // Upside if assigned
+  const upsidePct=((sk-d.price)/d.price*100).toFixed(1);
+  const upsideDollar=(sk-d.price).toFixed(2);
+  const totalReturnIfAssigned=mid?(((sk-d.price+parseFloat(mid))/d.price)*100).toFixed(1):null;
+
   const checks=[
-    {pass:d.rsi>70,name:'Mean Reversion (+2 Zone · RSI > 70)',desc:`RSI(10) ${d.rsi.toFixed(1)} — ${d.rsi>70?'overbought spike, CC entry valid':'waiting for RSI > 70'}`,val:`RSI ${d.rsi.toFixed(1)}`},
-    {pass:abv===null?'warn':abv?true:'warn',name:'200 SMA',desc:abv===null?'SMA unavailable':abv?`$${d.price.toFixed(2)} above SMA $${d.sma.toFixed(2)} — uptrend, CC suitable`:`$${d.price.toFixed(2)} below SMA — elevated risk`,val:d.sma?`${abv?'Above':'Below'} SMA\n$${d.sma.toFixed(2)}`:'N/A'},
-    {pass:true,name:'Strike (Δ 0.20–0.30 · 10–20% OTM)',desc:`Strike $${sk} · ${otm}% OTM · ${delta?'Δ'+delta:'~0.22'}`,val:`$${sk}${delta?'\nΔ'+delta:''}`},
-    {pass:dt>=30&&dt<=50,name:'Duration 30–45 DTE',desc:`${fmtD(ed)} (${dt} DTE) · OI: ${oi?.toLocaleString()||'—'}`,val:`${fmtD(ed)}\n${dt} DTE`},
-    {pass:prem?parseFloat(prem)>=2:null,name:'Premium ≥ 2% of Stock Price',desc:mid?`Bid $${bid.toFixed(2)} · Ask $${ask.toFixed(2)} · Mid $${mid.toFixed(2)} · ${prem}% of stock`:'No options data — upgrade MarketData.app',val:mid?`Mid $${mid.toFixed(2)}\n${prem}%`:'—'},
-    {pass:iv?(iv>=90?true:iv>=70?'warn':false):null,name:'IV Rank > 90%',desc:iv?`IV ${iv.toFixed(0)}% — ${iv>=90?'excellent — high IV, maximum premium for CC entry':iv>=70?'moderate — acceptable but wait for IV > 90% for best premium':'low IV — not enough premium to justify capping your upside. Wait.'}`:'IV not available — upgrade MarketData.app to Trader + sign OPRA',val:iv?`${iv.toFixed(0)}% IV`:'—'},
-    {pass:earOK,name:'No Earnings Before Expiry',desc:d.earnings?(earOK?`Earnings ${fmtD(d.earnings)} — safe`:`Earnings ${fmtD(d.earnings)} BEFORE expiry — shorten DTE`):'No earnings date',val:d.earnings?fmtD(d.earnings):'—'}
+    {pass:iv?(iv>=90?true:iv>=70?'warn':false):null,
+     name:'IV Rank > 90%',
+     desc:iv?`IV ${iv.toFixed(0)}% — ${iv>=90?'excellent — high IV, maximum premium for CC entry':iv>=70?'moderate — acceptable but ideally wait for IV > 90%':'low IV — not enough premium to justify capping your upside. Wait.'}`:'IV not available',
+     val:iv?`${iv.toFixed(0)}% IV`:'—'},
+    {pass:d.rsi>65,
+     name:'RSI > 65 (Overbought / Extended)',
+     desc:`RSI(10) ${d.rsi.toFixed(1)} — ${d.rsi>70?'overbought spike, ideal CC entry':d.rsi>65?'extended, CC entry acceptable':'RSI not elevated enough — stock not overbought yet'}`,
+     val:`RSI ${d.rsi.toFixed(1)}`},
+    {pass:earOK,
+     name:'No Earnings Before Expiry',
+     desc:d.earnings?(earOK?`Earnings ${fmtD(d.earnings)} — after expiry, safe`:`Earnings ${fmtD(d.earnings)} BEFORE expiry — stock could gap up and shares get called away`):'No earnings date',
+     val:d.earnings?fmtD(d.earnings):'—'},
+    {pass:prem?parseFloat(prem)>=2:null,
+     name:'Premium ≥ 2% of Stock Price',
+     desc:mid?`Bid $${bid.toFixed(2)} · Ask $${ask.toFixed(2)} · Mid $${mid.toFixed(2)} · ${prem}% of stock`:'No options data',
+     val:mid?`Mid $${mid.toFixed(2)}\n${prem}%`:'—'},
+    {pass:true,
+     name:`Strike (Δ 0.15–0.25 · ${otm}% OTM)`,
+     desc:`Strike $${sk} · ${delta?'Δ'+delta:'~0.18'} · ${otm}% above current price — further OTM protects upside on stocks you're bullish on`,
+     val:`$${sk}${delta?'\nΔ'+delta:''}`},
+    {pass:dt>=30&&dt<=50,
+     name:'Duration 30–45 DTE',
+     desc:`${fmtD(ed)} (${dt} DTE) · OI: ${oi?.toLocaleString()||'—'} · Theta decay sweet spot`,
+     val:`${fmtD(ed)}\n${dt} DTE`}
   ];
+
   const fails=checks.filter(c=>c.pass===false).length;
   const vc=fails===0?'good':fails<=2?'warn':'bad';
   const opraNote=d.chain.length===0?`<div class="info-msg">⚠ No options data in 30-50 DTE window — earnings may conflict with available expiries, or market is closed. Try a different ticker.</div>`:'';
+
   el.innerHTML=`
     <div class="result-box ${vc}">
       <div class="result-src">${d.ticker} · $${d.price.toFixed(2)} · TWELVE DATA + MARKETDATA.APP · LIVE</div>
@@ -1260,9 +1270,10 @@ function renderCC(d,el){
       <div class="verdict-sub">${fails} criteri${fails===1?'on':'a'} not met.</div>
     </div>
     ${opraNote}
-    <div class="checklist"><div class="cl-head">CHECKLIST — 7 CC ENTRY CRITERIA</div>${checks.map(c=>clRow(c.pass,c.name,c.desc,c.val)).join('')}</div>
-    ${chainTable(d.chain,0.22,d.price,'OPTIONS CHAIN — CALLS')}
-    ${mid?`<div class="setup-box"><div class="box-label">RECOMMENDED SETUP</div><div class="setup-val">${d.ticker} $${sk} Call · ${fmtD(ed)} · ${dt} DTE · ${delta?'Δ'+delta:'Δ~0.22'} · Mid $${mid.toFixed(2)} (${prem}%)</div></div><div class="setup-box"><div class="box-label">BUY-TO-CLOSE AT 80% PROFIT (OR 21 DTE)</div><div class="btc-val">${d.ticker} $${sk} Call ${fmtD(ed)} · BTC @ $${btc} · 80% Profit = $${profit} per contract</div></div>`:''}`;
+    <div class="checklist"><div class="cl-head">CHECKLIST — 6 CC ENTRY CRITERIA</div>${checks.map(c=>clRow(c.pass,c.name,c.desc,c.val)).join('')}</div>
+    <div class="info-msg">ℹ UPSIDE IF ASSIGNED: Strike $${sk} is $${upsideDollar} (${upsidePct}%) above current price $${d.price.toFixed(2)}${totalReturnIfAssigned?` · Total return if assigned: ${totalReturnIfAssigned}% (stock gain + premium)`:''} · Only sell CCs above your cost basis!</div>
+    ${chainTable(d.chain,0.18,d.price,'OPTIONS CHAIN — CALLS')}
+    ${mid?`<div class="setup-box"><div class="box-label">RECOMMENDED SETUP</div><div class="setup-val">${d.ticker} $${sk} Call · ${fmtD(ed)} · ${dt} DTE · ${delta?'Δ'+delta:'Δ~0.18'} · Mid $${mid.toFixed(2)} (${prem}%) · Upside if assigned: +${upsidePct}%</div></div><div class="setup-box"><div class="box-label">BUY-TO-CLOSE AT 80% PROFIT (OR 21 DTE)</div><div class="btc-val">${d.ticker} $${sk} Call ${fmtD(ed)} · BTC @ $${btc} · 80% Profit = $${profit} per contract</div></div>`:''}`;
 }
 
 function renderLeaps(d,el){
