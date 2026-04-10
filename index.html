@@ -5,1475 +5,1347 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>OptionsWatch Pro</title>
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-:root {
-  --bg: #020010;
-  --bg2: #0a0020;
-  --bg3: #0d0030;
-  --border: #7b00ff;
-  --border2: #330066;
-  --orange: #ff00ff;
-  --green: #00ffff;
-  --red: #ff00ff;
-  --yellow: #bb88ff;
-  --text: #ffffff;
-  --text2: #e0d0ff;
-  --muted: #9966cc;
-  --dim: #4d0099;
-  --cyan: #00ffff;
-  --magenta: #ff00ff;
-  --purple: #7b00ff;
-}
-body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; font-size: 14px; min-height: 100vh; }
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #21262d;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --red: #f85149;
+    --yellow: #d29922;
+    --cyan: #39d0d8;
+    --purple: #bc8cff;
+    --orange: #ffa657;
+    --pass: #238636;
+    --fail: #da3633;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
+    font-size: 14px;
+    min-height: 100vh;
+  }
+  /* HEADER */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  header h1 { font-size: 18px; font-weight: 700; color: var(--accent); letter-spacing: 0.5px; }
+  header span { font-size: 11px; color: var(--text-muted); background: var(--surface2); padding: 2px 8px; border-radius: 10px; border: 1px solid var(--border); }
 
-/* ── NAV ── */
-.nav { background: var(--bg2); border-bottom: 1px solid var(--purple); padding: 12px 18px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; position: sticky; top: 0; z-index: 100; }
-.nav-title { font-size: 18px; font-weight: bold; letter-spacing: 4px; margin-right: 10px; background: linear-gradient(90deg, #ff00ff, #00ffff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-.nav-btn { background: none; border: 1px solid var(--border2); color: var(--muted); padding: 7px 16px; cursor: pointer; font-family: 'Courier New', monospace; font-size: 12px; letter-spacing: 1px; transition: all 0.15s; }
-.nav-btn:hover, .nav-btn.active { border-color: var(--magenta); color: var(--magenta); background: rgba(255,0,255,0.08); box-shadow: 0 0 8px rgba(255,0,255,0.2); }
-.nav-right { margin-left: auto; }
-.live-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--cyan); animation: blink 1.5s infinite; margin-right: 4px; box-shadow: 0 0 6px var(--cyan); }
-.live-dot.dead { background: var(--magenta); animation: none; box-shadow: none; }
-@keyframes blink { 0%,100%{opacity:1}50%{opacity:0.2} }
-.clock { color: var(--cyan); font-size: 12px; text-shadow: 0 0 8px rgba(0,255,255,0.5); }
+  /* TABS */
+  .tab-bar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 0;
+    padding: 0 24px;
+  }
+  .tab {
+    padding: 12px 20px;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 500;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
-/* ── STATUS ── */
-.status-bar { background: var(--bg2); border-bottom: 1px solid var(--border2); padding: 8px 18px; display: flex; gap: 16px; align-items: center; font-size: 12px; flex-wrap: wrap; }
-.status-bar span { color: var(--text2); }
-.status-ok { color: var(--cyan) !important; font-weight: bold; text-shadow: 0 0 6px rgba(0,255,255,0.4); }
-.status-err { color: var(--magenta) !important; font-weight: bold; }
-.status-warn { color: var(--yellow) !important; font-weight: bold; }
+  /* MAIN LAYOUT */
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
 
-/* ── SETTINGS ── */
-.settings-panel { background: var(--bg3); border-bottom: 2px solid var(--border2); padding: 12px 18px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
-.key-field { display: flex; align-items: center; gap: 8px; }
-.key-field label { color: var(--text2); font-size: 11px; letter-spacing: 1px; white-space: nowrap; }
-.key-field input { background: var(--bg); border: 1px solid var(--border2); color: var(--text); padding: 7px 10px; font-family: 'Courier New', monospace; font-size: 12px; width: 250px; outline: none; }
-.key-field input:focus { border-color: var(--cyan); box-shadow: 0 0 6px rgba(0,255,255,0.3); }
-.save-btn { background: var(--magenta); color: #000; border: none; padding: 8px 18px; font-family: 'Courier New', monospace; font-size: 12px; font-weight: bold; letter-spacing: 1px; cursor: pointer; box-shadow: 0 0 10px rgba(255,0,255,0.4); }
-.save-btn:hover { background: #ff44ff; }
-.settings-note { color: var(--muted); font-size: 11px; margin-left: auto; }
+  /* SEARCH BAR */
+  .search-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 24px;
+    align-items: center;
+  }
+  .ticker-input {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 10px 16px;
+    width: 140px;
+    text-transform: uppercase;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .ticker-input:focus { border-color: var(--accent); }
+  .btn {
+    background: var(--accent);
+    color: #0d1117;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
 
-/* ── PROGRESS ── */
-.progress-bar { height: 3px; background: var(--border2); }
-.progress-fill { height: 100%; background: linear-gradient(90deg, var(--magenta), var(--cyan)); transition: width 0.4s; width: 0%; }
+  /* STATUS */
+  .status-msg {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-left: 8px;
+  }
+  .status-msg.loading { color: var(--yellow); }
+  .status-msg.error { color: var(--red); }
+  .status-msg.ok { color: var(--green); }
 
-/* ── DASHBOARD ── */
-#view-dashboard { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--purple); }
-.stock-card { background: var(--bg2); padding: 16px; cursor: pointer; transition: background 0.12s; min-height: 220px; position: relative; overflow: hidden; }
-.stock-card::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background: linear-gradient(90deg, transparent, var(--magenta), transparent); }
-.stock-card:hover { background: var(--bg3); }
-.ticker-label { font-size: 22px; font-weight: bold; letter-spacing: 2px; color: #ffffff; }
-.co-name { font-size: 11px; color: var(--purple); margin-top: 3px; letter-spacing: 1px; }
-.s-price { font-size: 28px; font-weight: bold; margin-top: 10px; letter-spacing: -1px; }
-.s-change { font-size: 13px; margin-top: 4px; font-weight: bold; }
-.up { color: var(--cyan); text-shadow: 0 0 8px rgba(0,255,255,0.4); }
-.dn { color: var(--magenta); text-shadow: 0 0 8px rgba(255,0,255,0.4); }
-.range-bar { margin-top: 12px; height: 3px; background: linear-gradient(to right, var(--magenta), var(--purple), var(--cyan)); border-radius: 2px; position: relative; }
-.range-dot { position: absolute; top: -5px; width: 13px; height: 13px; border-radius: 50%; background: #fff; border: 2px solid var(--bg2); transform: translateX(-50%); box-shadow: 0 0 6px rgba(255,255,255,0.6); }
-.range-labels { display: flex; justify-content: space-between; margin-top: 4px; color: var(--dim); font-size: 10px; }
-.rsi-sma-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-.tag { padding: 4px 9px; font-size: 11px; border-radius: 2px; font-weight: bold; }
-.tag-o { background: rgba(255,0,255,0.12); color: var(--magenta); border: 1px solid rgba(255,0,255,0.35); }
-.tag-g { background: rgba(0,255,255,0.1); color: var(--cyan); border: 1px solid rgba(0,255,255,0.3); }
-.tag-r { background: rgba(255,0,255,0.12); color: var(--magenta); border: 1px solid rgba(255,0,255,0.35); }
-.skeleton { background: var(--bg3); border-radius: 3px; animation: shimmer 1.2s infinite; }
-@keyframes shimmer { 0%,100%{opacity:.2}50%{opacity:.5} }
+  /* PRICE BAR */
+  .price-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    display: flex;
+    gap: 32px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .price-bar .ticker-label { font-size: 22px; font-weight: 800; color: var(--accent); }
+  .price-bar .price { font-size: 26px; font-weight: 700; }
+  .stat-group { display: flex; flex-direction: column; }
+  .stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-value { font-size: 15px; font-weight: 600; }
+  .up { color: var(--green); }
+  .down { color: var(--red); }
+  .neutral { color: var(--text-muted); }
 
-/* ── TIMEFRAME BAR ── */
-.tf-bar { background: var(--bg2); border-bottom: 1px solid var(--border2); padding: 8px 18px; display: flex; align-items: center; gap: 10px; }
-.tf-label { color: var(--purple); font-size: 11px; letter-spacing: 1px; }
-.tf-btn { background: none; border: 1px solid var(--border2); color: var(--muted); padding: 5px 16px; cursor: pointer; font-family: 'Courier New', monospace; font-size: 12px; font-weight: bold; letter-spacing: 1px; transition: all 0.15s; }
-.tf-btn:hover { border-color: var(--cyan); color: var(--cyan); }
-.tf-btn.active { border-color: var(--magenta); color: #000; background: var(--magenta); box-shadow: 0 0 12px rgba(255,0,255,0.5); }
-.tf-note { color: var(--dim); font-size: 11px; margin-left: 6px; }
+  /* SCORECARD */
+  .scorecard {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin-bottom: 20px;
+  }
+  .scorecard h3 {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 14px;
+  }
+  .criteria-list { display: flex; flex-direction: column; gap: 8px; }
+  .criterion {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: var(--surface2);
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+  .criterion .badge {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; flex-shrink: 0;
+  }
+  .badge.pass { background: var(--pass); color: #fff; }
+  .badge.fail { background: var(--fail); color: #fff; }
+  .badge.na { background: var(--surface); color: var(--text-muted); border: 1px solid var(--border); }
+  .criterion .crit-label { font-weight: 600; flex: 1; }
+  .criterion .crit-val { font-size: 12px; color: var(--text-muted); }
+  .rank-badge {
+    font-size: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
 
-/* ── SORT BAR ── */
-.ticker-mgr { background: var(--bg3); border-bottom: 1px solid var(--border2); padding: 10px 18px; display: none; flex-wrap: wrap; gap: 8px; align-items: center; }
-.ticker-mgr.open { display: flex; }
-.ticker-pill { display: inline-flex; align-items: center; gap: 5px; background: var(--bg2); border: 1px solid var(--border2); padding: 4px 10px; font-size: 12px; font-weight: bold; color: var(--text2); border-radius: 2px; }
-.ticker-pill button { background: none; border: none; color: var(--magenta); cursor: pointer; font-size: 14px; font-weight: bold; padding: 0; line-height: 1; }
-.ticker-add-wrap { display: flex; gap: 6px; align-items: center; }
-.ticker-add-input { background: var(--bg); border: 1px solid var(--border2); color: var(--text); padding: 5px 10px; font-family: 'Courier New', monospace; font-size: 13px; width: 100px; outline: none; letter-spacing: 2px; text-transform: uppercase; }
-.ticker-add-input:focus { border-color: var(--cyan); }
-.ticker-add-btn { background: var(--cyan); color: #000; border: none; padding: 5px 14px; font-family: 'Courier New', monospace; font-size: 12px; font-weight: bold; cursor: pointer; box-shadow: 0 0 8px rgba(0,255,255,0.4); }
-.sort-bar { background: var(--bg3); border-bottom: 1px solid var(--border2); padding: 10px 18px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.sort-label { color: var(--muted); font-size: 11px; letter-spacing: 1px; }
-.sort-btn { background: none; border: 1px solid var(--border2); color: var(--muted); padding: 5px 12px; cursor: pointer; font-family: 'Courier New', monospace; font-size: 11px; letter-spacing: 1px; transition: all 0.15s; }
-.sort-btn:hover, .sort-btn.active { border-color: var(--magenta); color: var(--magenta); background: rgba(255,0,255,0.08); }
-.score-badge { display: inline-block; padding: 6px 14px; border-radius: 2px; font-size: 13px; font-weight: bold; letter-spacing: 0.5px; white-space: nowrap; }
-.score-ideal { background: rgba(0,255,255,0.1); color: var(--cyan); border: 1px solid rgba(0,255,255,0.4); box-shadow: 0 0 8px rgba(0,255,255,0.2); }
-.score-good  { background: rgba(255,0,255,0.1); color: var(--magenta); border: 1px solid rgba(255,0,255,0.4); box-shadow: 0 0 8px rgba(255,0,255,0.2); }
-.score-low   { background: rgba(123,0,255,0.1); color: var(--yellow); border: 1px solid rgba(123,0,255,0.4); }
-.analyzer { display: none; padding: 20px; max-width: 960px; margin: 0 auto; }
-.analyzer.active { display: block; }
-.panel-title { font-size: 24px; font-weight: bold; letter-spacing: 3px; background: linear-gradient(90deg, #ff00ff, #00ffff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-.panel-sub { color: var(--muted); font-size: 12px; letter-spacing: 1px; margin-top: 4px; margin-bottom: 18px; }
-.ticker-row { display: flex; gap: 10px; margin-bottom: 12px; }
-.ticker-input { background: var(--bg3); border: 1px solid var(--border2); color: #ffffff; padding: 12px 16px; font-family: 'Courier New', monospace; font-size: 18px; flex: 1; letter-spacing: 3px; outline: none; }
-.ticker-input:focus { border-color: var(--cyan); box-shadow: 0 0 8px rgba(0,255,255,0.3); }
-.analyze-btn { background: var(--magenta); color: #000; border: none; padding: 12px 24px; font-family: 'Courier New', monospace; font-size: 14px; font-weight: bold; letter-spacing: 1.5px; cursor: pointer; box-shadow: 0 0 12px rgba(255,0,255,0.4); }
-.analyze-btn:hover { background: #ff44ff; }
-.analyze-btn:disabled { background: var(--dim); color: var(--muted); cursor: not-allowed; box-shadow: none; }
-.quick-tickers { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
-.qtick { background: none; border: 1px solid var(--border2); color: var(--text2); padding: 5px 12px; cursor: pointer; font-family: 'Courier New', monospace; font-size: 12px; transition: all .15s; }
-.qtick:hover, .qtick.sel { border-color: var(--cyan); color: var(--cyan); background: rgba(0,255,255,0.08); }
+  /* SCORE SUMMARY */
+  .score-summary {
+    margin-top: 14px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .score-summary.strong { background: rgba(35,134,54,0.2); border: 1px solid var(--pass); }
+  .score-summary.moderate { background: rgba(210,153,34,0.15); border: 1px solid var(--yellow); }
+  .score-summary.weak { background: rgba(218,54,51,0.15); border: 1px solid var(--fail); }
+  .score-label { font-weight: 700; font-size: 15px; }
+  .score-num { font-size: 22px; font-weight: 800; }
 
-/* ── RESULT BOXES ── */
-.result-box { border: 2px solid var(--border2); padding: 16px 18px; margin-bottom: 12px; }
-.result-box.good { border-color: var(--cyan); background: rgba(0,255,255,0.04); }
-.result-box.warn { border-color: var(--magenta); background: rgba(255,0,255,0.04); }
-.result-box.bad  { border-color: var(--purple); background: rgba(123,0,255,0.04); }
-.result-src { font-size: 11px; color: var(--muted); letter-spacing: 1px; margin-bottom: 6px; }
-.verdict { font-size: 22px; font-weight: bold; letter-spacing: 1px; color: #ffffff; }
-.verdict-sub { font-size: 13px; color: var(--text2); margin-top: 4px; }
+  /* INFO BOX */
+  .info-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 20px;
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .info-item .info-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+  .info-item .info-val { font-size: 16px; font-weight: 700; color: var(--cyan); }
 
-/* ── CHECKLIST ── */
-.checklist { border: 1px solid var(--border2); margin-bottom: 12px; }
-.cl-head { padding: 10px 16px; border-bottom: 1px solid var(--border2); font-size: 11px; letter-spacing: 1.5px; color: var(--muted); background: var(--bg3); }
-.cl-row { display: flex; align-items: flex-start; gap: 14px; padding: 14px 16px; border-bottom: 1px solid var(--border2); }
-.cl-row:last-child { border-bottom: none; }
-.cl-icon { font-size: 18px; min-width: 20px; margin-top: 1px; }
-.cl-name { font-weight: bold; font-size: 13px; color: #ffffff; letter-spacing: 0.3px; }
-.cl-desc { font-size: 12px; color: var(--text2); margin-top: 4px; line-height: 1.6; }
-.cl-val { margin-left: auto; text-align: right; font-size: 12px; white-space: pre-line; min-width: 110px; font-weight: bold; }
+  /* CHAIN TABLE */
+  .chain-section { margin-bottom: 20px; }
+  .chain-section h3 { font-size: 13px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px; }
+  .chain-table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    background: var(--surface2);
+    padding: 8px 12px;
+    text-align: right;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+  }
+  thead th:first-child { text-align: left; }
+  tbody tr { border-top: 1px solid var(--border); transition: background 0.1s; }
+  tbody tr:hover { background: rgba(88,166,255,0.05); }
+  tbody tr.recommended { background: rgba(57,208,216,0.08); }
+  tbody td {
+    padding: 8px 12px;
+    text-align: right;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  tbody td:first-child { text-align: left; }
+  .star { color: var(--cyan); font-size: 14px; margin-right: 4px; }
+  .strike-cell { font-weight: 700; color: var(--text); }
 
-/* ── SETUP BOXES ── */
-.setup-box { background: rgba(123,0,255,0.05); border: 1px solid var(--border2); padding: 14px 18px; margin-bottom: 12px; }
-.box-label { font-size: 11px; color: var(--muted); letter-spacing: 1px; margin-bottom: 10px; }
-.setup-val { color: var(--cyan); font-size: 14px; line-height: 2; font-weight: bold; }
-.btc-val { color: var(--magenta); font-size: 13px; line-height: 2; font-weight: bold; }
+  /* LEAPS TABLE */
+  .leaps-table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 16px; }
 
-/* ── MISC ── */
-.loading-msg { padding: 50px; text-align: center; color: var(--text2); font-size: 14px; letter-spacing: 1px; line-height: 2.4; }
-.error-msg { padding: 16px; color: var(--red); font-size: 13px; border: 1px solid rgba(255,82,82,0.4); margin-bottom: 12px; line-height: 1.8; background: rgba(255,82,82,0.05); }
-.info-msg { padding: 12px 16px; color: var(--yellow); font-size: 12px; border: 1px solid rgba(255,238,88,0.3); margin-bottom: 12px; line-height: 1.7; background: rgba(255,238,88,0.04); }
-.opts-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 12px; }
-.opts-table th { color: var(--muted); font-size: 11px; letter-spacing: 1px; padding: 8px 10px; text-align: left; border-bottom: 2px solid var(--border); font-weight: normal; background: var(--bg3); }
-.opts-table td { padding: 10px 10px; border-bottom: 1px solid var(--border); color: #e8e8e8; font-size: 13px; }
-.opts-table tr.best-row td { background: rgba(255,170,0,0.07); }
-.opts-table tr:hover td { background: var(--bg3); }
-.disclaimer { text-align: center; color: var(--muted); font-size: 11px; padding: 20px; letter-spacing: .5px; border-top: 1px solid var(--border); margin-top: 10px; }
+  /* SYNTHETIC SCENARIOS */
+  .scenarios { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 20px; }
+  .scenario-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .scenario-card h4 { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+  .scenario-card .sc-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--border); }
+  .scenario-card .sc-row:last-child { border-bottom: none; }
+  .scenario-card .sc-key { color: var(--text-muted); font-size: 12px; }
+  .scenario-card .sc-val { font-weight: 600; font-size: 13px; }
 
-@media(max-width:1100px){ #view-dashboard{grid-template-columns:repeat(3,1fr);} }
-@media(max-width:700px){ #view-dashboard{grid-template-columns:repeat(2,1fr);} }
-@media(max-width:400px){ #view-dashboard{grid-template-columns:1fr;} .key-field input{width:170px;} }
+  /* PLACEHOLDER */
+  .placeholder {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+  }
+  .placeholder .ph-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.3; }
+  .placeholder p { font-size: 15px; }
+
+  /* PANEL VISIBILITY */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* SPINNER */
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* NOTICE */
+  .notice {
+    background: rgba(210,153,34,0.12);
+    border: 1px solid var(--yellow);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--yellow);
+    margin-bottom: 16px;
+  }
+
+  /* BTC NOTE */
+  .btc-note {
+    font-size: 11px;
+    color: var(--text-muted);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-top: 10px;
+  }
+
+  /* RESPONSIVE */
+  @media (max-width: 600px) {
+    .container { padding: 16px; }
+    .price-bar { gap: 16px; }
+    .tab { padding: 10px 12px; font-size: 12px; }
+    header h1 { font-size: 15px; }
+  }
 </style>
 </head>
 <body>
 
-<div class="nav">
-  <span class="nav-title">OPTIONSWATCH PRO</span>
-  <span class="live-dot" id="live-dot"></span>
-  <span id="clock" class="clock">NYC --:--</span>
-  <button class="nav-btn active" id="btn-dashboard" onclick="showView('dashboard',this)">DASHBOARD</button>
-  <button class="nav-btn" id="btn-put" onclick="showView('put',this)">PUT ANALYZER</button>
-  <button class="nav-btn" id="btn-cc" onclick="showView('cc',this)">CC ANALYZER</button>
-  <button class="nav-btn" id="btn-leaps" onclick="showView('leaps',this)">LEAPS ANALYZER</button>
-  <button class="nav-btn" id="btn-synth" onclick="showView('synth',this)">SYNTHETIC LONG</button>
-  <div class="nav-right"><button class="nav-btn" onclick="startDashboard()">↺ REFRESH</button> <button class="nav-btn" onclick="toggleTickerMgr()">⚙ TICKERS</button> <button class="nav-btn" id="theme-btn" onclick="toggleTheme()">◑ THEME</button></div>
+<header>
+  <h1>OptionsWatch Pro</h1>
+  <span>Options Trading Analyzer</span>
+</header>
+
+<div class="tab-bar">
+  <div class="tab active" data-tab="put">Cash-Secured Put</div>
+  <div class="tab" data-tab="cc">Covered Call</div>
+  <div class="tab" data-tab="leaps">LEAPS</div>
+  <div class="tab" data-tab="synth">Synthetic Long</div>
 </div>
 
-<div id="ticker-mgr" class="ticker-mgr">
-  <span style="color:var(--muted);font-size:11px;letter-spacing:1px;margin-right:4px;">WATCHLIST</span>
-  <div id="ticker-pills"></div>
-  <div class="ticker-add-wrap">
-    <input class="ticker-add-input" id="ticker-add-input" placeholder="SYMBOL" maxlength="6" onkeydown="if(event.key==='Enter')addTicker()">
-    <button class="ticker-add-btn" onclick="addTicker()">+ ADD</button>
+<!-- ===================== PUT PANEL ===================== -->
+<div id="panel-put" class="panel active">
+  <div class="container">
+    <div class="search-row">
+      <input type="text" class="ticker-input" id="put-ticker" placeholder="TICKER" maxlength="10" />
+      <button class="btn" id="put-btn" onclick="runPut()">Analyze</button>
+      <span class="status-msg" id="put-status"></span>
+    </div>
+    <div id="put-results"></div>
   </div>
-  <button class="save-btn" style="margin-left:8px;" onclick="applyTickers()">✓ APPLY & RELOAD</button>
 </div>
 
-<div class="status-bar">
-  <span>TWELVE DATA</span><span id="td-status" class="status-warn">● CONNECTING...</span>
-  <span style="margin-left:10px;">MARKETDATA.APP</span><span id="md-status" class="status-warn">● READY</span>
-  <span id="td-credits" style="margin-left:auto;color:var(--muted);"></span>
-  <span id="refresh-timer" style="color:var(--cyan);font-size:11px;margin-left:12px;"></span>
-  <span id="load-prog" style="color:var(--orange);"></span>
-</div>
-<div class="progress-bar"><div class="progress-fill" id="prog-fill"></div></div>
-
-<div class="settings-panel">
-  <div class="key-field"><label>TWELVE DATA KEY</label><input type="password" id="td-key-input" placeholder="Paste new key..."></div>
-  <div class="key-field"><label>MARKETDATA.APP TOKEN</label><input type="password" id="md-key-input" placeholder="Paste new token..."></div>
-  <button class="save-btn" onclick="saveKeys()">SAVE & RECONNECT</button>
-  <span class="settings-note">Keys stored in memory only</span>
+<!-- ===================== CC PANEL ===================== -->
+<div id="panel-cc" class="panel">
+  <div class="container">
+    <div class="search-row">
+      <input type="text" class="ticker-input" id="cc-ticker" placeholder="TICKER" maxlength="10" />
+      <button class="btn" id="cc-btn" onclick="runCC()">Analyze</button>
+      <span class="status-msg" id="cc-status"></span>
+    </div>
+    <div id="cc-results"></div>
+  </div>
 </div>
 
-<div class="tf-bar">
-  <span class="tf-label">TIMEFRAME</span>
-  <button class="tf-btn active" id="tf-4h" onclick="setTimeframe('4h',this)">4H</button>
-  <button class="tf-btn" id="tf-12h" onclick="setTimeframe('12h',this)">12H</button>
-  <button class="tf-btn" id="tf-1day" onclick="setTimeframe('1day',this)">1D</button>
-  <span class="tf-note" id="tf-note"></span>
+<!-- ===================== LEAPS PANEL ===================== -->
+<div id="panel-leaps" class="panel">
+  <div class="container">
+    <div class="search-row">
+      <input type="text" class="ticker-input" id="leaps-ticker" placeholder="TICKER" maxlength="10" />
+      <button class="btn" id="leaps-btn" onclick="runLeaps()">Analyze</button>
+      <span class="status-msg" id="leaps-status"></span>
+    </div>
+    <div id="leaps-results"></div>
+  </div>
 </div>
 
-<div class="sort-bar">
-  <span class="sort-label">SORT BY</span>
-  <button class="sort-btn active" id="sort-score" onclick="sortDashboard('score',this)">★ TRADE SCORE</button>
-  <button class="sort-btn" id="sort-rsi-asc" onclick="sortDashboard('rsi-asc',this)">RSI ↑ (oversold first)</button>
-  <button class="sort-btn" id="sort-rsi-desc" onclick="sortDashboard('rsi-desc',this)">RSI ↓ (overbought first)</button>
-  <button class="sort-btn" id="sort-chg-desc" onclick="sortDashboard('chg-desc',this)">% CHANGE ↓</button>
-  <button class="sort-btn" id="sort-chg-asc" onclick="sortDashboard('chg-asc',this)">% CHANGE ↑</button>
-  <button class="sort-btn" id="sort-default" onclick="sortDashboard('default',this)">DEFAULT</button>
+<!-- ===================== SYNTH PANEL ===================== -->
+<div id="panel-synth" class="panel">
+  <div class="container">
+    <div class="search-row">
+      <input type="text" class="ticker-input" id="synth-ticker" placeholder="TICKER" maxlength="10" />
+      <button class="btn" id="synth-btn" onclick="runSynth()">Analyze</button>
+      <span class="status-msg" id="synth-status"></span>
+    </div>
+    <div id="synth-results"></div>
+  </div>
 </div>
-
-<div id="view-dashboard"></div>
-
-<div id="view-put" class="analyzer">
-  <div class="panel-title">PUT ANALYZER</div>
-  <div class="panel-sub">7-CRITERIA CHECK · MEAN REVERSION · 30-45 DTE · TWELVE DATA + MARKETDATA.APP</div>
-  <div class="ticker-row"><input class="ticker-input" id="put-input" value="TSLA" onkeydown="if(event.key==='Enter')runAnalyzer('put')"><button class="analyze-btn" id="put-btn" onclick="runAnalyzer('put')">ANALYZE →</button></div>
-  <div class="quick-tickers" id="put-qt"></div>
-  <div id="put-result"></div>
-</div>
-
-<div id="view-cc" class="analyzer">
-  <div class="panel-title">CC ANALYZER</div>
-  <div class="panel-sub">8-CRITERIA CHECK · +2 MEAN REVERSION · 20-30 DELTA · TWELVE DATA + MARKETDATA.APP</div>
-  <div class="ticker-row"><input class="ticker-input" id="cc-input" value="NVDA" onkeydown="if(event.key==='Enter')runAnalyzer('cc')"><button class="analyze-btn" id="cc-btn" onclick="runAnalyzer('cc')">ANALYZE →</button></div>
-  <div class="quick-tickers" id="cc-qt"></div>
-  <div id="cc-result"></div>
-</div>
-
-<div id="view-leaps" class="analyzer">
-  <div class="panel-title">LEAPS ANALYZER</div>
-  <div class="panel-sub">5-CRITERIA CHECK · RSI &lt; 30 · ATM/ITM · 18+ MONTHS · TWELVE DATA + MARKETDATA.APP</div>
-  <div class="ticker-row"><input class="ticker-input" id="leaps-input" value="TSLA" onkeydown="if(event.key==='Enter')runAnalyzer('leaps')"><button class="analyze-btn" id="leaps-btn" onclick="runAnalyzer('leaps')">ANALYZE →</button></div>
-  <div class="quick-tickers" id="leaps-qt"></div>
-  <div id="leaps-result"></div>
-</div>
-
-<div id="view-synth" class="analyzer">
-  <div class="panel-title">SYNTHETIC LONG ANALYZER</div>
-  <div class="panel-sub">BUY ATM CALL + SELL ATM PUT · SAME STRIKE · SAME EXPIRY · STOCK-LIKE EXPOSURE WITH LESS CAPITAL</div>
-  <div class="ticker-row"><input class="ticker-input" id="synth-input" value="TSLA" onkeydown="if(event.key==='Enter')runAnalyzer('synth')"><button class="analyze-btn" id="synth-btn" onclick="runAnalyzer('synth')">ANALYZE →</button></div>
-  <div class="quick-tickers" id="synth-qt"></div>
-  <div id="synth-result"></div>
-</div>
-
-<div class="disclaimer">OptionsWatch Pro · Live data: Twelve Data (price/RSI/SMA) · MarketData.app (options/Greeks/IV) · Not investment advice</div>
 
 <script>
-const TICKERS=['TSLA','NVDA','PLTR','AMD','AVGO','TSM','MU','ASML','ALAB','MRVL','ARM','GOOG','USO'];
-const CO={TSLA:'Tesla',NVDA:'Nvidia',PLTR:'Palantir',AMD:'AMD',AVGO:'Broadcom',TSM:'Taiwan Semi',MU:'Micron',ASML:'ASML Holding',ALAB:'Astera Labs',MRVL:'Marvell',ARM:'ARM Holdings',GOOG:'Alphabet C',USO:'US Oil Fund'};
-const EARNINGS={TSLA:'2026-04-28',NVDA:'2026-05-26',PLTR:'2026-05-05',AMD:'2026-04-29',AVGO:'2026-06-12',TSM:'2026-04-17',MU:'2026-06-25',ASML:'2026-04-16',ALAB:'2026-05-20',MRVL:'2026-05-29',ARM:'2026-05-07',GOOG:'2026-04-29',USO:null};
+// ─── CONFIG ──────────────────────────────────────────────────────────────────
+const TD_KEY   = '170a58b2c2094e3987e4289f4fe39a08';
+const MD_TOKEN = 'VjFYQWlwZDVCZ2ZIMm9TV3BFcndIeGxZbkdBelNESGNDVzh2czBWaHF1Yz0';
+const CF_PROXY = 'https://marketwatchpro.mattdavis-7f2.workers.dev/';
 
-let KEYS={
-  td:'170a58b2c2094e3987e4289f4fe39a08',
-  md:'VjFYQWlwZDVCZ2ZIMm9TV3BFcndIeGxZbkdBelNESGNDVzh2czBWaHF1Yz0'
-};
-const TD='https://api.twelvedata.com', MD='https://api.marketdata.app/v1';
-let cache={}, loadAbort=false;
-const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+// ─── TABS ─────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(function(tab) {
+  tab.addEventListener('click', function() {
+    document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+    document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
+    tab.classList.add('active');
+    var panelId = 'panel-' + tab.dataset.tab;
+    document.getElementById(panelId).classList.add('active');
+  });
+});
 
-function saveKeys(){
-  const td=document.getElementById('td-key-input').value.trim();
-  const md=document.getElementById('md-key-input').value.trim();
-  if(td) KEYS.td=td; if(md) KEYS.md=md;
-  cache={};
-  document.getElementById('td-key-input').value='';
-  document.getElementById('md-key-input').value='';
-  startDashboard();
+// ─── UTILITIES ────────────────────────────────────────────────────────────────
+function setStatus(id, msg, type) {
+  var el = document.getElementById(id);
+  el.innerHTML = msg;
+  el.className = 'status-msg' + (type ? ' ' + type : '');
 }
 
-function updateClock() {
-  const now = new Date();
-  
-  // CST clock
-  const cst = now.toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
-  
-  // Market hours in ET: 9:30am - 4:00pm
-  const etNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-  const etHour = etNow.getHours();
-  const etMin = etNow.getMinutes();
-  const etSec = etNow.getSeconds();
-  const etDay = etNow.getDay(); // 0=Sun, 6=Sat
-  
-  const marketOpen = etHour * 60 + etMin >= 9 * 60 + 30;
-  const marketClose = etHour * 60 + etMin >= 16 * 60;
-  const isWeekend = etDay === 0 || etDay === 6;
-  const isMarketOpen = !isWeekend && marketOpen && !marketClose;
+function spinner() {
+  return '<span class="spinner"></span>';
+}
 
-  let countdown = '';
-  if (isWeekend) {
-    countdown = '<span style="color:var(--red);">● CLOSED (Weekend)</span>';
-  } else if (!marketOpen) {
-    // Time until open
-    const totalSecs = ((9 * 60 + 30) - (etHour * 60 + etMin)) * 60 - etSec;
-    const h = Math.floor(totalSecs / 3600);
-    const m = Math.floor((totalSecs % 3600) / 60);
-    const s = totalSecs % 60;
-    countdown = `<span style="color:var(--yellow);">● PRE-MARKET · Opens in ${h}h ${m}m ${s}s</span>`;
-  } else if (isMarketOpen) {
-    // Time until close
-    const totalSecs = ((16 * 60) - (etHour * 60 + etMin)) * 60 - etSec;
-    const h = Math.floor(totalSecs / 3600);
-    const m = Math.floor((totalSecs % 3600) / 60);
-    const s = totalSecs % 60;
-    countdown = `<span style="color:var(--cyan);">● MARKET OPEN · Closes in ${h}h ${m}m ${s}s</span>`;
-  } else {
-    countdown = `<span style="color:var(--red);">● MARKET CLOSED</span>`;
+function fmt(n, dec) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return Number(n).toFixed(dec !== undefined ? dec : 2);
+}
+
+function fmtPct(n) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return (Number(n) * 100).toFixed(1) + '%';
+}
+
+function fmtDollar(n) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return '$' + Number(n).toFixed(2);
+}
+
+function fmtK(n) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  if (Math.abs(n) >= 1000) return (n / 1000).toFixed(1) + 'k';
+  return String(n);
+}
+
+function dteFromStr(dateStr) {
+  if (!dateStr) return null;
+  var parts = dateStr.split('-');
+  if (parts.length !== 3) return null;
+  var exp = new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
+  var now = new Date();
+  var todayUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  return Math.round((exp - todayUTC) / 86400000);
+}
+
+function isThirdFriday(dateStr) {
+  var parts = dateStr.split('-');
+  var d = new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
+  if (d.getUTCDay() !== 5) return false;
+  var day = d.getUTCDate();
+  return day >= 15 && day <= 21;
+}
+
+function passHtml(pass) {
+  if (pass === true)  return '<span class="badge pass">✓</span>';
+  if (pass === false) return '<span class="badge fail">✗</span>';
+  return '<span class="badge na">—</span>';
+}
+
+function scoreClass(score, total) {
+  var pct = score / total;
+  if (pct >= 0.75) return 'strong';
+  if (pct >= 0.5)  return 'moderate';
+  return 'weak';
+}
+
+function scoreLabel(score, total) {
+  var pct = score / total;
+  if (pct >= 0.75) return '✅ Strong Setup';
+  if (pct >= 0.5)  return '⚠️ Moderate Setup';
+  return '❌ Weak Setup';
+}
+
+// ─── API CALLS ────────────────────────────────────────────────────────────────
+async function fetchTD(endpoint, params) {
+  var url = new URL('https://api.twelvedata.com/' + endpoint);
+  params['apikey'] = TD_KEY;
+  Object.keys(params).forEach(function(k) { url.searchParams.set(k, params[k]); });
+  var r = await fetch(url.toString());
+  if (!r.ok) throw new Error('Twelve Data HTTP ' + r.status);
+  var data = await r.json();
+  if (data.status === 'error') throw new Error('TD: ' + (data.message || 'API error'));
+  return data;
+}
+
+async function fetchMD(endpoint, params) {
+  var url = new URL(CF_PROXY);
+  url.searchParams.set('endpoint', endpoint);
+  if (params) {
+    Object.keys(params).forEach(function(k) { url.searchParams.set(k, params[k]); });
   }
-
-  document.getElementById('clock').innerHTML = `CST ${cst} &nbsp;|&nbsp; ${countdown}`;
-}
-
-function setStatus(api,type,txt){
-  const el=document.getElementById(api+'-status');
-  if(el){el.textContent=txt; el.className='status-'+type;}
-}
-
-async function tdFetch(ep,params,retries=3){
-  const url=new URL(`${TD}/${ep}`);
-  params.apikey=KEYS.td;
-  Object.entries(params).forEach(([k,v])=>url.searchParams.set(k,v));
-  for(let i=0;i<=retries;i++){
-    try{
-      const r=await fetch(url);
-      const credits=r.headers.get('api-credits-left');
-      if(credits) document.getElementById('td-credits').textContent=`TD credits: ${credits}`;
-      const data=await r.json();
-      if(data.code===429||data.message?.toLowerCase().includes('limit')){
-        setStatus('td','warn','● RATE LIMITED...');
-        await sleep(10000); continue;
-      }
-      return data;
-    }catch(e){ if(i<retries) await sleep(2000); }
+  var r = await fetch(url.toString(), {
+    headers: { 'Authorization': 'Bearer ' + MD_TOKEN }
+  });
+  if (!r.ok) {
+    var errText = await r.text();
+    throw new Error('MarketData HTTP ' + r.status + ': ' + errText);
   }
+  var data = await r.json();
+  if (data.s === 'no_data') throw new Error('No options data available for this symbol.');
+  return data;
+}
+
+// Fetch price, RSI(10), 200 SMA from Twelve Data
+async function fetchPriceData(ticker) {
+  var [quoteData, rsiData, smaData] = await Promise.all([
+    fetchTD('quote', { symbol: ticker }),
+    fetchTD('rsi', { symbol: ticker, interval: 'daily', time_period: 10, outputsize: 1 }),
+    fetchTD('sma', { symbol: ticker, interval: 'daily', time_period: 200, outputsize: 1 })
+  ]);
+
+  var price = parseFloat(quoteData.close || quoteData.price);
+  var change = parseFloat(quoteData.change);
+  var changePct = parseFloat(quoteData.percent_change);
+  var rsi = parseFloat(rsiData.values && rsiData.values[0] ? rsiData.values[0].rsi : rsiData.rsi);
+  var sma200 = parseFloat(smaData.values && smaData.values[0] ? smaData.values[0].sma : smaData.sma);
+
+  return { price, change, changePct, rsi, sma200 };
+}
+
+// Fetch IV Rank from MarketData
+async function fetchIVRank(ticker) {
+  try {
+    var data = await fetchMD('/v1/options/ivrank/', { symbol: ticker });
+    if (data && data.ivRank && data.ivRank[0] !== undefined) {
+      return parseFloat(data.ivRank[0]) * 100; // convert 0-1 to 0-100
+    }
+    return null;
+  } catch(e) {
+    return null;
+  }
+}
+
+// Fetch expirations from MarketData
+async function fetchExpirations(ticker) {
+  var data = await fetchMD('/v1/options/expirations/', { symbol: ticker });
+  return data.expirations || [];
+}
+
+// Fetch options chain for a specific expiration
+async function fetchChain(ticker, expiration, side) {
+  var data = await fetchMD('/v1/options/chain/', {
+    symbol: ticker,
+    expiration: expiration,
+    side: side
+  });
+  return data;
+}
+
+// Find best expiry in DTE window
+function findBestExpiry(expirations, minDTE, maxDTE) {
+  var candidates = expirations.filter(function(e) {
+    var dte = dteFromStr(e);
+    return dte >= minDTE && dte <= maxDTE;
+  });
+  // Prefer standard monthly (3rd Friday)
+  var monthly = candidates.filter(isThirdFriday);
+  if (monthly.length > 0) return monthly[0];
+  if (candidates.length > 0) return candidates[0];
   return null;
 }
 
-async function mdFetch(ep, params={}) {
-  // Use Cloudflare Worker proxy to avoid CORS
-  const url = new URL('https://marketwatchpro.mattdavis-7f2.workers.dev/');
-  url.searchParams.set('path', ep);
-  Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
+// ─── PRICE BAR HTML ──────────────────────────────────────────────────────────
+function priceBarHtml(ticker, pd) {
+  var chgColor = pd.change >= 0 ? 'up' : 'down';
+  var chgSign  = pd.change >= 0 ? '+' : '';
+  var aboveSMA = pd.price > pd.sma200;
+
+  return '<div class="price-bar">' +
+    '<span class="ticker-label">' + ticker + '</span>' +
+    '<span class="price ' + chgColor + '">' + fmtDollar(pd.price) +
+      '<span style="font-size:14px;margin-left:8px">' + chgSign + fmt(pd.change) + ' (' + chgSign + fmt(pd.changePct,2) + '%)</span>' +
+    '</span>' +
+    '<div class="stat-group"><span class="stat-label">RSI(10)</span><span class="stat-value ' + (pd.rsi < 30 ? 'down' : pd.rsi > 65 ? 'up' : '') + '">' + fmt(pd.rsi,1) + '</span></div>' +
+    '<div class="stat-group"><span class="stat-label">200 SMA</span><span class="stat-value">' + fmtDollar(pd.sma200) + '</span></div>' +
+    '<div class="stat-group"><span class="stat-label">vs 200 SMA</span><span class="stat-value ' + (aboveSMA ? 'up' : 'down') + '">' + (aboveSMA ? '▲ Above' : '▼ Below') + '</span></div>' +
+  '</div>';
+}
+
+// ─── CRITERION ROW ───────────────────────────────────────────────────────────
+function critRow(rank, label, pass, valStr) {
+  return '<div class="criterion">' +
+    '<span class="rank-badge">#' + rank + '</span>' +
+    passHtml(pass) +
+    '<span class="crit-label">' + label + '</span>' +
+    '<span class="crit-val">' + (valStr || '') + '</span>' +
+  '</div>';
+}
+
+// ─── CHAIN TABLE (Puts) ───────────────────────────────────────────────────────
+function buildPutChainTable(chain, targetDelta, price, strike) {
+  // chain = MarketData response object
+  var rows = [];
+  if (!chain || !chain.optionSymbol) return '<p style="color:var(--text-muted);font-size:12px">No chain data.</p>';
+
+  for (var i = 0; i < chain.optionSymbol.length; i++) {
+    rows.push({
+      strike:  chain.strike ? chain.strike[i] : null,
+      bid:     chain.bid ? chain.bid[i] : null,
+      ask:     chain.ask ? chain.ask[i] : null,
+      mid:     chain.mid ? chain.mid[i] : null,
+      delta:   chain.delta ? chain.delta[i] : null,
+      iv:      chain.iv ? chain.iv[i] : null,
+      oi:      chain.openInterest ? chain.openInterest[i] : null,
+      volume:  chain.volume ? chain.volume[i] : null
+    });
+  }
+
+  // Sort by strike ascending
+  rows.sort(function(a, b) { return a.strike - b.strike; });
+
+  // Find best fit row (closest to targetDelta by abs value, within 0.15-0.25)
+  var bestIdx = -1;
+  var bestDiff = Infinity;
+  for (var j = 0; j < rows.length; j++) {
+    var d = Math.abs(rows[j].delta || 0);
+    if (d >= 0.10 && d <= 0.35) {
+      var diff = Math.abs(d - Math.abs(targetDelta));
+      if (diff < bestDiff) { bestDiff = diff; bestIdx = j; }
+    }
+  }
+
+  // Center ±4 rows around bestIdx
+  var startIdx = Math.max(0, bestIdx - 4);
+  var endIdx   = Math.min(rows.length - 1, bestIdx + 4);
+  var slice    = rows.slice(startIdx, endIdx + 1);
+  var bestInSlice = bestIdx - startIdx;
+
+  var html = '<div class="chain-table-wrap"><table>' +
+    '<thead><tr>' +
+    '<th>Strike</th><th>Bid</th><th>Ask</th><th>Mid</th>' +
+    '<th>Delta</th><th>IV</th><th>OI</th><th>Volume</th>' +
+    '<th>Prem %</th>' +
+    '</tr></thead><tbody>';
+
+  slice.forEach(function(row, idx) {
+    var isRec  = idx === bestInSlice;
+    var premPct = (row.mid && price) ? (row.mid / price * 100) : null;
+    html += '<tr class="' + (isRec ? 'recommended' : '') + '">' +
+      '<td class="strike-cell">' + (isRec ? '<span class="star">★</span>' : '') + fmtDollar(row.strike) + '</td>' +
+      '<td>' + fmtDollar(row.bid) + '</td>' +
+      '<td>' + fmtDollar(row.ask) + '</td>' +
+      '<td><strong>' + fmtDollar(row.mid) + '</strong></td>' +
+      '<td>' + fmt(row.delta, 2) + '</td>' +
+      '<td>' + (row.iv ? fmt(row.iv * 100, 1) + '%' : '—') + '</td>' +
+      '<td>' + fmtK(row.oi) + '</td>' +
+      '<td>' + fmtK(row.volume) + '</td>' +
+      '<td>' + (premPct !== null ? fmt(premPct, 2) + '%' : '—') + '</td>' +
+    '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+  return html;
+}
+
+// ─── CHAIN TABLE (Calls — CC) ─────────────────────────────────────────────────
+function buildCallChainTable(chain, targetDelta, price) {
+  var rows = [];
+  if (!chain || !chain.optionSymbol) return '<p style="color:var(--text-muted);font-size:12px">No chain data.</p>';
+
+  for (var i = 0; i < chain.optionSymbol.length; i++) {
+    rows.push({
+      strike: chain.strike ? chain.strike[i] : null,
+      bid:    chain.bid ? chain.bid[i] : null,
+      ask:    chain.ask ? chain.ask[i] : null,
+      mid:    chain.mid ? chain.mid[i] : null,
+      delta:  chain.delta ? chain.delta[i] : null,
+      iv:     chain.iv ? chain.iv[i] : null,
+      oi:     chain.openInterest ? chain.openInterest[i] : null,
+      volume: chain.volume ? chain.volume[i] : null
+    });
+  }
+
+  rows.sort(function(a, b) { return a.strike - b.strike; });
+
+  var bestIdx  = -1;
+  var bestDiff = Infinity;
+  for (var j = 0; j < rows.length; j++) {
+    var d = rows[j].delta || 0;
+    if (d >= 0.10 && d <= 0.35) {
+      var diff = Math.abs(d - targetDelta);
+      if (diff < bestDiff) { bestDiff = diff; bestIdx = j; }
+    }
+  }
+
+  var startIdx     = Math.max(0, bestIdx - 4);
+  var endIdx       = Math.min(rows.length - 1, bestIdx + 4);
+  var slice        = rows.slice(startIdx, endIdx + 1);
+  var bestInSlice  = bestIdx - startIdx;
+
+  var html = '<div class="chain-table-wrap"><table>' +
+    '<thead><tr>' +
+    '<th>Strike</th><th>Bid</th><th>Ask</th><th>Mid</th>' +
+    '<th>Delta</th><th>IV</th><th>OI</th><th>Volume</th>' +
+    '<th>Prem %</th>' +
+    '</tr></thead><tbody>';
+
+  slice.forEach(function(row, idx) {
+    var isRec   = idx === bestInSlice;
+    var premPct = (row.mid && price) ? (row.mid / price * 100) : null;
+    html += '<tr class="' + (isRec ? 'recommended' : '') + '">' +
+      '<td class="strike-cell">' + (isRec ? '<span class="star">★</span>' : '') + fmtDollar(row.strike) + '</td>' +
+      '<td>' + fmtDollar(row.bid) + '</td>' +
+      '<td>' + fmtDollar(row.ask) + '</td>' +
+      '<td><strong>' + fmtDollar(row.mid) + '</strong></td>' +
+      '<td>' + fmt(row.delta, 2) + '</td>' +
+      '<td>' + (row.iv ? fmt(row.iv * 100, 1) + '%' : '—') + '</td>' +
+      '<td>' + fmtK(row.oi) + '</td>' +
+      '<td>' + fmtK(row.volume) + '</td>' +
+      '<td>' + (premPct !== null ? fmt(premPct, 2) + '%' : '—') + '</td>' +
+    '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+  return html;
+}
+
+// ─── EARNINGS CHECK ──────────────────────────────────────────────────────────
+async function checkEarnings(ticker, expiryStr) {
+  // Returns: true = earnings BEFORE expiry (bad), false = safe
   try {
-    const r = await fetch(url.toString());
-    return r.json();
-  } catch(e) { return null; }
-}
-
-// In-memory cache (5 min TTL)
-function cget(k){ const c=cache[k]; return(c&&Date.now()-c.ts<300000)?c.v:null; }
-function cset(k,v){ cache[k]={v,ts:Date.now()}; lsSet(k,v); return v; }
-
-// localStorage persistence — survives page refresh, used as fallback after market close
-function lsSet(k,v){ try{ localStorage.setItem('mw_'+k, JSON.stringify({v,ts:Date.now()})); }catch(e){} }
-function lsGet(k){ try{ const c=JSON.parse(localStorage.getItem('mw_'+k)); return c?c.v:null; }catch(e){ return null; } }
-
-// Get from memory cache first, then localStorage fallback
-function cgetWithFallback(k){ return cget(k) || lsGet(k); }
-
-async function fetchOne(sym){
-  const tf = TF_CONFIG[currentTF];
-  const cacheKey = `${currentTF}_`;
-  let quote=cgetWithFallback('q_'+sym);
-  if(!quote){ const d=await tdFetch('quote',{symbol:sym}); if(d&&d.close) quote=cset('q_'+sym,d); }
-  await sleep(100);
-  let rsi=cgetWithFallback(cacheKey+'rsi_'+sym);
-  if(!rsi){ const d=await tdFetch('rsi',{symbol:sym,interval:tf.interval,time_period:tf.rsiPeriod,series_type:'close',outputsize:1}); if(d&&d.values) rsi=cset(cacheKey+'rsi_'+sym,parseFloat(d.values[0].rsi)); }
-  await sleep(100);
-  let sma=cgetWithFallback(cacheKey+'sma_'+sym);
-  if(!sma){ const d=await tdFetch('sma',{symbol:sym,interval:tf.interval,time_period:tf.smaPeriod,series_type:'close',outputsize:1}); if(d&&d.values) sma=cset(cacheKey+'sma_'+sym,parseFloat(d.values[0].sma)); }
-  return{quote,rsi,sma};
-}
-
-// Returns true if date is the 3rd Friday of its month (standard monthly expiry)
-function isStandardExpiry(dateStr) {
-  if (!dateStr) return false;
-  const d = new Date(dateStr + 'T00:00:00');
-  if (d.getDay() !== 5) return false; // must be Friday
-  const day = d.getDate();
-  return day >= 15 && day <= 21; // 3rd Friday always falls between 15th-21st
-}
-
-// Filter chain: keep standard monthly expiries OR weeklies with OI >= 500
-function filterChain(contracts) {
-  return contracts.filter(o => {
-    const eRaw = o.expiration;
-    const expDate = eRaw ? (typeof eRaw === 'number' ? new Date(eRaw*1000).toISOString().split('T')[0] : eRaw) : null;
-    const oi = parseInt(o.openInterest || 0);
-    if (isStandardExpiry(expDate)) return true; // always keep standard monthly
-    if (oi >= 500) return true;                  // keep weeklies with high OI
+    var data = await fetchTD('earnings', { symbol: ticker, outputsize: 2 });
+    if (!data.earnings && !data.data) return false;
+    var earningsList = data.earnings || data.data || [];
+    var expiryDate   = new Date(expiryStr);
+    var today        = new Date();
+    for (var i = 0; i < earningsList.length; i++) {
+      var eDate = new Date(earningsList[i].date || earningsList[i].datetime);
+      if (eDate > today && eDate < expiryDate) return true;
+    }
     return false;
-  });
+  } catch(e) {
+    return null; // unknown
+  }
 }
 
-async function getChainMD(sym, side) {
-  const k = `md_${sym}_${side}`; const h = cget(k); if (h) return h;
+// ─── PUT ANALYZER ────────────────────────────────────────────────────────────
+async function runPut() {
+  var ticker = document.getElementById('put-ticker').value.trim().toUpperCase();
+  if (!ticker) return;
+
+  var btn = document.getElementById('put-btn');
+  btn.disabled = true;
+  setStatus('put-status', spinner() + 'Fetching data…', 'loading');
+  document.getElementById('put-results').innerHTML = '';
+
   try {
-    // Step 1: get available expirations
-    const expData = await mdFetch(`options/expirations/${sym}/`, {});
-    if (!expData || expData.s !== 'ok' || !expData.expirations) return [];
+    // 1. Price data
+    setStatus('put-status', spinner() + 'Loading price & indicators…', 'loading');
+    var pd = await fetchPriceData(ticker);
 
-    // Step 2: find best expiry in 30-50 DTE window
-    const today = new Date();
-    const validExp = expData.expirations.filter(e => {
-      const d = Math.round((new Date(e) - today) / 86400000);
-      return d >= 30 && d <= 50;
+    // 2. IV Rank
+    setStatus('put-status', spinner() + 'Fetching IV Rank…', 'loading');
+    var ivRank = await fetchIVRank(ticker);
+
+    // 3. Expirations
+    setStatus('put-status', spinner() + 'Loading expirations…', 'loading');
+    var expirations = await fetchExpirations(ticker);
+    var bestExpiry  = findBestExpiry(expirations, 30, 50);
+    if (!bestExpiry) {
+      // Widen search
+      bestExpiry = findBestExpiry(expirations, 25, 60);
+    }
+    if (!bestExpiry) throw new Error('No expiration found in 30-50 DTE window.');
+    var dte = dteFromStr(bestExpiry);
+
+    // 4. Earnings check
+    setStatus('put-status', spinner() + 'Checking earnings…', 'loading');
+    var earningsBefore = await checkEarnings(ticker, bestExpiry);
+
+    // 5. Options chain (puts)
+    setStatus('put-status', spinner() + 'Fetching put chain…', 'loading');
+    var chain = await fetchChain(ticker, bestExpiry, 'put');
+
+    // Find best strike (delta -0.20 target)
+    var targetDelta  = -0.20;
+    var bestPremium  = null;
+    var bestDelta    = null;
+    var bestStrike   = null;
+
+    if (chain && chain.strike) {
+      var bestDiff = Infinity;
+      for (var i = 0; i < chain.strike.length; i++) {
+        var d = chain.delta ? chain.delta[i] : null;
+        if (d === null) continue;
+        var diff = Math.abs(d - targetDelta);
+        if (diff < bestDiff) {
+          bestDiff    = diff;
+          bestStrike  = chain.strike[i];
+          bestDelta   = d;
+          bestPremium = chain.mid ? chain.mid[i] : null;
+        }
+      }
+    }
+
+    var premPct      = (bestPremium && pd.price) ? (bestPremium / pd.price * 100) : null;
+    var deltaOk      = bestDelta !== null && Math.abs(bestDelta) >= 0.15 && Math.abs(bestDelta) <= 0.25;
+    var assignCap    = bestStrike ? bestStrike * 100 : null;
+
+    // ─── GRADE CRITERIA ───
+    var c1 = ivRank !== null ? ivRank > 90 : null;       // IV Rank > 90%
+    var c2 = pd.rsi < 30;                                 // RSI < 30
+    var c3 = earningsBefore === false;                    // No earnings before expiry
+    var c4 = premPct !== null ? premPct > 2 : null;       // Premium > 2%
+    var c5 = deltaOk;                                     // Delta 0.15-0.25
+    var c6 = dte >= 30 && dte <= 45;                      // 30-45 DTE
+
+    var criteria = [c1, c2, c3, c4, c5, c6];
+    var score    = criteria.filter(function(c) { return c === true; }).length;
+    var sClass   = scoreClass(score, 6);
+    var sLabel   = scoreLabel(score, 6);
+
+    setStatus('put-status', 'Done', 'ok');
+
+    // ─── RENDER ───
+    var html = priceBarHtml(ticker, pd);
+
+    // Info Box
+    html += '<div class="info-box">' +
+      '<div class="info-item"><div class="info-label">Assignment Capital</div><div class="info-val">' + (assignCap ? '$' + assignCap.toLocaleString() : '—') + '</div></div>' +
+      '<div class="info-item"><div class="info-label">Best Expiry</div><div class="info-val">' + bestExpiry + '</div></div>' +
+      '<div class="info-item"><div class="info-label">DTE</div><div class="info-val">' + dte + '</div></div>' +
+      '<div class="info-item"><div class="info-label">Target Strike</div><div class="info-val">' + (bestStrike ? fmtDollar(bestStrike) : '—') + '</div></div>' +
+      '<div class="info-item"><div class="info-label">Premium (Mid)</div><div class="info-val">' + (bestPremium ? fmtDollar(bestPremium) : '—') + '</div></div>' +
+      '<div class="info-item"><div class="info-label">Prem % of Price</div><div class="info-val">' + (premPct !== null ? fmt(premPct,2) + '%' : '—') + '</div></div>' +
+      '<div class="info-item"><div class="info-label">IV Rank</div><div class="info-val">' + (ivRank !== null ? fmt(ivRank,1) + '%' : '—') + '</div></div>' +
+    '</div>';
+
+    // Scorecard
+    html += '<div class="scorecard"><h3>Cash-Secured Put — Criteria Score</h3><div class="criteria-list">';
+    html += critRow(1, 'IV Rank > 90%', c1, ivRank !== null ? fmt(ivRank,1) + '%' : 'N/A');
+    html += critRow(2, 'RSI(10) < 30 (Oversold)', c2, fmt(pd.rsi,1));
+    html += critRow(3, 'No Earnings Before Expiry', earningsBefore === null ? null : c3, earningsBefore === null ? 'Unknown' : (earningsBefore ? 'Earnings risk' : 'Clear'));
+    html += critRow(4, 'Premium > 2% of Stock Price', c4, premPct !== null ? fmt(premPct,2) + '%' : 'N/A');
+    html += critRow(5, 'Strike Delta 0.15–0.25 OTM', c5, bestDelta !== null ? fmt(bestDelta,2) : 'N/A');
+    html += critRow(6, 'Duration 30–45 DTE', c6, dte + ' days');
+    html += '</div>';
+    html += '<div class="score-summary ' + sClass + '"><span class="score-label">' + sLabel + '</span><span class="score-num">' + score + '/6</span></div>';
+    html += '</div>';
+
+    // Chain table
+    html += '<div class="chain-section"><h3>Put Chain — ' + bestExpiry + ' (' + dte + ' DTE)</h3>';
+    html += buildPutChainTable(chain, targetDelta, pd.price, bestStrike);
+    html += '</div>';
+
+    document.getElementById('put-results').innerHTML = html;
+
+  } catch(err) {
+    setStatus('put-status', '✗ ' + err.message, 'error');
+    document.getElementById('put-results').innerHTML = '<div class="notice">Error: ' + err.message + '</div>';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ─── CC ANALYZER ─────────────────────────────────────────────────────────────
+async function runCC() {
+  var ticker = document.getElementById('cc-ticker').value.trim().toUpperCase();
+  if (!ticker) return;
+
+  var btn = document.getElementById('cc-btn');
+  btn.disabled = true;
+  setStatus('cc-status', spinner() + 'Fetching data…', 'loading');
+  document.getElementById('cc-results').innerHTML = '';
+
+  try {
+    setStatus('cc-status', spinner() + 'Loading price & indicators…', 'loading');
+    var pd = await fetchPriceData(ticker);
+
+    setStatus('cc-status', spinner() + 'Fetching IV Rank…', 'loading');
+    var ivRank = await fetchIVRank(ticker);
+
+    setStatus('cc-status', spinner() + 'Loading expirations…', 'loading');
+    var expirations = await fetchExpirations(ticker);
+    var bestExpiry  = findBestExpiry(expirations, 30, 50);
+    if (!bestExpiry) bestExpiry = findBestExpiry(expirations, 25, 60);
+    if (!bestExpiry) throw new Error('No expiration found in 30-50 DTE window.');
+    var dte = dteFromStr(bestExpiry);
+
+    setStatus('cc-status', spinner() + 'Checking earnings…', 'loading');
+    var earningsBefore = await checkEarnings(ticker, bestExpiry);
+
+    setStatus('cc-status', spinner() + 'Fetching call chain…', 'loading');
+    var chain = await fetchChain(ticker, bestExpiry, 'call');
+
+    var targetDelta  = 0.18;
+    var bestPremium  = null;
+    var bestDelta    = null;
+    var bestStrike   = null;
+
+    if (chain && chain.strike) {
+      var bestDiff2 = Infinity;
+      for (var i = 0; i < chain.strike.length; i++) {
+        var d = chain.delta ? chain.delta[i] : null;
+        if (d === null) continue;
+        var diff2 = Math.abs(d - targetDelta);
+        if (diff2 < bestDiff2) {
+          bestDiff2   = diff2;
+          bestStrike  = chain.strike[i];
+          bestDelta   = d;
+          bestPremium = chain.mid ? chain.mid[i] : null;
+        }
+      }
+    }
+
+    var premPct   = (bestPremium && pd.price) ? (bestPremium / pd.price * 100) : null;
+    var deltaOk   = bestDelta !== null && bestDelta >= 0.15 && bestDelta <= 0.25;
+    var upsidePct = (bestStrike && pd.price) ? ((bestStrike - pd.price) / pd.price * 100) : null;
+    var totalRet  = (upsidePct !== null && premPct !== null) ? (upsidePct + premPct) : null;
+
+    var c1 = ivRank !== null ? ivRank > 90 : null;
+    var c2 = pd.rsi > 65;
+    var c3 = earningsBefore === false;
+    var c4 = premPct !== null ? premPct >= 2 : null;
+    var c5 = deltaOk;
+    var c6 = dte >= 30 && dte <= 45;
+
+    var criteria = [c1, c2, c3, c4, c5, c6];
+    var score    = criteria.filter(function(c) { return c === true; }).length;
+    var sClass   = scoreClass(score, 6);
+    var sLabel   = scoreLabel(score, 6);
+
+    setStatus('cc-status', 'Done', 'ok');
+
+    var html = priceBarHtml(ticker, pd);
+
+    html += '<div class="info-box">' +
+      '<div class="info-item"><div class="info-label">Upside if Assigned</div><div class="info-val">' + (upsidePct !== null ? '+' + fmt(upsidePct,2) + '%' : '—') + '</div></div>' +
+      '<div class="info-item"><div class="info-label">Total Return (w/ Prem)</div><div class="info-val">' + (totalRet !== null ? '+' + fmt(totalRet,2) + '%' : '—') + '</div></div>' +
+      '<div class="info-item"><div class="info-label">Best Expiry</div><div class="info-val">' + bestExpiry + '</div></div>' +
+      '<div class="info-item"><div class="info-label">DTE</div><div class="info-val">' + dte + '</div></div>' +
+      '<div class="info-item"><div class="info-label">Target Strike</div><div class="info-val">' + (bestStrike ? fmtDollar(bestStrike) : '—') + '</div></div>' +
+      '<div class="info-item"><div class="info-label">Premium (Mid)</div><div class="info-val">' + (bestPremium ? fmtDollar(bestPremium) : '—') + '</div></div>' +
+      '<div class="info-item"><div class="info-label">IV Rank</div><div class="info-val">' + (ivRank !== null ? fmt(ivRank,1) + '%' : '—') + '</div></div>' +
+    '</div>';
+
+    html += '<div class="scorecard"><h3>Covered Call — Criteria Score</h3><div class="criteria-list">';
+    html += critRow(1, 'IV Rank > 90%', c1, ivRank !== null ? fmt(ivRank,1) + '%' : 'N/A');
+    html += critRow(2, 'RSI(10) > 65 (Overbought)', c2, fmt(pd.rsi,1));
+    html += critRow(3, 'No Earnings Before Expiry', earningsBefore === null ? null : c3, earningsBefore === null ? 'Unknown' : (earningsBefore ? 'Earnings risk' : 'Clear'));
+    html += critRow(4, 'Premium ≥ 2% of Stock Price', c4, premPct !== null ? fmt(premPct,2) + '%' : 'N/A');
+    html += critRow(5, 'Strike Delta 0.15–0.25 OTM', c5, bestDelta !== null ? fmt(bestDelta,2) : 'N/A');
+    html += critRow(6, 'Duration 30–45 DTE', c6, dte + ' days');
+    html += '</div>';
+    html += '<div class="score-summary ' + sClass + '"><span class="score-label">' + sLabel + '</span><span class="score-num">' + score + '/6</span></div>';
+    html += '</div>';
+
+    html += '<div class="btc-note">📌 BTC (Buy to Close) at 80% profit or 21 DTE, whichever comes first.</div>';
+
+    html += '<div class="chain-section" style="margin-top:16px"><h3>Call Chain — ' + bestExpiry + ' (' + dte + ' DTE)</h3>';
+    html += buildCallChainTable(chain, targetDelta, pd.price);
+    html += '</div>';
+
+    document.getElementById('cc-results').innerHTML = html;
+
+  } catch(err) {
+    setStatus('cc-status', '✗ ' + err.message, 'error');
+    document.getElementById('cc-results').innerHTML = '<div class="notice">Error: ' + err.message + '</div>';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ─── LEAPS ANALYZER ──────────────────────────────────────────────────────────
+async function runLeaps() {
+  var ticker = document.getElementById('leaps-ticker').value.trim().toUpperCase();
+  if (!ticker) return;
+
+  var btn = document.getElementById('leaps-btn');
+  btn.disabled = true;
+  setStatus('leaps-status', spinner() + 'Fetching data…', 'loading');
+  document.getElementById('leaps-results').innerHTML = '';
+
+  try {
+    setStatus('leaps-status', spinner() + 'Loading price & indicators…', 'loading');
+    var pd = await fetchPriceData(ticker);
+
+    setStatus('leaps-status', spinner() + 'Fetching IV Rank…', 'loading');
+    var ivRank = await fetchIVRank(ticker);
+    var currentIV = null;
+    try {
+      var ivData = await fetchMD('/v1/options/ivrank/', { symbol: ticker });
+      if (ivData && ivData.iv && ivData.iv[0] !== undefined) {
+        currentIV = parseFloat(ivData.iv[0]) * 100;
+      }
+    } catch(e) { /* ignore */ }
+
+    setStatus('leaps-status', spinner() + 'Loading expirations…', 'loading');
+    var expirations = await fetchExpirations(ticker);
+
+    // LEAPS: 540+ DTE — fetch up to 4 expiries
+    var leapsExpiries = expirations.filter(function(e) {
+      var dte = dteFromStr(e);
+      return dte >= 540;
+    }).slice(0, 4);
+
+    if (leapsExpiries.length === 0) {
+      // Try 365+ DTE
+      leapsExpiries = expirations.filter(function(e) {
+        var dte = dteFromStr(e);
+        return dte >= 365;
+      }).slice(0, 4);
+    }
+
+    if (leapsExpiries.length === 0) throw new Error('No LEAPS expirations found (18+ months).');
+
+    // Fetch chains for all LEAPS expiries
+    setStatus('leaps-status', spinner() + 'Fetching LEAPS chains…', 'loading');
+    var chainPromises = leapsExpiries.map(function(exp) {
+      return fetchChain(ticker, exp, 'call').catch(function() { return null; });
     });
-    if (!validExp.length) return [];
+    var chains = await Promise.all(chainPromises);
 
-    // Step 3: prefer standard monthly (3rd Friday) or highest OI weekly
-    const bestExp = validExp.find(e => isStandardExpiry(e)) || validExp[0];
+    // Grade criteria (using first expiry chain for representative values)
+    var targetDelta   = 0.75;
+    var repChain      = chains[0];
+    var bestPremium   = null;
+    var bestDelta     = null;
+    var bestStrike    = null;
+    var bestOI        = null;
+    var bestBidAskSpread = null;
 
-    // Step 4: fetch chain for that specific expiry
-    const d = await mdFetch(`options/chain/${sym}/`, { side, expiration: bestExp, limit: 30 });
-    if (d && d.s === 'ok') {
-      setStatus('md', 'ok', '● CONNECTED');
-      const parsed = parseMD(d);
-      // Filter OTM contracts only for cleaner results
-      const filtered = parsed.filter(o => {
-        const delta = Math.abs(parseFloat(o.delta || 0));
-        return delta >= 0.10 && delta <= 0.50;
+    if (repChain && repChain.strike) {
+      var bestDiff3 = Infinity;
+      for (var i = 0; i < repChain.strike.length; i++) {
+        var d = repChain.delta ? repChain.delta[i] : null;
+        if (d === null) continue;
+        var diff3 = Math.abs(d - targetDelta);
+        if (diff3 < bestDiff3) {
+          bestDiff3    = diff3;
+          bestStrike   = repChain.strike[i];
+          bestDelta    = d;
+          bestPremium  = repChain.mid ? repChain.mid[i] : null;
+          bestOI       = repChain.openInterest ? repChain.openInterest[i] : null;
+          var bid      = repChain.bid ? repChain.bid[i] : null;
+          var ask      = repChain.ask ? repChain.ask[i] : null;
+          bestBidAskSpread = (bid && ask && repChain.mid && repChain.mid[i]) ?
+            ((ask - bid) / repChain.mid[i] * 100) : null;
+        }
+      }
+    }
+
+    var repDTE    = dteFromStr(leapsExpiries[0]);
+    var repYears  = repDTE / 365;
+    var breakeven = bestStrike && bestPremium ? bestStrike + bestPremium : null;
+    var breakevenCAGR = (breakeven && pd.price && repYears > 0) ?
+      (Math.pow(breakeven / pd.price, 1 / repYears) - 1) * 100 : null;
+
+    var deltaOk = bestDelta !== null && bestDelta >= 0.70 && bestDelta <= 0.90;
+
+    var c1 = pd.rsi < 30;
+    var c2 = currentIV !== null ? currentIV < 55 : null;
+    var c3 = deltaOk;
+    var c4 = repDTE >= 540;
+    var c5 = bestOI !== null ? bestOI >= 300 : null;
+    var c6 = bestBidAskSpread !== null ? bestBidAskSpread <= 10 : null;
+    var c7 = breakevenCAGR !== null ? breakevenCAGR <= 35 : null;
+
+    var criteria = [c1, c2, c3, c4, c5, c6, c7];
+    var score    = criteria.filter(function(c) { return c === true; }).length;
+    var sClass   = scoreClass(score, 7);
+    var sLabel   = scoreLabel(score, 7);
+
+    setStatus('leaps-status', 'Done', 'ok');
+
+    var html = priceBarHtml(ticker, pd);
+
+    html += '<div class="info-box">' +
+      '<div class="info-item"><div class="info-label">Current IV</div><div class="info-val">' + (currentIV !== null ? fmt(currentIV,1) + '%' : '—') + '</div></div>' +
+      '<div class="info-item"><div class="info-label">IV Rank</div><div class="info-val">' + (ivRank !== null ? fmt(ivRank,1) + '%' : '—') + '</div></div>' +
+      '<div class="info-item"><div class="info-label">Target Delta</div><div class="info-val">0.75</div></div>' +
+      '<div class="info-item"><div class="info-label">Best Strike</div><div class="info-val">' + (bestStrike ? fmtDollar(bestStrike) : '—') + '</div></div>' +
+      '<div class="info-item"><div class="info-label">Breakeven</div><div class="info-val">' + (breakeven ? fmtDollar(breakeven) : '—') + '</div></div>' +
+      '<div class="info-item"><div class="info-label">Breakeven CAGR</div><div class="info-val">' + (breakevenCAGR !== null ? fmt(breakevenCAGR,1) + '%/yr' : '—') + '</div></div>' +
+    '</div>';
+
+    html += '<div class="scorecard"><h3>LEAPS (Deep ITM Call) — Criteria Score</h3><div class="criteria-list">';
+    html += critRow(1, 'RSI(10) < 30 (Entry Timing)', c1, fmt(pd.rsi,1));
+    html += critRow(2, 'IV < 55% (Buy Low IV)', c2, currentIV !== null ? fmt(currentIV,1) + '%' : 'N/A');
+    html += critRow(3, 'Strike Deep ITM Δ 0.70–0.90', c3, bestDelta !== null ? fmt(bestDelta,2) : 'N/A');
+    html += critRow(4, 'Duration 18+ months (540+ DTE)', c4, repDTE + ' days');
+    html += critRow(5, 'Liquidity OI ≥ 300', c5, bestOI !== null ? fmtK(bestOI) : 'N/A');
+    html += critRow(6, 'Bid/Ask Spread ≤ 10%', c6, bestBidAskSpread !== null ? fmt(bestBidAskSpread,1) + '%' : 'N/A');
+    html += critRow(7, 'Breakeven CAGR ≤ 35%/yr', c7, breakevenCAGR !== null ? fmt(breakevenCAGR,1) + '%' : 'N/A');
+    html += '</div>';
+    html += '<div class="score-summary ' + sClass + '"><span class="score-label">' + sLabel + '</span><span class="score-num">' + score + '/7</span></div>';
+    html += '</div>';
+
+    // LEAPS table by year
+    html += '<div class="chain-section"><h3>LEAPS Expirations</h3>';
+    leapsExpiries.forEach(function(exp, eIdx) {
+      var chain = chains[eIdx];
+      var dte   = dteFromStr(exp);
+      html += '<h4 style="color:var(--accent);font-size:12px;margin:14px 0 8px">' + exp + ' (' + dte + ' DTE)</h4>';
+      if (!chain || !chain.strike) {
+        html += '<p style="color:var(--text-muted);font-size:12px;margin-bottom:8px">No data available.</p>';
+        return;
+      }
+
+      var rows2 = [];
+      for (var i = 0; i < chain.strike.length; i++) {
+        var d = chain.delta ? chain.delta[i] : null;
+        if (d !== null && d >= 0.60 && d <= 0.95) {
+          var bid2   = chain.bid ? chain.bid[i] : null;
+          var ask2   = chain.ask ? chain.ask[i] : null;
+          var mid2   = chain.mid ? chain.mid[i] : null;
+          var spread = (bid2 && ask2 && mid2) ? ((ask2 - bid2) / mid2 * 100) : null;
+          var oi2    = chain.openInterest ? chain.openInterest[i] : null;
+          var years2 = dte / 365;
+          var be2    = chain.strike[i] + (mid2 || 0);
+          var cagr2  = (be2 && pd.price && years2 > 0) ? (Math.pow(be2 / pd.price, 1 / years2) - 1) * 100 : null;
+          rows2.push({
+            strike: chain.strike[i],
+            bid: bid2, ask: ask2, mid: mid2,
+            delta: d, oi: oi2,
+            spread: spread, cagr: cagr2
+          });
+        }
+      }
+
+      rows2.sort(function(a, b) { return a.strike - b.strike; });
+
+      var bestInRows = -1;
+      var bestDiffL  = Infinity;
+      rows2.forEach(function(r, ri) {
+        var diff = Math.abs(r.delta - 0.75);
+        if (diff < bestDiffL) { bestDiffL = diff; bestInRows = ri; }
       });
-      return cset(k, filtered.length > 0 ? filtered : parsed);
-    }
-    return [];
-  } catch(e) { return []; }
-}
 
-async function getLeapsMD(sym){
-  const k=`md_leaps_${sym}`; const h=cget(k); if(h) return h;
-  try {
-    // Step 1: get all expirations
-    const expData = await mdFetch(`options/expirations/${sym}/`, {});
-    if (!expData || expData.s !== 'ok' || !expData.expirations) return [];
-
-    // Step 2: filter to 18+ months (540+ days)
-    const today = new Date();
-    const leapsExp = expData.expirations.filter(e => {
-      const d2 = Math.round((new Date(e) - today) / 86400000);
-      return d2 >= 540;
-    });
-    if (!leapsExp.length) return [];
-
-    // Step 3: fetch chain for ALL valid LEAPS expiries (up to 4)
-    let allContracts = [];
-    for (const exp of leapsExp.slice(0, 4)) {
-      const d = await mdFetch(`options/chain/${sym}/`, { side:'call', expiration: exp, limit: 20 });
-      if (d && d.s === 'ok') {
-        allContracts = allContracts.concat(parseMD(d));
-      }
-      await sleep(300);
-    }
-    if (allContracts.length > 0) {
-      setStatus('md', 'ok', '● CONNECTED');
-      return cset(k, allContracts);
-    }
-    return [];
-  } catch(e) { return []; }
-}
-
-function parseMD(data){
-  if(!data||data.s!=='ok') return [];
-  const keys=['optionSymbol','expiration','side','strike','bid','ask','mid','last','volume','openInterest','iv','delta','gamma','theta','vega','dte','inTheMoney','intrinsicValue','extrinsicValue','underlyingPrice','updated'];
-  const len=(data.optionSymbol||data.bid||[]).length;
-  return Array.from({length:len},(_,i)=>{ const o={}; keys.forEach(k=>{ if(data[k]) o[k]=data[k][i]; }); return o; });
-}
-
-function bestContract(chain,tgt){
-  if(!chain?.length) return null;
-  return chain.filter(o=>o.delta!=null).map(o=>({...o,sc:Math.abs(Math.abs(parseFloat(o.delta))-Math.abs(tgt))})).sort((a,b)=>a.sc-b.sc)[0]||null;
-}
-
-function getInfo(chain,tgt){
-  const opt=bestContract(chain,tgt);
-  if(!opt) return {};
-  const bid=parseFloat(opt.bid||0), ask=parseFloat(opt.ask||0), mid=parseFloat(opt.mid||(bid+ask)/2||0);
-  const strike=parseFloat(opt.strike||0);
-  const eRaw=opt.expiration;
-  const expDate=eRaw?(typeof eRaw==='number'?new Date(eRaw*1000).toISOString().split('T')[0]:eRaw):null;
-  const expDte=expDate?Math.round((new Date(expDate)-new Date())/86400000):null;
-  const delta=opt.delta!=null?Math.abs(parseFloat(opt.delta)).toFixed(2):null;
-  const iv=opt.iv?parseFloat(opt.iv)*100:null;
-  const oi=opt.openInterest||null;
-  return{opt,bid,ask,mid,strike,expDate,expDte,delta,iv,oi};
-}
-
-function chainTable(chain,tgt,price,label){
-  if(!chain?.length) return '';
-  const best = bestContract(chain, tgt);
-
-  // Sort by strike ascending, then pick 10 contracts centered around best fit
-  const sorted = [...chain].sort((a,b) => parseFloat(a.strike||0) - parseFloat(b.strike||0));
-  const bestIdx = sorted.indexOf(best);
-
-  // Show 5 contracts above and below best fit (window of 10 centered on best)
-  const start = Math.max(0, bestIdx - 4);
-  const end   = Math.min(sorted.length, start + 10);
-  const display = sorted.slice(start, end);
-
-  // Make sure best is always in display
-  if (best && !display.includes(best)) display.unshift(best);
-
-  const rows = display.map(o => {
-    const isBest = o === best;
-    const b = parseFloat(o.bid||0), a = parseFloat(o.ask||0), mid = parseFloat(o.mid||(b+a)/2||0);
-    const dlt = parseFloat(o.delta||0), iv = o.iv ? parseFloat(o.iv)*100 : null;
-    const prem = price && mid ? (mid/price*100) : 0;
-    const eRaw = o.expiration;
-    const exp = eRaw ? (typeof eRaw==='number' ? new Date(eRaw*1000).toISOString().split('T')[0] : eRaw) : '—';
-    return `<tr class="${isBest?'best-row':''}">
-      <td style="color:${isBest?'var(--cyan)':'var(--orange)'};font-weight:bold;">${isBest?'★ ':''}${exp}</td>
-      <td style="color:#fff;font-weight:bold;">$${parseFloat(o.strike||0).toFixed(0)}</td>
-      <td style="color:var(--orange);">Δ${dlt.toFixed(2)}</td>
-      <td style="color:${iv&&iv>30?'var(--cyan)':'var(--yellow)'};">${iv?iv.toFixed(0):'—'}%</td>
-      <td style="color:var(--text2);">${(o.openInterest||0).toLocaleString()||'—'}</td>
-      <td style="color:var(--text2);">$${b.toFixed(2)} / $${a.toFixed(2)}</td>
-      <td style="color:${isBest?'var(--cyan)':'var(--orange)'};font-weight:bold;">$${mid.toFixed(2)}</td>
-      <td style="color:${prem>=2?'var(--cyan)':'var(--red)'};">${prem.toFixed(2)}%</td>
-    </tr>`;
-  }).join('');
-  return `<div class="checklist"><div class="cl-head">${label} · ★ = BEST FIT (MARKETDATA.APP)</div><table class="opts-table"><thead><tr><th>EXPIRY</th><th>STRIKE</th><th>DELTA</th><th>IV</th><th>OI</th><th>BID / ASK</th><th>MID</th><th>PREM %</th></tr></thead><tbody>${rows}</tbody></table></div>`;
-}
-
-const icon=p=>p===true?'<span style="color:var(--cyan);font-size:16px;">✓</span>':p===false?'<span style="color:var(--red);font-size:16px;">✗</span>':'<span style="color:var(--yellow);font-size:16px;">△</span>';
-const clRow=(pass,name,desc,val)=>`<div class="cl-row"><div class="cl-icon">${icon(pass)}</div><div style="flex:1"><div class="cl-name">${name}</div><div class="cl-desc">${desc}</div></div><div class="cl-val" style="color:${pass===true?'var(--cyan)':pass===false?'var(--red)':'var(--yellow)'}">${val}</div></div>`;
-const fmtD=s=>s?new Date(s+'T00:00:00').toLocaleDateString('en-US',{day:'numeric',month:'short',year:'numeric'}):'—';
-const dte=s=>s?Math.round((new Date(s)-new Date())/86400000):999;
-
-// ── Theme Switcher ─────────────────────────────────────────
-const THEMES = {
-  cyberpunk: {
-    '--bg': '#020010', '--bg2': '#0a0020', '--bg3': '#0d0030',
-    '--border': '#7b00ff', '--border2': '#330066',
-    '--orange': '#ff00ff', '--green': '#00ffff', '--red': '#ff00ff',
-    '--yellow': '#bb88ff', '--text': '#ffffff', '--text2': '#e0d0ff',
-    '--muted': '#9966cc', '--dim': '#4d0099',
-    '--cyan': '#00ffff', '--magenta': '#ff00ff', '--purple': '#7b00ff',
-    'gridGap': '1px', 'gridBg': '#7b00ff'
-  },
-  classic: {
-    '--bg': '#0d0d0d', '--bg2': '#1a1a1a', '--bg3': '#242424',
-    '--border': '#383838', '--border2': '#383838',
-    '--orange': '#ffaa00', '--green': '#00e676', '--red': '#ff5252',
-    '--yellow': '#ffee58', '--text': '#ffffff', '--text2': '#e8e8e8',
-    '--muted': '#bbbbbb', '--dim': '#999999',
-    '--cyan': '#00e676', '--magenta': '#ffaa00', '--purple': '#666666',
-    'gridGap': '2px', 'gridBg': '#383838'
-  }
-};
-
-let currentTheme = localStorage.getItem('mw_theme') || 'cyberpunk';
-
-function applyTheme(name) {
-  const t = THEMES[name];
-  const root = document.documentElement;
-  Object.entries(t).forEach(([k, v]) => {
-    if (k.startsWith('--')) root.style.setProperty(k, v);
-  });
-  // Update grid gap and bg
-  const grid = document.getElementById('view-dashboard');
-  if (grid) { grid.style.gap = t.gridGap; grid.style.background = t.gridBg; }
-  // Update title gradient
-  const title = document.querySelector('.nav-title');
-  if (title) {
-    if (name === 'cyberpunk') {
-      title.style.background = 'linear-gradient(90deg, #ff00ff, #00ffff)';
-      title.style.webkitBackgroundClip = 'text';
-      title.style.webkitTextFillColor = 'transparent';
-    } else {
-      title.style.background = 'none';
-      title.style.webkitTextFillColor = '#ffaa00';
-    }
-  }
-  currentTheme = name;
-  localStorage.setItem('mw_theme', name);
-  const btn = document.getElementById('theme-btn');
-  if (btn) btn.textContent = name === 'cyberpunk' ? '◑ CLASSIC' : '◑ CYBERPUNK';
-}
-
-function toggleTheme() {
-  applyTheme(currentTheme === 'cyberpunk' ? 'classic' : 'cyberpunk');
-}
-
-
-function toggleTickerMgr() {
-  const mgr = document.getElementById('ticker-mgr');
-  mgr.classList.toggle('open');
-  if (mgr.classList.contains('open')) renderPills();
-}
-
-function renderPills() {
-  document.getElementById('ticker-pills').innerHTML = TICKERS.map(t =>
-    `<span class="ticker-pill">${t}<button onclick="removeTicker('${t}')" title="Remove">×</button></span>`
-  ).join('');
-}
-
-function removeTicker(t) {
-  const idx = TICKERS.indexOf(t);
-  if (idx > -1) { TICKERS.splice(idx, 1); renderPills(); }
-}
-
-function addTicker() {
-  const input = document.getElementById('ticker-add-input');
-  const sym = input.value.toUpperCase().trim().replace(/[^A-Z]/g,'');
-  if (!sym) return;
-  if (TICKERS.includes(sym)) { input.value=''; return; }
-  TICKERS.push(sym);
-  // Add empty earnings entry
-  if (!EARNINGS[sym]) EARNINGS[sym] = null;
-  input.value = '';
-  renderPills();
-}
-
-function applyTickers() {
-  document.getElementById('ticker-mgr').classList.remove('open');
-  // Save to localStorage
-  try { localStorage.setItem('mw_tickers', JSON.stringify(TICKERS)); } catch(e) {}
-  cache = {}; optionsScoreData = {}; tickerData = {};
-  startDashboard();
-}
-
-// Load saved tickers on startup
-try {
-  const saved = localStorage.getItem('mw_tickers');
-  if (saved) {
-    const parsed = JSON.parse(saved);
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      TICKERS.length = 0;
-      parsed.forEach(t => TICKERS.push(t));
-    }
-  }
-} catch(e) {}
-
-
-let tickerData = {};
-let optionsScoreData = {}; // stores full 7-criteria scores after background fetch
-
-function calcTradeScore(t) {
-  if (optionsScoreData[t]) return optionsScoreData[t];
-
-  const d = tickerData[t];
-  if (!d || !d.quote) return { put: 0, cc: 0, total: 0, label: '—', type: 'CC', partial: true };
-  const price = parseFloat(d.quote.close || 0);
-  const rsi = d.rsi || 50;
-  const earDte = EARNINGS[t] ? Math.round((new Date(EARNINGS[t]) - new Date()) / 86400000) : 999;
-
-  // Partial score — known criteria only (no SMA, no options data yet)
-  let putScore = 0;
-  if (rsi < 30) putScore++;
-  if (earDte > 45) putScore++;
-
-  let ccScore = 0;
-  if (rsi > 65) ccScore++;
-  if (earDte > 45) ccScore++;
-
-  const best = Math.max(putScore, ccScore);
-  const type = ccScore > putScore ? 'CC' : 'PUT';
-  let label = best >= 2 ? 'WATCH' : 'NOT READY';
-  return { put: putScore, cc: ccScore, total: best, type, label, rsi, chgPct: d.chgPct || 0, partial: true };
-}
-
-async function calcFullScore(t) {
-  const d = tickerData[t];
-  if (!d || !d.quote) return;
-  const price = parseFloat(d.quote.close || 0);
-  const rsi = d.rsi || 50;
-  const sma = d.sma || null;
-  const abvSMA = sma ? price > sma : null;
-  const earDte = EARNINGS[t] ? Math.round((new Date(EARNINGS[t]) - new Date()) / 86400000) : 999;
-
-  // Determine if PUT or CC candidate based on RSI
-  const isCCCandidate = rsi > 55;
-  const side = isCCCandidate ? 'call' : 'put';
-  const deltaTgt = isCCCandidate ? 0.18 : -0.20;
-
-  try {
-    const expData = await mdFetch(`options/expirations/${t}/`, {});
-    if (!expData || expData.s !== 'ok') return;
-
-    const today = new Date();
-    const validExp = (expData.expirations || []).filter(e => {
-      const d2 = Math.round((new Date(e) - today) / 86400000);
-      return d2 >= 30 && d2 <= 50;
-    });
-    if (!validExp.length) return;
-
-    const bestExp = validExp.find(e => isStandardExpiry(e)) || validExp[0];
-    const expDte = Math.round((new Date(bestExp) - today) / 86400000);
-
-    const chainData = await mdFetch(`options/chain/${t}/`, { side, expiration: bestExp, limit: 20 });
-    if (!chainData || chainData.s !== 'ok') return;
-
-    const chain = parseMD(chainData);
-    const { mid, strike, iv, oi, expDte: cDte } = getInfo(chain, deltaTgt);
-    const prem = mid && price ? (mid / price * 100) : 0;
-    const finalDte = cDte || expDte;
-    const earOK = !EARNINGS[t] || dte(EARNINGS[t]) > finalDte;
-
-    // 6-criteria CC score (matches renderCC)
-    let ccScore = 0;
-    if (iv && iv >= 90) ccScore++;          // IV > 90%
-    if (rsi > 65) ccScore++;               // RSI > 65
-    if (earOK) ccScore++;                  // No earnings
-    if (prem >= 2) ccScore++;              // Premium > 2%
-    if (strike) ccScore++;                 // Strike found
-    if (finalDte >= 30 && finalDte <= 50) ccScore++; // DTE
-
-    // 6-criteria PUT score (matches renderPut)
-    let putScore = 0;
-    if (iv && iv >= 90) putScore++;         // IV > 90%
-    if (rsi < 30) putScore++;              // RSI < 30
-    if (earOK) putScore++;                 // No earnings
-    if (prem >= 2) putScore++;             // Premium > 2%
-    if (strike) putScore++;                // Strike found
-    if (finalDte >= 30 && finalDte <= 50) putScore++; // DTE
-
-    const best = Math.max(putScore, ccScore);
-    const type = ccScore >= putScore ? 'CC' : 'PUT';
-    let label = best >= 6 ? 'IDEAL' : best >= 4 ? 'WATCH' : 'NOT READY';
-
-    const scoreObj = { put: putScore, cc: ccScore, total: best, type, label, rsi, chgPct: d.chgPct || 0, partial: false, outOf: 6 };
-    optionsScoreData[t] = scoreObj;
-
-    // Update badge and criteria boxes on card
-    const card = document.getElementById('card-' + t);
-    if (card) {
-      const badgeEl = card.querySelector('.score-badge');
-      if (badgeEl) {
-        const badgeClass = label === 'IDEAL' ? 'score-ideal' : label === 'WATCH' ? 'score-good' : 'score-low';
-        badgeEl.className = 'score-badge ' + badgeClass;
-        badgeEl.textContent = `${label} · ${type} ${best}/6`;
-      }
-      // Update grade box
-      const gradeEl = card.querySelector('.grade-box');
-      if (gradeEl) {
-        const gMap = { 6:'A', 5:'B', 4:'C', 3:'D' };
-        const g = gMap[best] || 'F';
-        const gc = g==='A' ? '#00ffff' : g==='B' ? '#00ffff' : g==='C' ? '#ff8800' : g==='D' ? '#ff00ff' : '#7b00ff';
-        gradeEl.style.borderColor = gc;
-        gradeEl.style.color = gc;
-        gradeEl.textContent = g;
-      }
-      const criteriaWrap = card.querySelector('.criteria-boxes');
-      if (criteriaWrap) {
-        const earDteLocal = EARNINGS[t] ? Math.round((new Date(EARNINGS[t]) - new Date()) / 86400000) : 999;
-        const price2 = parseFloat(tickerData[t]?.quote?.close || 0);
-        const rsi2 = tickerData[t]?.rsi || 50;
-        const sma2 = tickerData[t]?.sma;
-        const abv2 = sma2 ? price2 > sma2 : null;
-        const checks = [
-          { lbl: 'IV',     pass: iv!=null && iv>=90 },
-          { lbl: 'RSI',    pass: type==='CC' ? rsi2>65 : rsi2<30 },
-          { lbl: 'EARN',   pass: earDteLocal > 45 },
-          { lbl: 'PREM',   pass: prem>=2 },
-          { lbl: 'DTE',    pass: finalDte>=30 && finalDte<=50 },
-          { lbl: 'STRIKE', pass: !!strike }
-        ];
-        criteriaWrap.innerHTML = checks.map(c => {
-          const bg = c.pass ? 'rgba(0,230,118,0.15)' : 'rgba(255,82,82,0.15)';
-          const col = c.pass ? 'var(--cyan)' : '#ff5252';
-          const icon = c.pass ? '✓' : '✗';
-          return `<div style="background:${bg};padding:4px 2px;border-radius:2px;text-align:center;flex:1;"><div style="font-size:8px;color:${col};letter-spacing:.5px;">${c.lbl}</div><div style="font-size:11px;font-weight:bold;color:${col};">${icon}</div></div>`;
-        }).join('');
-      }
-    }
-  } catch(e) {}
-}
-
-async function backgroundScoreUpdate() {
-  document.getElementById('load-prog').textContent = '⟳ Updating full scores...';
-  for (const t of TICKERS) {
-    await calcFullScore(t);
-    await sleep(2000); // respect rate limits
-  }
-  // Re-sort after all scores updated
-  sortDashboard(currentSort, document.querySelector('.sort-btn.active'));
-  document.getElementById('load-prog').textContent = '✓ All scores updated (6/6)';
-  setTimeout(() => { document.getElementById('load-prog').textContent = ''; }, 4000);
-}
-
-let currentSort = 'score';
-let currentTF = '4h'; // active timeframe
-
-const TF_CONFIG = {
-  '4h':  { interval: '4h',   rsiPeriod: 10, smaPeriod: 200, label: 'RSI(10) · 200 SMA · 4-Hour candles' },
-  '12h': { interval: '12h',  rsiPeriod: 10, smaPeriod: 200, label: 'RSI(10) · 200 SMA · 12-Hour candles' },
-  '1day':{ interval: '1day', rsiPeriod: 10, smaPeriod: 200, label: 'RSI(10) · 200 SMA · Daily candles' }
-};
-
-function setTimeframe(tf, btn) {
-  if (currentTF === tf) return;
-  currentTF = tf;
-  document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  // Clear cache so new timeframe data is fetched fresh
-  cache = {}; tickerData = {}; optionsScoreData = {};
-  startDashboard();
-}
-
-function sortDashboard(mode, btn) {
-  currentSort = mode;
-  document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-
-  const cont = document.getElementById('view-dashboard');
-  const cards = Array.from(cont.children).filter(el => el.classList.contains('stock-card'));
-  const tickers = cards.map(el => el.id.replace('card-', ''));
-
-  tickers.sort((a, b) => {
-    const sa = calcTradeScore(a), sb = calcTradeScore(b);
-    if (mode === 'score')    return sb.total - sa.total;
-    if (mode === 'rsi-asc')  return (sa.rsi||50) - (sb.rsi||50);
-    if (mode === 'rsi-desc') return (sb.rsi||50) - (sa.rsi||50);
-    if (mode === 'chg-desc') return (sb.chgPct||0) - (sa.chgPct||0);
-    if (mode === 'chg-asc')  return (sa.chgPct||0) - (sb.chgPct||0);
-    return TICKERS.indexOf(a) - TICKERS.indexOf(b); // default
-  });
-
-  // Re-order DOM
-  tickers.forEach(t => {
-    const el = document.getElementById('card-' + t);
-    if (el) cont.appendChild(el);
-  });
-}
-
-
-function buildCard(t, quote, rsi, sma) {
-  const price = parseFloat(quote?.close || 0);
-  const open  = parseFloat(quote?.open  || price);
-  tickerData[t] = { quote, rsi, sma, chgPct: open ? (price-open)/open*100 : 0 };
-
-  if (!quote || !quote.close) return `<div class="stock-card" id="card-${t}"><div class="ticker-label">${t}</div><div class="co-name">${CO[t]||''}</div><div style="color:var(--red);font-size:13px;margin-top:16px;">⚠ Load error</div></div>`;
-
-  const p=price, o=open, chg=p-o, pct=o?(chg/o*100):0, up=chg>=0;
-  const h=parseFloat(quote.fifty_two_week?.high||p*1.3), l=parseFloat(quote.fifty_two_week?.low||p*0.7);
-  const rangePct = Math.max(0, Math.min(100, ((p-l)/(h-l)*100)));
-  const abv=sma?p>sma:null;
-  const priceColor = rangePct >= 80 ? 'var(--orange)' : rangePct <= 25 ? 'var(--cyan)' : '#ffffff';
-
-  const score = calcTradeScore(t);
-  const badgeClass = score.label==='IDEAL'?'score-ideal':score.label==='WATCH'?'score-good':'score-low';
-  const badgeText = score.partial ? `${score.label} · ${score.type} ⟳` : `${score.label} · ${score.type} ${score.total}/6`;
-
-  // 6 criteria mini boxes — IV · RSI · EARN · PREM · DTE · STRIKE
-  const sd = optionsScoreData[t];
-  const earDte2 = EARNINGS[t] ? Math.round((new Date(EARNINGS[t]) - new Date()) / 86400000) : 999;
-  const criteria = sd ? [
-    { lbl: 'IV',     pass: sd.iv ? sd.iv >= 90 : sd.total >= 5 },
-    { lbl: 'RSI',    pass: score.type==='CC' ? rsi>65 : rsi<30 },
-    { lbl: 'EARN',   pass: earDte2 > 45 },
-    { lbl: 'PREM',   pass: sd.prem ? sd.prem >= 2 : sd.total >= 4 },
-    { lbl: 'DTE',    pass: true },
-    { lbl: 'STRIKE', pass: true }
-  ] : [
-    { lbl: 'IV',     pass: null },
-    { lbl: 'RSI',    pass: score.type==='CC' ? rsi>65 : rsi<30 },
-    { lbl: 'EARN',   pass: earDte2 > 45 },
-    { lbl: 'PREM',   pass: null },
-    { lbl: 'DTE',    pass: null },
-    { lbl: 'STRIKE', pass: null }
-  ];
-
-  const cBox = (c) => {
-    const bg = c.pass===true ? 'rgba(0,230,118,0.15)' : c.pass===false ? 'rgba(255,82,82,0.15)' : 'rgba(255,255,255,0.05)';
-    const col = c.pass===true ? 'var(--cyan)' : c.pass===false ? '#ff5252' : '#555';
-    const icon = c.pass===true ? '✓' : c.pass===false ? '✗' : '·';
-    return `<div style="background:${bg};padding:4px 2px;border-radius:2px;text-align:center;flex:1;">
-      <div style="font-size:8px;color:${col};letter-spacing:.5px;">${c.lbl}</div>
-      <div style="font-size:11px;font-weight:bold;color:${col};">${icon}</div>
-    </div>`;
-  };
-
-  // Letter grade
-  const gradeMap = { 6:'A', 5:'B', 4:'C', 3:'D' };
-  const grade = score.partial ? '?' : (gradeMap[score.total] || 'F');
-  const gradeColor = grade==='A' ? 'var(--cyan)' : grade==='B' ? 'var(--cyan)' : grade==='C' ? '#ff8800' : grade==='D' ? 'var(--magenta)' : grade==='?' ? '#330066' : 'var(--purple)';
-
-  return `<div class="stock-card" id="card-${t}" onclick="openDash('${t}')">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-      <div>
-        <div class="ticker-label">${t}</div>
-        <div class="co-name">${(CO[t]||'').toUpperCase()}</div>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;">
-        <div style="background:#111;border:1px solid ${gradeColor};border-radius:4px;width:70px;height:70px;display:flex;align-items:center;justify-content:center;">
-          <span class="grade-box" style="font-size:42px;font-weight:bold;color:${gradeColor};font-family:'Courier New',monospace;">${grade}</span>
-        </div>
-        <span class="score-badge ${badgeClass}" style="text-align:center;white-space:nowrap;font-size:11px;padding:4px 8px;">${badgeText}</span>
-      </div>
-    </div>
-    <div class="s-price" style="color:${priceColor};">${p.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
-    <div class="s-change ${up?'up':'dn'}">${up?'+':''}${chg.toFixed(2)} &nbsp; (${up?'+':''}${pct.toFixed(2)}%) &nbsp; ${up?'▲':'▼'}</div>
-    <div class="range-bar" style="margin-top:14px;"><div class="range-dot" style="left:${rangePct.toFixed(0)}%"></div></div>
-    <div class="range-labels"><span>52W L: ${l.toFixed(2)}</span><span>52W H: ${h.toFixed(2)}</span></div>
-    <div class="criteria-boxes" style="display:flex;gap:4px;margin-top:12px;">${criteria.map(cBox).join('')}</div>
-  </div>`;
-}
-
-function skelCard(t){
-  return `<div class="stock-card" id="card-${t}" style="opacity:.4;">
-    <div class="ticker-label">${t}</div>
-    <div class="skeleton" style="height:32px;width:60%;margin-top:14px;"></div>
-    <div class="skeleton" style="height:16px;width:45%;margin-top:10px;"></div>
-    <div class="skeleton" style="height:22px;width:55%;margin-top:14px;border-radius:2px;"></div>
-    <div class="skeleton" style="height:14px;width:90%;margin-top:12px;"></div>
-  </div>`;
-}
-
-async function startDashboard(){
-  loadAbort=false;
-  const cont=document.getElementById('view-dashboard');
-  cont.innerHTML=TICKERS.map(t=>skelCard(t)).join('');
-  setStatus('td','warn','● LOADING...');
-  let n=0;
-  for(const t of TICKERS){
-    if(loadAbort) break;
-    document.getElementById('load-prog').textContent=`Loading ${t}... (${n+1}/${TICKERS.length})`;
-    document.getElementById('prog-fill').style.width=((n/TICKERS.length)*100)+'%';
-    try{
-      const{quote,rsi,sma}=await fetchOne(t);
-      const el=document.getElementById('card-'+t);
-      if(el) el.outerHTML=buildCard(t,quote,rsi,sma);
-    }catch(e){}
-    n++;
-    if(n<TICKERS.length) await sleep(1000);
-  }
-  document.getElementById('prog-fill').style.width='100%';
-  document.getElementById('load-prog').textContent=`${n}/${TICKERS.length} loaded ✓`;
-  setStatus('td','ok','● CONNECTED');
-  document.getElementById('live-dot').classList.remove('dead');
-  // Show last updated time
-  const now = new Date().toLocaleTimeString('en-US',{timeZone:'America/Chicago',hour:'2-digit',minute:'2-digit',hour12:true});
-  document.getElementById('td-credits').textContent=`Last updated: ${now} CST`;
-  // Auto sort by trade score once all loaded
-  sortDashboard('score', document.getElementById('sort-score'));
-  // Start background full 7-criteria score update
-  setTimeout(() => backgroundScoreUpdate(), 2000);
-  setTimeout(()=>{document.getElementById('prog-fill').style.width='0%';},5000);
-}
-
-function showView(v,btn){
-  loadAbort=true;
-  ['dashboard','put','cc','leaps','synth'].forEach(x=>{ const e=document.getElementById('view-'+x); if(e){e.style.display='none';e.classList.remove('active');} });
-  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-  if(btn) btn.classList.add('active');
-  if(v==='dashboard'){ loadAbort=false; document.getElementById('view-dashboard').style.display='grid'; }
-  else{ const e=document.getElementById('view-'+v); e.style.display='block'; e.classList.add('active'); buildQt(v); if(!document.getElementById(v+'-result').innerHTML) runAnalyzer(v); }
-}
-function buildQt(p){ const c=document.getElementById(p+'-qt'); if(!c) return; const cur=document.getElementById(p+'-input').value.toUpperCase(); c.innerHTML=TICKERS.map(t=>`<button class="qtick ${t===cur?'sel':''}" onclick="selTick('${p}','${t}')">${t}</button>`).join(''); }
-function selTick(p,t){ document.getElementById(p+'-input').value=t; buildQt(p); runAnalyzer(p); }
-function openDash(t) {
-  const score = calcTradeScore(t);
-  const targetView = score.type === 'CC' ? 'cc' : 'put';
-  ['put','cc','leaps','synth'].forEach(v => {
-    document.getElementById(v+'-input').value = t;
-    document.getElementById(v+'-result').innerHTML = '';
-  });
-  showView(targetView, document.getElementById('btn-' + targetView));
-}
-
-async function runAnalyzer(type){
-  const ticker=document.getElementById(type+'-input').value.toUpperCase().trim()||'TSLA';
-  document.getElementById(type+'-input').value=ticker; buildQt(type);
-  const btn=document.getElementById(type+'-btn'), el=document.getElementById(type+'-result');
-  btn.disabled=true;
-  el.innerHTML=`<div class="loading-msg">FETCHING LIVE DATA FOR ${ticker}<br><span style="font-size:12px;color:var(--muted);">Twelve Data: price · RSI(10) · 200 SMA<br>MarketData.app: options chain · Greeks · IV · bid/ask</span></div>`;
-  try{
-    const tf = TF_CONFIG[currentTF];
-    const q=await tdFetch('quote',{symbol:ticker}); await sleep(100);
-    const rd=await tdFetch('rsi',{symbol:ticker,interval:tf.interval,time_period:tf.rsiPeriod,series_type:'close',outputsize:1}); await sleep(100);
-    const sd=await tdFetch('sma',{symbol:ticker,interval:tf.interval,time_period:tf.smaPeriod,series_type:'close',outputsize:1}); await sleep(100);
-    const chain = type==='leaps' ? await getLeapsMD(ticker) :
-                  type==='synth' ? await getSynthChain(ticker) :
-                  await getChainMD(ticker, type==='cc'?'call':'put');
-    if(!q||q.status==='error'||!q.close) throw new Error(`Quote failed for ${ticker} — check Twelve Data key`);
-    const price=parseFloat(q.close);
-    const rsi=rd?.values?.[0]?parseFloat(rd.values[0].rsi):null;
-    const sma=sd?.values?.[0]?parseFloat(sd.values[0].sma):null;
-    const d={ticker,price,rsi:rsi||50,sma:sma||null,earnings:EARNINGS[ticker]||null,chain:chain||[]};
-    if(type==='put') renderPut(d,el);
-    else if(type==='cc') renderCC(d,el);
-    else if(type==='synth') renderSynth(d,el);
-    else renderLeaps(d,el);
-    setStatus('td','ok','● CONNECTED');
-  }catch(e){
-    el.innerHTML=`<div class="error-msg">⚠ ERROR: ${e.message}<br><br>· Rate limit — wait 60s and retry<br>· Invalid key — update in settings above<br>· MarketData.app: upgrade to Trader + sign OPRA for live options</div>`;
-    setStatus('td','err','● ERROR');
-  }
-  btn.disabled=false;
-}
-
-// ── Synthetic Long ─────────────────────────────────────────
-async function getSynthChain(sym) {
-  const k = `md_synth_${sym}`; const h = cget(k); if (h) return h;
-  try {
-    const expData = await mdFetch(`options/expirations/${sym}/`, {});
-    if (!expData || expData.s !== 'ok') return { calls: [], puts: [] };
-
-    const today = new Date();
-    const expirations = expData.expirations || [];
-
-    // Filter to minimum 365 DTE — must be at least 1 year out
-    const validExp = expirations.filter(e => {
-      const d2 = Math.round((new Date(e) - today) / 86400000);
-      return d2 >= 365;
-    });
-
-    if (!validExp.length) {
-      // Fallback: nothing 365+ days out, warn but use longest available
-      console.warn(`${sym}: No expiry >= 365 days. Longest available used as fallback.`);
-      const fallback = expirations[expirations.length - 1];
-      if (!fallback) return { calls: [], puts: [], warn: 'No long-dated options available' };
-      const [cd, pd] = await Promise.all([
-        mdFetch(`options/chain/${sym}/`, { side:'call', expiration: fallback, limit: 20 }),
-        mdFetch(`options/chain/${sym}/`, { side:'put',  expiration: fallback, limit: 20 })
-      ]);
-      return cset(k, {
-        calls: cd?.s==='ok' ? parseMD(cd) : [],
-        puts:  pd?.s==='ok' ? parseMD(pd) : [],
-        expiry: fallback,
-        dte: Math.round((new Date(fallback)-today)/86400000),
-        warn: 'Best available — under 365 days'
+      html += '<div class="leaps-table-wrap"><table><thead><tr>' +
+        '<th>Strike</th><th>Bid</th><th>Ask</th><th>Mid</th>' +
+        '<th>Delta</th><th>OI</th><th>Spread%</th><th>CAGR%</th>' +
+        '</tr></thead><tbody>';
+
+      rows2.forEach(function(row, ri) {
+        var isRec3 = ri === bestInRows;
+        html += '<tr class="' + (isRec3 ? 'recommended' : '') + '">' +
+          '<td class="strike-cell">' + (isRec3 ? '<span class="star">★</span>' : '') + fmtDollar(row.strike) + '</td>' +
+          '<td>' + fmtDollar(row.bid) + '</td>' +
+          '<td>' + fmtDollar(row.ask) + '</td>' +
+          '<td><strong>' + fmtDollar(row.mid) + '</strong></td>' +
+          '<td>' + fmt(row.delta, 2) + '</td>' +
+          '<td>' + fmtK(row.oi) + '</td>' +
+          '<td ' + (row.spread !== null && row.spread > 10 ? 'style="color:var(--red)"' : '') + '>' + (row.spread !== null ? fmt(row.spread,1) + '%' : '—') + '</td>' +
+          '<td ' + (row.cagr !== null && row.cagr > 35 ? 'style="color:var(--red)"' : 'style="color:var(--green)"') + '>' + (row.cagr !== null ? fmt(row.cagr,1) + '%' : '—') + '</td>' +
+        '</tr>';
       });
-    }
 
-    // Pick the FURTHEST expiry that is >= 365 days
-    const bestExp = validExp[validExp.length - 1];
-    const daysOut = Math.round((new Date(bestExp) - today) / 86400000);
+      html += '</tbody></table></div>';
+    });
+    html += '</div>';
 
-    const [callData, putData] = await Promise.all([
-      mdFetch(`options/chain/${sym}/`, { side: 'call', expiration: bestExp, limit: 20 }),
-      mdFetch(`options/chain/${sym}/`, { side: 'put',  expiration: bestExp, limit: 20 })
+    document.getElementById('leaps-results').innerHTML = html;
+
+  } catch(err) {
+    setStatus('leaps-status', '✗ ' + err.message, 'error');
+    document.getElementById('leaps-results').innerHTML = '<div class="notice">Error: ' + err.message + '</div>';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ─── SYNTHETIC LONG ANALYZER ─────────────────────────────────────────────────
+async function runSynth() {
+  var ticker = document.getElementById('synth-ticker').value.trim().toUpperCase();
+  if (!ticker) return;
+
+  var btn = document.getElementById('synth-btn');
+  btn.disabled = true;
+  setStatus('synth-status', spinner() + 'Fetching data…', 'loading');
+  document.getElementById('synth-results').innerHTML = '';
+
+  try {
+    setStatus('synth-status', spinner() + 'Loading price & indicators…', 'loading');
+    var pd = await fetchPriceData(ticker);
+
+    setStatus('synth-status', spinner() + 'Loading expirations…', 'loading');
+    var expirations = await fetchExpirations(ticker);
+
+    // Find furthest expiry >= 365 DTE
+    var synthExpiries = expirations.filter(function(e) {
+      return dteFromStr(e) >= 365;
+    });
+    if (synthExpiries.length === 0) throw new Error('No expirations ≥ 365 days found.');
+
+    // Sort descending to get furthest
+    synthExpiries.sort(function(a, b) { return dteFromStr(b) - dteFromStr(a); });
+    var bestExpiry  = synthExpiries[0];
+    var dte         = dteFromStr(bestExpiry);
+
+    setStatus('synth-status', spinner() + 'Fetching call and put chains…', 'loading');
+    var [callChain, putChain] = await Promise.all([
+      fetchChain(ticker, bestExpiry, 'call'),
+      fetchChain(ticker, bestExpiry, 'put')
     ]);
-    const calls = callData?.s === 'ok' ? parseMD(callData) : [];
-    const puts  = putData?.s  === 'ok' ? parseMD(putData)  : [];
-    setStatus('md', 'ok', '● CONNECTED');
-    return cset(k, { calls, puts, expiry: bestExp, dte: daysOut });
-  } catch(e) { return { calls: [], puts: [] }; }
-}
 
-function renderSynth(d, el) {
-  const chain = d.chain || { calls: [], puts: [] };
-  const calls = chain.calls || [];
-  const puts  = chain.puts  || [];
-
-  // Find ATM call and put (closest to current price, delta ~0.50)
-  const atmCall = bestContract(calls,  0.50);
-  const atmPut  = bestContract(puts,  -0.50);
-
-  const callMid = atmCall ? parseFloat(atmCall.mid||(parseFloat(atmCall.bid||0)+parseFloat(atmCall.ask||0))/2||0) : 0;
-  const putMid  = atmPut  ? parseFloat(atmPut.mid |(parseFloat(atmPut.bid ||0)+parseFloat(atmPut.ask ||0))/2||0) : 0;
-  const strike  = atmCall ? parseFloat(atmCall.strike||0) : Math.round(d.price/5)*5;
-  const netDebit = callMid - putMid;
-  const netType  = netDebit >= 0 ? 'DEBIT' : 'CREDIT';
-  const netAbs   = Math.abs(netDebit);
-  const breakeven = (strike + netDebit).toFixed(2);
-  const callIV  = atmCall?.iv ? parseFloat(atmCall.iv)*100 : null;
-  const putIV   = atmPut?.iv  ? parseFloat(atmPut.iv)*100  : null;
-  const callDelta = atmCall?.delta ? Math.abs(parseFloat(atmCall.delta)).toFixed(2) : null;
-  const putDelta  = atmPut?.delta  ? Math.abs(parseFloat(atmPut.delta)).toFixed(2)  : null;
-  const expRaw  = atmCall?.expiration;
-  const expDate = expRaw ? (typeof expRaw==='number' ? new Date(expRaw*1000).toISOString().split('T')[0] : expRaw) : chain.expiry || null;
-  const expDte  = expDate ? Math.round((new Date(expDate) - new Date()) / 86400000) : 0;
-  const callOI  = atmCall?.openInterest || 0;
-  const putOI   = atmPut?.openInterest  || 0;
-  const callSpread = atmCall ? parseFloat(atmCall.ask||0) - parseFloat(atmCall.bid||0) : 0;
-  const putSpread  = atmPut  ? parseFloat(atmPut.ask ||0) - parseFloat(atmPut.bid ||0)  : 0;
-  const earOK = !d.earnings || dte(d.earnings) > expDte;
-  const abv = d.sma ? d.price > d.sma : null;
-  const maxLoss = (strike + Math.max(0, netDebit)) * 100;
-
-  const checks = [
-    {
-      pass: d.rsi < 40,
-      name: 'Bullish Momentum — RSI < 40 (Stock beaten down)',
-      desc: `RSI(10) ${d.rsi.toFixed(1)} — ${d.rsi<40?'oversold/dipping, good synthetic long entry — strong bounce potential':'RSI elevated, wait for pullback before entering synthetic long'}`,
-      val: `RSI ${d.rsi.toFixed(1)}`
-    },
-    {
-      pass: abv === true,
-      name: '200 SMA — Price Above (Uptrend confirmed)',
-      desc: abv===true ? `$${d.price.toFixed(2)} above SMA $${d.sma?.toFixed(2)} — confirmed uptrend, synthetic long aligned with trend` : abv===false ? `$${d.price.toFixed(2)} below SMA — counter-trend trade, higher risk` : 'SMA unavailable',
-      val: d.sma ? `${abv?'▲ ABOVE':'▼ BELOW'}\n$${d.sma.toFixed(2)}` : '—'
-    },
-    {
-      pass: callDelta ? parseFloat(callDelta)>=0.45 && parseFloat(callDelta)<=0.55 : null,
-      name: 'ATM Strike — Call Delta 0.45–0.55',
-      desc: `Strike $${strike} · Call Δ${callDelta||'—'} · Put Δ${putDelta||'—'} · ATM gives best synthetic stock replication`,
-      val: `$${strike}\nΔ${callDelta||'—'}`
-    },
-    {
-      pass: expDte >= 365,
-      name: 'Duration — Minimum 365 Days (1 Year+)',
-      desc: expDte >= 365
-        ? `${fmtD(expDate)} (${expDte} DTE · ${(expDte/365).toFixed(1)} years) ✓ Sufficient time for position to develop · More time = less daily theta decay`
-        : `${fmtD(expDate)} (${expDte} DTE) ✗ Under 365 days — not ideal for synthetic long · Look for longer dated expiry or wait for one to become available`,
-      val: `${fmtD(expDate)}\n${expDte} DTE · ${(expDte/365).toFixed(1)} yrs`
-    },
-    {
-      pass: netAbs <= d.price * 0.03,
-      name: 'Net Cost — Debit/Credit ≤ 3% of Stock Price',
-      desc: atmCall && atmPut ? `Buy Call $${callMid.toFixed(2)} · Sell Put $${putMid.toFixed(2)} · Net ${netType}: $${netAbs.toFixed(2)} · ${netAbs<=d.price*0.03?'Low cost entry — efficient synthetic':'High net debit — less capital efficient than expected'}` : 'Options data unavailable',
-      val: atmCall && atmPut ? `Net ${netType}\n$${netAbs.toFixed(2)}` : '—'
-    },
-    {
-      pass: Math.min(callOI, putOI) >= 200,
-      name: 'Liquidity — Both Legs OI ≥ 200',
-      desc: `Call OI: ${callOI.toLocaleString()} · Put OI: ${putOI.toLocaleString()} · Need liquidity on BOTH legs for clean entry/exit`,
-      val: `Call ${callOI.toLocaleString()}\nPut ${putOI.toLocaleString()}`
-    },
-    {
-      pass: Math.max(callSpread, putSpread) <= 1.00,
-      name: 'Bid/Ask Spread — Both Legs ≤ $1.00',
-      desc: `Call spread: $${callSpread.toFixed(2)} · Put spread: $${putSpread.toFixed(2)} · Wide spreads cost more to enter and exit`,
-      val: `C: $${callSpread.toFixed(2)}\nP: $${putSpread.toFixed(2)}`
+    // Find ATM call (delta 0.45–0.55)
+    var atmCall = null;
+    if (callChain && callChain.strike) {
+      var bestAtmDiff = Infinity;
+      for (var i = 0; i < callChain.strike.length; i++) {
+        var d = callChain.delta ? callChain.delta[i] : null;
+        if (d === null) continue;
+        var diff = Math.abs(d - 0.50);
+        if (d >= 0.40 && d <= 0.60 && diff < bestAtmDiff) {
+          bestAtmDiff = diff;
+          atmCall = {
+            strike:  callChain.strike[i],
+            bid:     callChain.bid ? callChain.bid[i] : null,
+            ask:     callChain.ask ? callChain.ask[i] : null,
+            mid:     callChain.mid ? callChain.mid[i] : null,
+            delta:   d,
+            oi:      callChain.openInterest ? callChain.openInterest[i] : null
+          };
+        }
+      }
     }
-  ];
+    if (!atmCall) throw new Error('Could not find ATM call (delta 0.45–0.55).');
 
-  const fails = checks.filter(c => c.pass===false).length;
-  const vc = fails===0?'good':fails<=2?'warn':'bad';
-  const noData = calls.length===0 && puts.length===0;
-
-  el.innerHTML = `
-    <div class="result-box ${vc}">
-      <div class="result-src">${d.ticker} · $${d.price.toFixed(2)} · SYNTHETIC LONG · BUY CALL + SELL PUT · ${fmtD(expDate)} · LIVE</div>
-      <div class="verdict">${fails===0?'IDEAL SYNTHETIC LONG':fails<=2?'WAIT — NOT YET IDEAL':'DO NOT ENTER'}</div>
-      <div class="verdict-sub">${fails} criteri${fails===1?'on':'a'} not met.</div>
-    </div>
-    <div class="info-msg" style="margin-bottom:12px;">
-      ℹ SYNTHETIC LONG = Buy ATM Call + Sell ATM Put at same strike and expiry. Acts like owning 100 shares with far less capital. Unlimited upside · Substantial downside risk · Requires margin for short put.
-    </div>
-    ${noData?`<div class="info-msg">⚠ No options data — check MarketData.app connection.</div>`:''}
-    <div class="checklist"><div class="cl-head">CHECKLIST — 8 SYNTHETIC LONG ENTRY CRITERIA</div>${checks.map(c=>clRow(c.pass,c.name,c.desc,c.val)).join('')}</div>
-    ${calls.length&&puts.length?`
-    <div class="checklist">
-      <div class="cl-head">TOP 3 SYNTHETIC LONG SCENARIOS — ${d.ticker} · ${fmtD(expDate)} · ${expDte} DTE (${(expDte/365).toFixed(1)} YRS)</div>
-      <table class="opts-table">
-        <thead><tr>
-          <th>SCENARIO</th><th>STRIKE</th><th>CALL Δ</th><th>BUY CALL</th><th>SELL PUT</th><th>NET</th><th>BREAKEVEN</th><th>MAX LOSS</th><th>COST/CONTRACT</th>
-        </tr></thead>
-        <tbody>${(() => {
-          // Sort calls by strike ascending, find unique strikes
-          const sortedCalls = [...calls].filter(o=>o.delta!=null).sort((a,b)=>parseFloat(a.strike)-parseFloat(b.strike));
-          const sortedPuts  = [...puts].filter(o=>o.delta!=null).sort((a,b)=>parseFloat(a.strike)-parseFloat(b.strike));
-
-          // Find ATM strike (closest to current price)
-          const atmIdx = sortedCalls.reduce((best,o,i)=>Math.abs(parseFloat(o.strike)-d.price)<Math.abs(parseFloat(sortedCalls[best].strike)-d.price)?i:best,0);
-
-          // Pick 3 different strikes: ATM, one below, one further below
-          const scenarios = [
-            { label:'ATM (Δ~0.50)', note:'Closest to stock price', idx: atmIdx },
-            { label:'Slight ITM (Δ~0.65)', note:'One strike below ATM', idx: Math.max(0, atmIdx-1) },
-            { label:'Deep ITM (Δ~0.80)', note:'Two strikes below ATM', idx: Math.max(0, atmIdx-2) }
-          ];
-
-          return scenarios.map(s => {
-            const c = sortedCalls[s.idx];
-            const sk = parseFloat(c?.strike||0);
-            // Match put at same strike
-            const p = sortedPuts.find(o=>parseFloat(o.strike||0)===sk) || bestContract(puts, -0.50);
-            if (!c || !p) return '';
-            const cMid = parseFloat(c.mid||(parseFloat(c.bid||0)+parseFloat(c.ask||0))/2||0);
-            const pMid = parseFloat(p.mid||(parseFloat(p.bid||0)+parseFloat(p.ask||0))/2||0);
-            const net  = cMid - pMid;
-            const be   = (sk + net).toFixed(2);
-            const ml   = ((sk + Math.max(0,net))*100).toFixed(0);
-            const cDlt = c.delta ? Math.abs(parseFloat(c.delta)).toFixed(2) : '—';
-            const netType = net>=0 ? 'DEBIT' : 'CREDIT';
-            const netColor = net>=0 ? 'var(--magenta)' : 'var(--cyan)';
-            const isSame = s.idx === scenarios[0].idx && s.label !== scenarios[0].label;
-            if (isSame) return ''; // skip duplicate strikes
-            return `<tr>
-              <td style="color:var(--text2);font-size:11px;">${s.label}<br><span style="color:var(--dim);font-size:9px;">${s.note}</span></td>
-              <td style="color:#fff;font-weight:bold;">$${sk.toFixed(0)}</td>
-              <td style="color:var(--orange);">Δ${cDlt}</td>
-              <td style="color:var(--cyan);">$${cMid.toFixed(2)}</td>
-              <td style="color:var(--magenta);">$${pMid.toFixed(2)}</td>
-              <td style="color:${netColor};font-weight:bold;">${netType} $${Math.abs(net).toFixed(2)}</td>
-              <td style="color:#fff;font-weight:bold;">$${be}</td>
-              <td style="color:var(--red);">$${parseInt(ml).toLocaleString()}</td>
-              <td style="color:var(--cyan);font-weight:bold;">$${(Math.abs(net)*100).toFixed(0)}</td>
-            </tr>`;
-          }).join('');
-        })()}
-        </tbody>
-      </table>
-    </div>
-    <div class="info-msg">★ RECOMMENDED: Deep ITM — most stock-like behavior, lowest time decay risk. Net cost is higher but position moves almost 1:1 with the stock.</div>`:''}`;
-}
-
-
-function renderPut(d,el){
-  const{bid,ask,mid,strike,expDate,expDte,delta,iv,oi}=getInfo(d.chain,-0.20);
-  const sk=strike||Math.round(d.price*0.88/5)*5;
-  const ed=expDate||'2026-05-15'; const dt=expDte||42;
-  const prem=mid&&d.price?(mid/d.price*100).toFixed(2):null;
-  const cap=sk*100, btc=mid?(mid*0.20).toFixed(2):null;
-  const profit=mid&&btc?((mid-parseFloat(btc))*100).toFixed(0):null;
-  const earOK=!d.earnings||dte(d.earnings)>dt;
-  const otmPct=((d.price-sk)/d.price*100).toFixed(1);
-  const checks=[
-    {pass:iv?(iv>=90?true:iv>=70?'warn':false):null,name:'IV Rank > 90%',desc:iv?`IV ${iv.toFixed(0)}% — ${iv>=90?'excellent — maximum premium for put entry':iv>=70?'moderate — acceptable but wait for IV > 90%':'low IV — not enough premium to justify the risk. Wait.'}`:'IV not available',val:iv?`${iv.toFixed(0)}% IV`:'—'},
-    {pass:d.rsi<30,name:'Mean Reversion (−2 Zone · RSI < 30)',desc:`RSI(10) ${d.rsi.toFixed(1)} — ${d.rsi<30?'oversold dip confirmed, put entry valid — high probability bounce':'waiting for RSI < 30 oversold signal'}`,val:`RSI ${d.rsi.toFixed(1)}`},
-    {pass:earOK,name:'No Earnings Before Expiry',desc:d.earnings?(earOK?`Earnings ${fmtD(d.earnings)} — after expiry, safe`:`Earnings ${fmtD(d.earnings)} BEFORE expiry — shorten DTE or skip`):'No earnings date',val:d.earnings?fmtD(d.earnings):'—'},
-    {pass:prem?parseFloat(prem)>=2:null,name:'Premium > 2% of Stock Price',desc:mid?`Bid $${bid.toFixed(2)} · Ask $${ask.toFixed(2)} · Mid $${mid.toFixed(2)} · ${prem}% of stock`:'No options data',val:mid?`Mid $${mid.toFixed(2)}\n${prem}%`:'—'},
-    {pass:true,name:'Strike (Δ 0.15–0.25 · 10–15% OTM)',desc:`Strike $${sk} · ${delta?'Δ'+delta:'~0.20'} · ${otmPct}% OTM — further OTM reduces assignment risk on high-conviction names`,val:`$${sk}${delta?'\nΔ'+delta:''}`},
-    {pass:dt>=30&&dt<=50,name:'Duration 30–45 DTE',desc:`${fmtD(ed)} (${dt} DTE) · OI: ${oi?.toLocaleString()||'—'} · Theta decay sweet spot`,val:`${fmtD(ed)}\n${dt} DTE`}
-  ];
-  const fails=checks.filter(c=>c.pass===false).length;
-  const vc=fails===0?'good':fails<=2?'warn':'bad';
-  const opraNote=d.chain.length===0?`<div class="info-msg">⚠ No options data in 30-50 DTE window — earnings may conflict with available expiries, or market is closed. Try a different ticker or check back during market hours.</div>`:'';
-  el.innerHTML=`
-    <div class="result-box ${vc}">
-      <div class="result-src">${d.ticker} · $${d.price.toFixed(2)} · TWELVE DATA + MARKETDATA.APP · LIVE</div>
-      <div class="verdict">${fails===0?'IDEAL SETUP':fails<=2?'WAIT — NOT YET IDEAL':'DO NOT ENTER'}</div>
-      <div class="verdict-sub">${fails} criteri${fails===1?'on':'a'} not met.</div>
-    </div>
-    ${opraNote}
-    <div class="checklist"><div class="cl-head">CHECKLIST — 6 PUT ENTRY CRITERIA</div>${checks.map(c=>clRow(c.pass,c.name,c.desc,c.val)).join('')}</div>
-    <div class="info-msg">ℹ ASSIGNMENT CAPITAL: If assigned on this put, you must buy 100 shares at $${sk} = <strong>$${cap.toLocaleString()}</strong> cash needed per contract. Only sell puts on stocks you are happy to own at this price.</div>
-    ${chainTable(d.chain,-0.20,d.price,'OPTIONS CHAIN — PUTS')}
-    ${mid?`<div class="setup-box"><div class="box-label">RECOMMENDED SETUP</div><div class="setup-val">${d.ticker} $${sk} Put · ${fmtD(ed)} · ${dt} DTE · ${delta?'Δ'+delta:'Δ~0.20'} · Mid $${mid.toFixed(2)} (${prem}%) · Assignment capital: $${cap.toLocaleString()}</div></div><div class="setup-box"><div class="box-label">BUY-TO-CLOSE AT 80% PROFIT (OR 21 DTE)</div><div class="btc-val">${d.ticker} $${sk} Put ${fmtD(ed)} · BTC @ $${btc} · 80% Profit = $${profit} per contract</div></div>`:''}`;
-}
-
-function renderCC(d,el){
-  const{bid,ask,mid,strike,expDate,expDte,delta,iv,oi}=getInfo(d.chain,0.18);
-  const sk=strike||Math.round(d.price*1.18/5)*5;
-  const ed=expDate||'2026-05-15'; const dt=expDte||42;
-  const prem=mid&&d.price?(mid/d.price*100).toFixed(2):null;
-  const otm=((sk-d.price)/d.price*100).toFixed(1);
-  const btc=mid?(mid*0.20).toFixed(2):null;
-  const profit=mid&&btc?((mid-parseFloat(btc))*100).toFixed(0):null;
-  const earOK=!d.earnings||dte(d.earnings)>dt;
-  // Upside if assigned
-  const upsidePct=((sk-d.price)/d.price*100).toFixed(1);
-  const upsideDollar=(sk-d.price).toFixed(2);
-  const totalReturnIfAssigned=mid?(((sk-d.price+parseFloat(mid))/d.price)*100).toFixed(1):null;
-
-  const checks=[
-    {pass:iv?(iv>=90?true:iv>=70?'warn':false):null,
-     name:'IV Rank > 90%',
-     desc:iv?`IV ${iv.toFixed(0)}% — ${iv>=90?'excellent — high IV, maximum premium for CC entry':iv>=70?'moderate — acceptable but ideally wait for IV > 90%':'low IV — not enough premium to justify capping your upside. Wait.'}`:'IV not available',
-     val:iv?`${iv.toFixed(0)}% IV`:'—'},
-    {pass:d.rsi>65,
-     name:'RSI > 65 (Overbought / Extended)',
-     desc:`RSI(10) ${d.rsi.toFixed(1)} — ${d.rsi>70?'overbought spike, ideal CC entry':d.rsi>65?'extended, CC entry acceptable':'RSI not elevated enough — stock not overbought yet'}`,
-     val:`RSI ${d.rsi.toFixed(1)}`},
-    {pass:earOK,
-     name:'No Earnings Before Expiry',
-     desc:d.earnings?(earOK?`Earnings ${fmtD(d.earnings)} — after expiry, safe`:`Earnings ${fmtD(d.earnings)} BEFORE expiry — stock could gap up and shares get called away`):'No earnings date',
-     val:d.earnings?fmtD(d.earnings):'—'},
-    {pass:prem?parseFloat(prem)>=2:null,
-     name:'Premium ≥ 2% of Stock Price',
-     desc:mid?`Bid $${bid.toFixed(2)} · Ask $${ask.toFixed(2)} · Mid $${mid.toFixed(2)} · ${prem}% of stock`:'No options data',
-     val:mid?`Mid $${mid.toFixed(2)}\n${prem}%`:'—'},
-    {pass:true,
-     name:`Strike (Δ 0.15–0.25 · ${otm}% OTM)`,
-     desc:`Strike $${sk} · ${delta?'Δ'+delta:'~0.18'} · ${otm}% above current price — further OTM protects upside on stocks you're bullish on`,
-     val:`$${sk}${delta?'\nΔ'+delta:''}`},
-    {pass:dt>=30&&dt<=50,
-     name:'Duration 30–45 DTE',
-     desc:`${fmtD(ed)} (${dt} DTE) · OI: ${oi?.toLocaleString()||'—'} · Theta decay sweet spot`,
-     val:`${fmtD(ed)}\n${dt} DTE`}
-  ];
-
-  const fails=checks.filter(c=>c.pass===false).length;
-  const vc=fails===0?'good':fails<=2?'warn':'bad';
-  const opraNote=d.chain.length===0?`<div class="info-msg">⚠ No options data in 30-50 DTE window — earnings may conflict with available expiries, or market is closed. Try a different ticker.</div>`:'';
-
-  el.innerHTML=`
-    <div class="result-box ${vc}">
-      <div class="result-src">${d.ticker} · $${d.price.toFixed(2)} · TWELVE DATA + MARKETDATA.APP · LIVE</div>
-      <div class="verdict">${fails===0?'IDEAL SETUP':fails<=2?'WAIT — NOT YET IDEAL':'DO NOT ENTER'}</div>
-      <div class="verdict-sub">${fails} criteri${fails===1?'on':'a'} not met.</div>
-    </div>
-    ${opraNote}
-    <div class="checklist"><div class="cl-head">CHECKLIST — 6 CC ENTRY CRITERIA</div>${checks.map(c=>clRow(c.pass,c.name,c.desc,c.val)).join('')}</div>
-    <div class="info-msg">ℹ UPSIDE IF ASSIGNED: Strike $${sk} is $${upsideDollar} (${upsidePct}%) above current price $${d.price.toFixed(2)}${totalReturnIfAssigned?` · Total return if assigned: ${totalReturnIfAssigned}% (stock gain + premium)`:''} · Only sell CCs above your cost basis!</div>
-    ${chainTable(d.chain,0.18,d.price,'OPTIONS CHAIN — CALLS')}
-    ${mid?`<div class="setup-box"><div class="box-label">RECOMMENDED SETUP</div><div class="setup-val">${d.ticker} $${sk} Call · ${fmtD(ed)} · ${dt} DTE · ${delta?'Δ'+delta:'Δ~0.18'} · Mid $${mid.toFixed(2)} (${prem}%) · Upside if assigned: +${upsidePct}%</div></div><div class="setup-box"><div class="box-label">BUY-TO-CLOSE AT 80% PROFIT (OR 21 DTE)</div><div class="btc-val">${d.ticker} $${sk} Call ${fmtD(ed)} · BTC @ $${btc} · 80% Profit = $${profit} per contract</div></div>`:''}`;
-}
-
-function renderLeaps(d,el){
-  // Use delta 0.75 target (deep ITM — deep ITM)
-  const DELTA_TGT = 0.75;
-
-  // Group chain by year
-  const byYear = {};
-  d.chain.forEach(o => {
-    const eRaw = o.expiration;
-    const yr = (typeof eRaw==='number' ? new Date(eRaw*1000) : new Date(eRaw+'T00:00:00')).getFullYear();
-    if (!byYear[yr]) byYear[yr] = [];
-    byYear[yr].push(o);
-  });
-
-  // Best contract per year
-  const years = Object.keys(byYear).sort();
-  const bestByYear = years.map(yr => ({ yr, opt: bestContract(byYear[yr], DELTA_TGT) })).filter(x => x.opt);
-  const sel = bestByYear[bestByYear.length-1]?.opt || bestByYear[0]?.opt || null;
-
-  const sm  = sel ? parseFloat(sel.mid||(parseFloat(sel.bid||0)+parseFloat(sel.ask||0))/2||0) : 0;
-  const ss  = sel ? parseFloat(sel.strike||0) : Math.round(d.price/5)*5;
-  const sb  = sel ? parseFloat(sel.bid||0) : 0;
-  const sa  = sel ? parseFloat(sel.ask||0) : 0;
-  const spread = sa - sb;
-  const spreadPct = sm > 0 ? (spread/sm*100).toFixed(1) : null;
-  const seRaw = sel?.expiration;
-  const se  = seRaw ? (typeof seRaw==='number' ? new Date(seRaw*1000).toISOString().split('T')[0] : seRaw) : null;
-  const sd2 = se ? dte(se) : 0;
-  const sdlt = sel?.delta ? Math.abs(parseFloat(sel.delta)).toFixed(2) : null;
-  const siv  = sel?.iv ? parseFloat(sel.iv)*100 : null;
-  const soi  = sel?.openInterest || null;
-  const sbe  = sm ? (ss+sm).toFixed(2) : null;
-  const scagr = sbe&&sd2>0 ? (((parseFloat(sbe)/d.price)**(1/(sd2/365))-1)*100).toFixed(1) : null;
-  const costPerContract = sm ? (sm*100) : null;
-  const pctOfStock = sm && d.price ? (sm/d.price*100).toFixed(1) : null;
-
-  // ── 8 Criteria (deep ITM) ──
-  const checks = [
-    {
-      pass: d.rsi<30,
-      name: 'Timing — RSI < 30 (Mean Reversion −2)',
-      desc: `RSI(10) ${d.rsi.toFixed(1)} — ${d.rsi<30?'deep oversold dip, ideal LEAPS entry':'not yet oversold — wait for RSI < 30 for better entry price'}`,
-      val: `RSI ${d.rsi.toFixed(1)}`
-    },
-    {
-      pass: siv ? siv<55 : null,
-      name: 'IV < 55% (Buy Low IV)',
-      desc: siv ? `IV ${siv.toFixed(0)}% — ${siv<55?'low IV, options priced fairly — good time to buy':'elevated IV, options expensive — wait for IV to drop'}` : 'IV not available',
-      val: siv ? `${siv.toFixed(0)}% IV` : '—'
-    },
-    {
-      pass: sdlt ? parseFloat(sdlt)>=0.70 : null,
-      name: 'Strike — Deep ITM (Δ 0.70–0.90, Deep ITM style)',
-      desc: `Strike $${ss} · ${sdlt?'Δ'+sdlt:'—'} · Deep ITM acts like owning shares with less capital. Higher delta = lower time decay risk.`,
-      val: `$${ss}${sdlt?'\nΔ'+sdlt:''}`
-    },
-    {
-      pass: sd2>=540,
-      name: 'Duration — Minimum 18 Months (540+ DTE)',
-      desc: `${fmtD(se)} (${sd2} DTE) · Best practice — 2-3 years — more time = less theta decay per day`,
-      val: `${fmtD(se)}\n${sd2} DTE`
-    },
-    {
-      pass: soi ? soi>=300 : null,
-      name: 'Liquidity — OI ≥ 300',
-      desc: soi ? `OI: ${soi.toLocaleString()} contracts · ${soi>=300?'Sufficient liquidity for clean entry/exit':'Low liquidity — wide spreads may hurt your fill price'}` : 'OI unavailable',
-      val: soi ? `OI: ${soi.toLocaleString()}` : '—'
-    },
-    {
-      pass: spreadPct ? parseFloat(spreadPct)<=10 : null,
-      name: 'Bid/Ask Spread ≤ 10%',
-      desc: spreadPct ? `Bid $${sb.toFixed(2)} · Ask $${sa.toFixed(2)} · Spread ${spreadPct}% · ${parseFloat(spreadPct)<=10?'Tight spread, fair fill likely':'Wide spread — use limit orders at mid or better'}` : 'Spread unavailable',
-      val: spreadPct ? `${spreadPct}% spread` : '—'
-    },
-    {
-      pass: scagr ? parseFloat(scagr)<=35 : null,
-      name: 'Breakeven CAGR ≤ 35%/yr',
-      desc: sbe&&scagr ? `Stock must reach $${sbe} by expiry · Requires ${scagr}%/yr growth · ${parseFloat(scagr)<=35?'Realistic target':'High bar — stock needs aggressive growth to break even'}` : 'Calculate after selecting contract',
-      val: scagr ? `BE $${sbe}\n${scagr}%/yr` : '—'
+    // Find ATM put at same strike
+    var atmPut = null;
+    if (putChain && putChain.strike) {
+      var closestStrikeDiff = Infinity;
+      for (var j = 0; j < putChain.strike.length; j++) {
+        var diff4 = Math.abs(putChain.strike[j] - atmCall.strike);
+        if (diff4 < closestStrikeDiff) {
+          closestStrikeDiff = diff4;
+          atmPut = {
+            strike: putChain.strike[j],
+            bid:    putChain.bid ? putChain.bid[j] : null,
+            ask:    putChain.ask ? putChain.ask[j] : null,
+            mid:    putChain.mid ? putChain.mid[j] : null,
+            delta:  putChain.delta ? putChain.delta[j] : null,
+            oi:     putChain.openInterest ? putChain.openInterest[j] : null
+          };
+        }
+      }
     }
-  ];
+    if (!atmPut) throw new Error('Could not find ATM put at matching strike.');
 
-  const fails = checks.filter(c=>c.pass===false).length;
-  const vc = fails===0?'good':fails<=2?'warn':'bad';
+    var netCost    = (atmCall.mid && atmPut.mid) ? (atmCall.mid - atmPut.mid) : null;
+    var netCostPct = (netCost !== null && pd.price) ? (netCost / pd.price * 100) : null;
 
-  // Build table rows for all years
-  function oRow(opt, label) {
-    if (!opt) return null;
-    const b=parseFloat(opt.bid||0), a=parseFloat(opt.ask||0), mid=parseFloat(opt.mid||(b+a)/2||0);
-    const sk=parseFloat(opt.strike||0);
-    const eRaw=opt.expiration; const ed=typeof eRaw==='number'?new Date(eRaw*1000).toISOString().split('T')[0]:eRaw;
-    const d2=ed?dte(ed):0;
-    const dlt=opt.delta?Math.abs(parseFloat(opt.delta)).toFixed(2):'—';
-    const iv2=opt.iv?(parseFloat(opt.iv)*100).toFixed(0):'—';
-    const oi=opt.openInterest?.toLocaleString()||'—';
-    const be=(sk+mid).toFixed(2);
-    const cagr=d2>0?(((parseFloat(be)/d.price)**(1/(d2/365))-1)*100).toFixed(1):'—';
-    const sprd=a-b; const sprdPct=mid>0?(sprd/mid*100).toFixed(0):'—';
-    return `<tr>
-      <td style="color:var(--orange);font-weight:bold;">${label}</td>
-      <td style="color:#fff;">$${sk} Call · ${fmtD(ed)}</td>
-      <td style="color:var(--orange);">Δ${dlt}</td>
-      <td style="color:var(--text2);">~${iv2}%</td>
-      <td style="color:var(--text2);">${oi}</td>
-      <td style="color:var(--text2);">${sprdPct}%</td>
-      <td style="color:#fff;">$${be}</td>
-      <td style="color:var(--cyan);font-weight:bold;">${cagr}%/yr</td>
-      <td style="color:var(--orange);font-weight:bold;">$${mid.toFixed(2)}</td>
-      <td style="color:var(--cyan);font-weight:bold;">$${(mid*100).toLocaleString('en-US',{maximumFractionDigits:0})}</td>
-    </tr>`;
+    var callSpread = (atmCall.bid && atmCall.ask) ? (atmCall.ask - atmCall.bid) : null;
+    var putSpread  = (atmPut.bid && atmPut.ask)   ? (atmPut.ask - atmPut.bid)   : null;
+
+    var aboveSMA = pd.price > pd.sma200;
+
+    // Grade criteria
+    var c1 = pd.rsi < 40;
+    var c2 = aboveSMA;
+    var c3 = atmCall.delta >= 0.45 && atmCall.delta <= 0.55;
+    var c4 = dte >= 365;
+    var c5 = netCostPct !== null ? netCostPct <= 3 : null;
+    var c6 = (atmCall.oi !== null && atmPut.oi !== null) ? (atmCall.oi >= 200 && atmPut.oi >= 200) : null;
+    var c7 = (callSpread !== null && putSpread !== null) ? (callSpread <= 1.0 && putSpread <= 1.0) : null;
+
+    var criteria = [c1, c2, c3, c4, c5, c6, c7];
+    var score    = criteria.filter(function(c) { return c === true; }).length;
+    var sClass   = scoreClass(score, 7);
+    var sLabel   = scoreLabel(score, 7);
+
+    setStatus('synth-status', 'Done', 'ok');
+
+    var html = priceBarHtml(ticker, pd);
+
+    // Info box
+    html += '<div class="info-box">' +
+      '<div class="info-item"><div class="info-label">Strategy</div><div class="info-val">Synthetic Long</div></div>' +
+      '<div class="info-item"><div class="info-label">Expiry</div><div class="info-val">' + bestExpiry + '</div></div>' +
+      '<div class="info-item"><div class="info-label">DTE</div><div class="info-val">' + dte + '</div></div>' +
+      '<div class="info-item"><div class="info-label">ATM Strike</div><div class="info-val">' + fmtDollar(atmCall.strike) + '</div></div>' +
+      '<div class="info-item"><div class="info-label">Net Cost</div><div class="info-val">' + (netCost !== null ? fmtDollar(netCost) : '—') + '</div></div>' +
+      '<div class="info-item"><div class="info-label">Net Cost % Price</div><div class="info-val">' + (netCostPct !== null ? fmt(netCostPct,2) + '%' : '—') + '</div></div>' +
+    '</div>';
+
+    // Legs info
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">';
+    html += '<div class="scenario-card">';
+    html += '<h4>BUY — Call Leg</h4>';
+    html += '<div class="sc-row"><span class="sc-key">Strike</span><span class="sc-val">' + fmtDollar(atmCall.strike) + '</span></div>';
+    html += '<div class="sc-row"><span class="sc-key">Bid / Ask</span><span class="sc-val">' + fmtDollar(atmCall.bid) + ' / ' + fmtDollar(atmCall.ask) + '</span></div>';
+    html += '<div class="sc-row"><span class="sc-key">Mid</span><span class="sc-val">' + fmtDollar(atmCall.mid) + '</span></div>';
+    html += '<div class="sc-row"><span class="sc-key">Delta</span><span class="sc-val">' + fmt(atmCall.delta, 2) + '</span></div>';
+    html += '<div class="sc-row"><span class="sc-key">OI</span><span class="sc-val">' + fmtK(atmCall.oi) + '</span></div>';
+    html += '<div class="sc-row"><span class="sc-key">Spread</span><span class="sc-val ' + (callSpread && callSpread > 1 ? 'down' : 'up') + '">' + (callSpread !== null ? fmtDollar(callSpread) : '—') + '</span></div>';
+    html += '</div>';
+
+    html += '<div class="scenario-card">';
+    html += '<h4>SELL — Put Leg</h4>';
+    html += '<div class="sc-row"><span class="sc-key">Strike</span><span class="sc-val">' + fmtDollar(atmPut.strike) + '</span></div>';
+    html += '<div class="sc-row"><span class="sc-key">Bid / Ask</span><span class="sc-val">' + fmtDollar(atmPut.bid) + ' / ' + fmtDollar(atmPut.ask) + '</span></div>';
+    html += '<div class="sc-row"><span class="sc-key">Mid</span><span class="sc-val">' + fmtDollar(atmPut.mid) + '</span></div>';
+    html += '<div class="sc-row"><span class="sc-key">Delta</span><span class="sc-val">' + fmt(atmPut.delta, 2) + '</span></div>';
+    html += '<div class="sc-row"><span class="sc-key">OI</span><span class="sc-val">' + fmtK(atmPut.oi) + '</span></div>';
+    html += '<div class="sc-row"><span class="sc-key">Spread</span><span class="sc-val ' + (putSpread && putSpread > 1 ? 'down' : 'up') + '">' + (putSpread !== null ? fmtDollar(putSpread) : '—') + '</span></div>';
+    html += '</div>';
+    html += '</div>';
+
+    // Scorecard
+    html += '<div class="scorecard"><h3>Synthetic Long — Criteria Score</h3><div class="criteria-list">';
+    html += critRow(1, 'RSI(10) < 40 (Bullish Momentum)', c1, fmt(pd.rsi,1));
+    html += critRow(2, 'Price Above 200 SMA', c2, aboveSMA ? 'Above (' + fmtDollar(pd.sma200) + ')' : 'Below (' + fmtDollar(pd.sma200) + ')');
+    html += critRow(3, 'ATM Call Delta 0.45–0.55', c3, fmt(atmCall.delta,2));
+    html += critRow(4, 'Duration ≥ 365 Days', c4, dte + ' days');
+    html += critRow(5, 'Net Cost ≤ 3% of Stock Price', c5, netCostPct !== null ? fmt(netCostPct,2) + '%' : 'N/A');
+    html += critRow(6, 'Both Legs OI ≥ 200', c6, 'Call: ' + fmtK(atmCall.oi) + ' / Put: ' + fmtK(atmPut.oi));
+    html += critRow(7, 'Both Spreads ≤ $1.00', c7, (callSpread !== null ? fmtDollar(callSpread) : '—') + ' / ' + (putSpread !== null ? fmtDollar(putSpread) : '—'));
+    html += '</div>';
+    html += '<div class="score-summary ' + sClass + '"><span class="score-label">' + sLabel + '</span><span class="score-num">' + score + '/7</span></div>';
+    html += '</div>';
+
+    // 3 Scenarios
+    var strikes = [atmCall.strike, atmCall.strike + 5, atmCall.strike + 15];
+    var labels  = ['ATM', 'Slight ITM', 'Deep ITM'];
+
+    html += '<div class="chain-section"><h3>Position Scenarios</h3><div class="scenarios">';
+    strikes.forEach(function(s, si) {
+      var intrinsicGain = s - atmCall.strike;
+      var pnl = intrinsicGain - (netCost || 0);
+      var pnlPct = pd.price ? (pnl / pd.price * 100) : null;
+      html += '<div class="scenario-card"><h4>' + labels[si] + ' — $' + s.toFixed(0) + ' Strike</h4>';
+      html += '<div class="sc-row"><span class="sc-key">Net Cost</span><span class="sc-val">' + (netCost !== null ? fmtDollar(netCost) : '—') + '</span></div>';
+      html += '<div class="sc-row"><span class="sc-key">Intrinsic Gain</span><span class="sc-val ' + (intrinsicGain >= 0 ? 'up' : 'down') + '">$' + intrinsicGain.toFixed(2) + '</span></div>';
+      html += '<div class="sc-row"><span class="sc-key">Net P&L (at expiry)</span><span class="sc-val ' + (pnl >= 0 ? 'up' : 'down') + '">' + fmtDollar(pnl) + '</span></div>';
+      html += '<div class="sc-row"><span class="sc-key">P&L % of Stock</span><span class="sc-val ' + (pnlPct !== null && pnlPct >= 0 ? 'up' : 'down') + '">' + (pnlPct !== null ? fmt(pnlPct,2) + '%' : '—') + '</span></div>';
+      html += '</div>';
+    });
+    html += '</div></div>';
+
+    document.getElementById('synth-results').innerHTML = html;
+
+  } catch(err) {
+    setStatus('synth-status', '✗ ' + err.message, 'error');
+    document.getElementById('synth-results').innerHTML = '<div class="notice">Error: ' + err.message + '</div>';
+  } finally {
+    btn.disabled = false;
   }
-
-  const tableRows = bestByYear.map(({yr, opt}) => oRow(opt, yr)).filter(Boolean).join('');
-  const opraNote = d.chain.length===0 ? `<div class="info-msg">⚠ No LEAPS data found — may be outside market hours or no contracts in 18+ month window.</div>` : '';
-
-  el.innerHTML=`
-    <div class="result-box ${vc}">
-      <div class="result-src">${d.ticker} · $${d.price.toFixed(2)} · TWELVE DATA + MARKETDATA.APP · LIVE · DEEP ITM RULES</div>
-      <div class="verdict">${fails===0?'IDEAL LEAPS ENTRY':fails<=2?'WAIT — NOT YET IDEAL':'DO NOT ENTER'}</div>
-      <div class="verdict-sub">${fails} criteri${fails===1?'on':'a'} not yet optimal.</div>
-    </div>
-    ${opraNote}
-    <div class="checklist"><div class="cl-head">CHECKLIST — 8 LEAPS ENTRY CRITERIA (DEEP ITM STRATEGY)</div>${checks.map(c=>clRow(c.pass,c.name,c.desc,c.val)).join('')}</div>
-    ${tableRows?`<div class="checklist"><div class="cl-head">AVAILABLE LEAPS — DEEP ITM CALLS BY YEAR (MARKETDATA.APP)</div><table class="opts-table"><thead><tr><th>YEAR</th><th>CONTRACT</th><th>DELTA</th><th>IV</th><th>OI</th><th>SPREAD</th><th>BREAKEVEN</th><th>CAGR</th><th>MID</th><th>COST/CONTRACT</th></tr></thead><tbody>${tableRows}</tbody></table></div>`:opraNote||'<div class="error-msg">No LEAPS data returned.</div>'}
-    ${sm&&sbe?`<div class="setup-box"><div class="box-label">RECOMMENDED SETUP (DEEP ITM STYLE)</div><div class="setup-val">${d.ticker} $${ss} Call · ${fmtD(se)} · ${sd2} DTE · Δ${sdlt||'~0.75'} · Mid $${sm.toFixed(2)} (${pctOfStock}% of stock) · Cost $${(sm*100).toLocaleString('en-US',{maximumFractionDigits:0})}/contract · Breakeven: $${sbe} · CAGR needed: ${scagr}%/yr</div></div>`:''}`;
 }
 
-
-// ── Auto-refresh ──
-function isMarketOpen() {
-  const et = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
-  const day = et.getDay();
-  const mins = et.getHours() * 60 + et.getMinutes();
-  return day > 0 && day < 6 && mins >= 570 && mins < 960;
-}
-
-function autoRefresh() {
-  const dashVisible = document.getElementById('view-dashboard').style.display !== 'none';
-  if (dashVisible && isMarketOpen()) {
-    cache = {};
-    startDashboard();
-  }
-}
-
-// ── Auto Refresh ───────────────────────────────────────────
-function isMarketOpen() {
-  const et = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
-  const day = et.getDay();
-  const mins = et.getHours() * 60 + et.getMinutes();
-  return day > 0 && day < 6 && mins >= 570 && mins < 960;
-}
-
-function autoRefresh() {
-  if (!isMarketOpen()) return;
-  // Only refresh if on dashboard view
-  if (document.getElementById('view-dashboard').style.display !== 'none') {
-    cache = {}; tickerData = {}; optionsScoreData = {};
-    startDashboard();
-  }
-}
-
-let refreshCountdown = 300;
-setInterval(() => {
-  const timerEl = document.getElementById('refresh-timer');
-  if (!timerEl) return;
-  if (!isMarketOpen()) {
-    timerEl.textContent = '';
-    refreshCountdown = 300;
-    return;
-  }
-  refreshCountdown--;
-  if (refreshCountdown <= 0) {
-    refreshCountdown = 300;
-    autoRefresh();
-  }
-  const m = Math.floor(refreshCountdown / 60);
-  const s = refreshCountdown % 60;
-  timerEl.textContent = `↺ ${m}:${s.toString().padStart(2,'0')}`;
-}, 1000);
-
-// ── Init ──
-updateClock(); setInterval(updateClock, 1000);
-applyTheme(currentTheme);
-document.getElementById('view-dashboard').style.display='grid';
-['put','cc','leaps','synth'].forEach(v=>document.getElementById('view-'+v).style.display='none');
-startDashboard();
+// ─── ENTER KEY SUPPORT ────────────────────────────────────────────────────────
+document.getElementById('put-ticker').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') runPut();
+});
+document.getElementById('cc-ticker').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') runCC();
+});
+document.getElementById('leaps-ticker').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') runLeaps();
+});
+document.getElementById('synth-ticker').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') runSynth();
+});
 </script>
 </body>
 </html>
