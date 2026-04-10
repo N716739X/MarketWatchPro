@@ -1313,7 +1313,7 @@ function updateCard(ticker) {
   var earnDisp = d.c3 === true ? 'OK' : d.c3 === false ? 'RISK' : (d.phase < 2 ? '…' : '—');
   var premDisp = d.premPct !== null ? fmt(d.premPct, 1) + '%' : (d.phase < 2 ? '…' : '—');
   var dteDisp  = d.dte !== null ? d.dte + 'd' : (d.phase < 2 ? '…' : '—');
-  var strkDisp = d.bestStrike !== null ? '$' + d.bestStrike.toFixed(0) : (d.phase < 2 ? '…' : '—');
+  var strkDisp = d.phase < 2 ? '…' : (d.c5 === true ? '✓' : d.c5 === false ? '✗' : '—');
 
   var scoreText = d.phase >= 2
     ? '<span class="' + badgeCls + ' card-badge" style="font-size:9px;padding:1px 6px">' + badgeTxt + '</span> ' + score + '/6'
