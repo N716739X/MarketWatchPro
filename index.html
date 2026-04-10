@@ -495,22 +495,35 @@ function getInfo(chain,tgt){
 
 function chainTable(chain,tgt,price,label){
   if(!chain?.length) return '';
-  const best=bestContract(chain,tgt);
-  const rows=chain.slice(0,10).map(o=>{
-    const isBest=o===best;
-    const b=parseFloat(o.bid||0), a=parseFloat(o.ask||0), mid=parseFloat(o.mid||(b+a)/2||0);
-    const dlt=parseFloat(o.delta||0), iv=o.iv?parseFloat(o.iv)*100:null;
-    const prem=price&&mid?(mid/price*100):0;
-    const eRaw=o.expiration;
-    const exp=eRaw?(typeof eRaw==='number'?new Date(eRaw*1000).toISOString().split('T')[0]:eRaw):'—';
+  const best = bestContract(chain, tgt);
+
+  // Sort by strike ascending, then pick 10 contracts centered around best fit
+  const sorted = [...chain].sort((a,b) => parseFloat(a.strike||0) - parseFloat(b.strike||0));
+  const bestIdx = sorted.indexOf(best);
+
+  // Show 5 contracts above and below best fit (window of 10 centered on best)
+  const start = Math.max(0, bestIdx - 4);
+  const end   = Math.min(sorted.length, start + 10);
+  const display = sorted.slice(start, end);
+
+  // Make sure best is always in display
+  if (best && !display.includes(best)) display.unshift(best);
+
+  const rows = display.map(o => {
+    const isBest = o === best;
+    const b = parseFloat(o.bid||0), a = parseFloat(o.ask||0), mid = parseFloat(o.mid||(b+a)/2||0);
+    const dlt = parseFloat(o.delta||0), iv = o.iv ? parseFloat(o.iv)*100 : null;
+    const prem = price && mid ? (mid/price*100) : 0;
+    const eRaw = o.expiration;
+    const exp = eRaw ? (typeof eRaw==='number' ? new Date(eRaw*1000).toISOString().split('T')[0] : eRaw) : '—';
     return `<tr class="${isBest?'best-row':''}">
-      <td style="color:var(--orange);font-weight:bold;">${isBest?'★ ':''}${exp}</td>
+      <td style="color:${isBest?'var(--cyan)':'var(--orange)'};font-weight:bold;">${isBest?'★ ':''}${exp}</td>
       <td style="color:#fff;font-weight:bold;">$${parseFloat(o.strike||0).toFixed(0)}</td>
       <td style="color:var(--orange);">Δ${dlt.toFixed(2)}</td>
       <td style="color:${iv&&iv>30?'var(--cyan)':'var(--yellow)'};">${iv?iv.toFixed(0):'—'}%</td>
       <td style="color:var(--text2);">${(o.openInterest||0).toLocaleString()||'—'}</td>
       <td style="color:var(--text2);">$${b.toFixed(2)} / $${a.toFixed(2)}</td>
-      <td style="color:var(--orange);font-weight:bold;">$${mid.toFixed(2)}</td>
+      <td style="color:${isBest?'var(--cyan)':'var(--orange)'};font-weight:bold;">$${mid.toFixed(2)}</td>
       <td style="color:${prem>=2?'var(--cyan)':'var(--red)'};">${prem.toFixed(2)}%</td>
     </tr>`;
   }).join('');
