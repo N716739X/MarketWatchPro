@@ -2581,14 +2581,13 @@ function renderTickerStrip() {
   var html  = '<span class="strip-label">Watchlist:</span>';
   tickers.forEach(function(t) {
     var d     = cardData[t];
-    var grade = (onDashboard && d && d.phase >= 2) ? scoreToGrade(d.score, d.phase) : '';
-    var strat = (onDashboard && d && d.phase >= 2) ? d.strategy : '';
+    var bestScore = (d && d.phase >= 2) ? Math.max(d.putScore || 0, d.ccScore || 0) : null;
+    var grade = (onDashboard && bestScore !== null) ? scoreToGrade(bestScore, 2) : '';
     var gradeStyle = grade ? ' style="color:var(--grade-' + grade.toLowerCase() + ')"' : '';
     var isActive   = t === activeStripTicker;
     html += '<div class="ticker-chip' + (isActive ? ' active' : '') + '" onclick="stripSelect(\'' + t + '\')">'
       + t
       + (grade ? '<span' + gradeStyle + ' style="margin-left:4px;font-size:9px">' + grade + '</span>' : '')
-      + (strat ? '<span style="margin-left:3px;font-size:8px;opacity:0.7">' + strat + '</span>' : '')
       + '</div>';
   });
   strip.innerHTML = html;
