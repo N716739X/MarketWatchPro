@@ -1482,10 +1482,11 @@ var COL_IDS = { put: 'col-put', cc: 'col-cc', leaps: 'col-leaps', synth: 'col-sy
 
 function renderSkeletons() {
   // Populate all 4 columns with loading skeletons
+  // Only show 3 skeleton rows — matches the top-3 limit
   Object.values(COL_IDS).forEach(function(colId) {
     var col = document.getElementById(colId);
     col.innerHTML = '';
-    tickers.forEach(function(t) {
+    tickers.slice(0, 3).forEach(function(t) {
       col.innerHTML += buildSkeletonRow(t);
     });
   });
