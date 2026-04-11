@@ -1430,9 +1430,26 @@ function updateCard(ticker) {
   var score     = d.score !== null ? d.score : 0;
   var grade     = scoreToGrade(score, d.phase);
   var strategy  = d.strategy || 'PUT'; // PUT or CC
-  var badgeCls  = score >= 5 ? 'badge-ideal' : score >= 3 ? 'badge-watch' : 'badge-notready';
-  var badgeTxt  = (score >= 5 ? 'IDEAL' : score >= 3 ? 'WATCH' : 'NOT READY') +
-                  (d.phase >= 2 ? ' · ' + strategy : '');
+  // Option C — tiered labels with context-aware reason when not tradeable
+  var earningsBlocking = d.earningsRisk === true && score < 5;
+  var lowVolBlocking   = d.ivRank !== null && d.ivRank < 50 && score < 3;
+  var badgeCls, badgeTxt;
+  if (score >= 5) {
+    badgeCls = 'badge-ideal';
+    badgeTxt = 'IDEAL · ' + strategy;
+  } else if (score >= 3) {
+    badgeCls = 'badge-watch';
+    badgeTxt = 'WATCH · ' + strategy;
+  } else if (earningsBlocking) {
+    badgeCls = 'badge-notready';
+    badgeTxt = '⚠ EARNINGS · WAIT';
+  } else if (lowVolBlocking) {
+    badgeCls = 'badge-notready';
+    badgeTxt = 'LOW VOL · WAIT';
+  } else {
+    badgeCls = 'badge-notready';
+    badgeTxt = 'NO TRADE';
+  }
 
   var chgColor  = d.change >= 0 ? 'up' : 'down';
   var chgSign   = d.change >= 0 ? '+' : '';
