@@ -833,6 +833,41 @@ tbody td:first-child { text-align:left; }
   box-shadow: 0 0 0 1px var(--accent), 0 0 12px rgba(119,0,255,0.25) !important;
 }
 
+/* ── Card glow states ── */
+.card-ideal {
+  border-color: var(--green) !important;
+  box-shadow: 0 0 10px rgba(0,255,204,0.25), 0 0 0 1px rgba(0,255,204,0.15);
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.card-ideal:hover {
+  box-shadow: 0 0 18px rgba(0,255,204,0.45), 0 0 0 1px rgba(0,255,204,0.3);
+}
+.card-notrade {
+  border-color: rgba(255,34,102,0.35) !important;
+  opacity: 0.72;
+  transition: opacity 0.25s ease, border-color 0.25s ease;
+}
+.card-notrade:hover {
+  opacity: 1;
+  border-color: var(--red) !important;
+  box-shadow: 0 0 8px rgba(255,34,102,0.2);
+}
+/* ── IDEAL badge shimmer ── */
+.badge-ideal { animation: badge-shimmer 2.4s ease-in-out infinite; }
+@keyframes badge-shimmer {
+  0%,100% { box-shadow: 0 0 4px rgba(0,255,204,0.3); }
+  50%     { box-shadow: 0 0 12px rgba(0,255,204,0.8), 0 0 20px rgba(0,255,204,0.3); }
+}
+/* ── Column header accent bar ── */
+.dash-col-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.col-icon {
+  font-size: 14px;
+  line-height: 1;
+}
 </style>
 </head>
 <body>
@@ -870,7 +905,7 @@ tbody td:first-child { text-align:left; }
     <!-- CSP Column -->
     <div class="dash-col">
       <div class="dash-col-header">
-        <span class="dash-col-title">Cash-Secured Put</span>
+        <span class="dash-col-title-wrap"><span class="col-icon">💰</span><span class="dash-col-title">Cash-Secured Put</span></span>
         <span class="dash-col-sub">Ranked by score</span>
       </div>
       <div class="dash-col-body" id="col-put"></div>
@@ -878,7 +913,7 @@ tbody td:first-child { text-align:left; }
     <!-- CC Column -->
     <div class="dash-col">
       <div class="dash-col-header">
-        <span class="dash-col-title">Covered Call</span>
+        <span class="dash-col-title-wrap"><span class="col-icon">📈</span><span class="dash-col-title">Covered Call</span></span>
         <span class="dash-col-sub">Ranked by score</span>
       </div>
       <div class="dash-col-body" id="col-cc"></div>
@@ -886,7 +921,7 @@ tbody td:first-child { text-align:left; }
     <!-- LEAPS Column -->
     <div class="dash-col">
       <div class="dash-col-header">
-        <span class="dash-col-title">LEAPS</span>
+        <span class="dash-col-title-wrap"><span class="col-icon">🎯</span><span class="dash-col-title">LEAPS</span></span>
         <span class="dash-col-sub">Ranked by RSI ↑</span>
       </div>
       <div class="dash-col-body" id="col-leaps"></div>
@@ -894,7 +929,7 @@ tbody td:first-child { text-align:left; }
     <!-- Bull Synthetic Column -->
     <div class="dash-col">
       <div class="dash-col-header">
-        <span class="dash-col-title">Bull Synthetic</span>
+        <span class="dash-col-title-wrap"><span class="col-icon">⚡</span><span class="dash-col-title">Bull Synthetic</span></span>
         <span class="dash-col-sub">Ranked by RSI ↑</span>
       </div>
       <div class="dash-col-body" id="col-synth"></div>
@@ -1572,7 +1607,9 @@ function buildColCard(ticker, d, strategy) {
     ? '<span class="' + badgeCls + ' card-badge" style="font-size:9px;padding:1px 6px">' + badgeTxt + '</span>'
     : '<span class="score-text">Loading <span class="loading-dot"></span></span>';
 
-  return '<div class="col-card" id="colrow-' + ticker + '-' + strategy + '" onclick="navigateToAnalyzer(\'' + ticker + '\',\'' + strategy + '\')">' +
+  var cardGlowCls = badgeCls === 'badge-ideal' ? ' card-ideal' : badgeCls === 'badge-notready' ? ' card-notrade' : '';
+
+  return '<div class="col-card' + cardGlowCls + '" id="colrow-' + ticker + '-' + strategy + '" onclick="navigateToAnalyzer(\'' + ticker + '\',\'' + strategy + '\')">' +
     '<div class="card-header">' +
       '<div>' +
         '<div class="card-ticker">' + ticker + '</div>' +
