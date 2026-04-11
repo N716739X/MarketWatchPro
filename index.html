@@ -1369,7 +1369,7 @@ async function fetchTickerData(ticker) {
     var putScore = [put_c1,put_c2,put_c3,put_c4,put_c5,put_c6].filter(function(x){return x===true;}).length;
 
     // Score CC criteria (same chain data, different RSI rule)
-    var cc_c1 = ivRank !== null ? ivRank > 90 : null;
+    var cc_c1 = ivRank !== null ? ivRank >= 50 : null;
     var cc_c2 = pd.rsi > 65;
     var cc_c3 = earningsRisk === null ? null : !earningsRisk;
     var cc_c4 = premPct !== null ? premPct >= 2 : null;
@@ -1832,16 +1832,19 @@ async function runCC(forceTicker) {
 
     var bestStrike = null, bestDelta = null, bestPremium = null;
     if (chain && chain.strike) {
+      // Target 8% OTM strike (James: 5-10% OTM) — use OTM% as primary, delta as validation
+      var targetOTM = pd.price * 1.08;
       var bd2 = Infinity;
       for (var i = 0; i < chain.strike.length; i++) {
         var d2  = chain.delta ? chain.delta[i] : null;
         if (d2 === null) continue;
-        var dif2 = Math.abs(d2 - 0.18);
+        if (d2 < 0.10 || d2 > 0.45) continue; // filter out far wings
+        var dif2 = Math.abs(chain.strike[i] - targetOTM);
         if (dif2 < bd2) { bd2 = dif2; bestStrike = chain.strike[i]; bestDelta = d2; bestPremium = chain.mid ? chain.mid[i] : null; }
       }
     }
     var premPct   = (bestPremium && pd.price) ? (bestPremium / pd.price * 100) : null;
-    var deltaOk   = bestDelta !== null && bestDelta >= 0.15 && bestDelta <= 0.25;
+    var deltaOk   = bestDelta !== null && bestDelta >= 0.10 && bestDelta <= 0.35; // wider range since OTM% drives selection
     var upsidePct = (bestStrike && pd.price) ? ((bestStrike - pd.price) / pd.price * 100) : null;
     var totalRet  = (upsidePct !== null && premPct !== null) ? (upsidePct + premPct) : null;
 
