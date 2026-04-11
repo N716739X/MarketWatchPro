@@ -1725,7 +1725,7 @@ async function runPut(forceTicker) {
     var deltaOk  = bestDelta !== null && Math.abs(bestDelta) >= 0.15 && Math.abs(bestDelta) <= 0.25;
     var assignCap= bestStrike ? bestStrike * 100 : null;
 
-    var c1 = ivRank !== null ? ivRank > 90 : null;
+    var c1 = ivRank !== null ? ivRank >= 50 : null;
     var c2 = pd.rsi < 30;
     var c3 = !earningsRisk;
     var c4 = premPct !== null ? premPct > 2 : null;
@@ -1766,7 +1766,7 @@ async function runPut(forceTicker) {
     '</div></div>';
 
     html += '<div class="scorecard"><h3>Cash-Secured Put — Score</h3><div class="criteria-list">';
-    html += critRow(1,'IV Rank > 90%', c1, ivRank !== null ? fmt(ivRank,1)+'%' : 'N/A');
+    html += critRow(1,'IV Elevated > 50%', c1, ivRank !== null ? fmt(ivRank,1)+'%' : 'N/A');
     html += critRow(2,'RSI(10) < 30 (Oversold)', c2, fmt(pd.rsi,1));
     html += critRow(3,'No Earnings Before Expiry', c3, earningsRisk ? 'Earnings: '+EARNINGS[ticker] : 'Clear');
     html += critRow(4,'Premium > 2% of Price', c4, premPct !== null ? fmt(premPct,2)+'%' : 'N/A');
@@ -1828,7 +1828,7 @@ async function runCC(forceTicker) {
     var upsidePct = (bestStrike && pd.price) ? ((bestStrike - pd.price) / pd.price * 100) : null;
     var totalRet  = (upsidePct !== null && premPct !== null) ? (upsidePct + premPct) : null;
 
-    var c1 = ivRank !== null ? ivRank > 90 : null;
+    var c1 = ivRank !== null ? ivRank >= 50 : null;
     var c2 = pd.rsi > 65;
     var c3 = !earningsRisk;
     var c4 = premPct !== null ? premPct >= 2 : null;
@@ -1849,11 +1849,11 @@ async function runCC(forceTicker) {
       '<div class="info-item"><div class="info-label">IV Rank</div><div class="info-val">' + (ivRank !== null ? fmt(ivRank,1)+'%' : '—') + '</div></div>' +
     '</div>';
     html += '<div class="scorecard"><h3>Covered Call — Score</h3><div class="criteria-list">';
-    html += critRow(1,'IV Rank > 90%', c1, ivRank !== null ? fmt(ivRank,1)+'%' : 'N/A');
+    html += critRow(1,'IV Elevated > 50%', c1, ivRank !== null ? fmt(ivRank,1)+'%' : 'N/A');
     html += critRow(2,'RSI(10) > 65 (Overbought)', c2, fmt(pd.rsi,1));
     html += critRow(3,'No Earnings Before Expiry', c3, earningsRisk ? 'Earnings: '+EARNINGS[ticker] : 'Clear');
     html += critRow(4,'Premium ≥ 2% of Price', c4, premPct !== null ? fmt(premPct,2)+'%' : 'N/A');
-    html += critRow(5,'Strike Delta 0.15–0.25', c5, bestDelta !== null ? fmt(bestDelta,2) : 'N/A');
+    html += critRow(5,'Strike 5–10% OTM (Δ 0.15–0.25)', c5, (upsidePct !== null ? fmt(upsidePct,1)+'% OTM' : (bestDelta !== null ? 'Δ'+fmt(bestDelta,2) : 'N/A')));
     html += critRow(6,'Duration 30–45 DTE', c6, dte+' days');
     html += '</div>' + scoreSummaryHtml(score,6) + '</div>';
     html += '<div class="btc-note">📌 BTC at 80% profit or 21 DTE, whichever comes first.</div>';
@@ -2085,7 +2085,7 @@ async function runSynth(forceTicker) {
     var putSpread  = (atmPut.bid  !== null && atmPut.ask  !== null) ? atmPut.ask  - atmPut.bid  : null;
     var aboveSMA   = pd.price > pd.sma200;
 
-    var c1 = pd.rsi < 40;
+    var c1 = pd.rsi < 30;
     var c2 = aboveSMA;
     var c3 = atmCall.delta >= 0.45 && atmCall.delta <= 0.55;
     var c4 = dte >= 365;
@@ -2125,7 +2125,7 @@ async function runSynth(forceTicker) {
     '</div></div>';
 
     html += '<div class="scorecard"><h3>Synthetic Long — Score</h3><div class="criteria-list">';
-    html += critRow(1,'RSI(10) < 40 (Bullish Momentum)', c1, fmt(pd.rsi,1));
+    html += critRow(1,'RSI(10) < 30 (Oversold Entry)', c1, fmt(pd.rsi,1));
     html += critRow(2,'Price Above 200 SMA', c2, aboveSMA ? 'Above ('+fmtDollar(pd.sma200)+')' : 'Below ('+fmtDollar(pd.sma200)+')');
     html += critRow(3,'ATM Call Delta 0.45–0.55', c3, fmt(atmCall.delta,2));
     html += critRow(4,'Duration ≥ 365 Days', c4, dte+' days');
