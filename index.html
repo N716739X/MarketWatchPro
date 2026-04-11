@@ -1666,10 +1666,12 @@ function buildChainTable(chain, targetDeltaOrStrike, price, isPut, matchByStrike
   var bestDiff = Infinity;
   rows.forEach(function(r, i) {
     var d = Math.abs(r.delta || 0);
-    if (d >= 0.10 && d <= 0.35) {
-      var diff = matchByStrike
-        ? Math.abs(r.strike - targetDeltaOrStrike)
-        : Math.abs(d - Math.abs(targetDeltaOrStrike));
+    // When matching by strike, skip delta filter — find closest strike directly
+    if (matchByStrike) {
+      var diff = Math.abs(r.strike - targetDeltaOrStrike);
+      if (diff < bestDiff) { bestDiff = diff; bestIdx = i; }
+    } else if (d >= 0.10 && d <= 0.35) {
+      var diff = Math.abs(d - Math.abs(targetDeltaOrStrike));
       if (diff < bestDiff) { bestDiff = diff; bestIdx = i; }
     }
   });
