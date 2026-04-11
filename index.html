@@ -1438,7 +1438,7 @@ function buildColCard(ticker, d, strategy) {
   var chgColor  = (d.changePct >= 0) ? 'up' : 'down';
   var rsiDisp   = !isNaN(rsi) ? fmt(rsi, 0) : '—';
 
-  return '<div class="col-card" id="colrow-' + ticker + '-' + strategy + '" onclick="navigateToAnalyzer('' + ticker + '','' + strategy + '')">' +
+  return '<div class="col-card" id="colrow-' + ticker + '-' + strategy + '" onclick="navigateToAnalyzer(\'' + ticker + '\',\'' + strategy + '\')">' +
     '<span class="col-ticker">' + ticker + '</span>' +
     '<span class="col-price"><span class="' + chgColor + '">' + priceDisp + '</span> <span class="' + chgColor + '" style="font-size:9px">' + chgDisp + '</span></span>' +
     '<span class="col-rsi ' + rsiColor + '">RSI ' + rsiDisp + '</span>' +
