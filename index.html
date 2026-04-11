@@ -846,6 +846,164 @@ tbody td:first-child { text-align:left; }
   box-shadow: 0 0 0 1px var(--accent), 0 0 12px rgba(119,0,255,0.25) !important;
 }
 
+/* ── Auth overlay ── */
+#auth-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8,8,20,0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+#auth-overlay.hidden { display: none; }
+.auth-card {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 16px;
+  padding: 36px 40px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 0 40px rgba(0,255,204,0.1), 0 20px 60px rgba(0,0,0,0.6);
+}
+.auth-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.auth-logo img { height: 40px; filter: drop-shadow(0 0 8px rgba(0,255,204,0.6)); }
+.auth-logo-text { font-size: 20px; font-weight: 800; color: #fff; letter-spacing: 1px; }
+.auth-logo-text span { color: var(--green); }
+.auth-tagline {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 28px;
+  letter-spacing: 0.3px;
+}
+.auth-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+  gap: 0;
+}
+.auth-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  padding: 8px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+.auth-tab.active { color: var(--green); border-bottom-color: var(--green); }
+.auth-field {
+  margin-bottom: 14px;
+}
+.auth-field label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.auth-field input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+  padding: 10px 12px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+.auth-field input:focus { border-color: var(--green); }
+.auth-btn {
+  width: 100%;
+  background: var(--green);
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  padding: 12px;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: opacity 0.2s;
+}
+.auth-btn:hover { opacity: 0.85; }
+.auth-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.auth-error {
+  background: rgba(255,34,102,0.12);
+  border: 1px solid var(--red);
+  border-radius: 6px;
+  color: var(--red);
+  font-size: 11px;
+  padding: 8px 12px;
+  margin-bottom: 14px;
+  display: none;
+}
+.auth-error.show { display: block; }
+.auth-plan-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.auth-plan {
+  flex: 1;
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 10px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+  background: var(--bg);
+}
+.auth-plan.selected { border-color: var(--green); background: rgba(0,255,204,0.06); }
+.auth-plan-name { font-size: 11px; font-weight: 800; color: var(--text); letter-spacing: 0.5px; }
+.auth-plan-price { font-size: 16px; font-weight: 800; color: var(--green); margin: 4px 0 2px; }
+.auth-plan-sub { font-size: 9px; color: var(--text-muted); }
+.auth-divider { text-align: center; font-size: 10px; color: var(--text-muted); margin: 12px 0; }
+/* ── Trial banner ── */
+#trial-banner {
+  background: rgba(0,255,204,0.08);
+  border-bottom: 1px solid rgba(0,255,204,0.2);
+  padding: 6px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--green);
+}
+#trial-banner.hidden { display: none; }
+#trial-banner strong { font-weight: 800; }
+#trial-upgrade-btn {
+  background: var(--green);
+  color: #000;
+  border: none;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding: 4px 12px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
 /* ── Card glow states ── */
 .card-ideal {
   border-color: var(--green) !important;
@@ -875,6 +1033,70 @@ tbody td:first-child { text-align:left; }
 </style>
 </head>
 <body>
+
+<!-- ═══ AUTH OVERLAY ═══ -->
+<div id="auth-overlay">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <img src="logo.png" alt="OptionsEdge Pro">
+      <span class="auth-logo-text">OptionsEdge<span> Pro</span></span>
+    </div>
+    <div class="auth-tagline">Real-time options scoring for strategy-driven traders</div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="authSwitchTab('login')" id="tab-login">Sign In</button>
+      <button class="auth-tab" onclick="authSwitchTab('signup')" id="tab-signup">Create Account</button>
+    </div>
+
+    <div id="auth-error" class="auth-error"></div>
+
+    <!-- Login form -->
+    <div id="form-login">
+      <div class="auth-field">
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="auth-field">
+        <label>Password</label>
+        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="auth-btn" id="login-btn" onclick="doLogin()">Sign In</button>
+      <div class="auth-divider">No account? <a href="#" onclick="authSwitchTab('signup');return false;" style="color:var(--green)">Start your 7-day free trial</a></div>
+    </div>
+
+    <!-- Signup form -->
+    <div id="form-signup" style="display:none">
+      <div class="auth-plan-row">
+        <div class="auth-plan selected" id="plan-monthly" onclick="selectPlan('monthly')">
+          <div class="auth-plan-name">Monthly</div>
+          <div class="auth-plan-price">$24.95</div>
+          <div class="auth-plan-sub">per month</div>
+        </div>
+        <div class="auth-plan" id="plan-annual" onclick="selectPlan('annual')">
+          <div class="auth-plan-name">Annual</div>
+          <div class="auth-plan-price">$249</div>
+          <div class="auth-plan-sub">per year · save $51</div>
+        </div>
+      </div>
+      <div class="auth-field">
+        <label>Email</label>
+        <input type="email" id="signup-email" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="auth-field">
+        <label>Password</label>
+        <input type="password" id="signup-password" placeholder="Min 8 characters" autocomplete="new-password">
+      </div>
+      <button class="auth-btn" id="signup-btn" onclick="doSignup()">Start Free Trial →</button>
+      <div class="auth-divider">7-day free trial · cancel anytime · card required after trial</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TRIAL BANNER ═══ -->
+<div id="trial-banner" class="hidden">
+  <span>Trial active — <strong id="trial-days-left"></strong> remaining</span>
+  <button id="trial-upgrade-btn" onclick="doUpgrade()">Upgrade Now</button>
+</div>
 
 <!-- ═══ HEADER ═══ -->
 <header>
@@ -1019,6 +1241,152 @@ tbody td:first-child { text-align:left; }
 // ═══════════════════════════════════════════════════════
 const TD_KEY   = '170a58b2c2094e3987e4289f4fe39a08';
 const CF_PROXY = 'https://marketwatchpro.mattdavis-7f2.workers.dev/';
+
+// ═══════════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════════
+var _authToken = null;
+var _authUser  = null;
+var _selectedPlan = 'monthly';
+
+function authSwitchTab(tab) {
+  document.getElementById('form-login').style.display  = tab === 'login'  ? '' : 'none';
+  document.getElementById('form-signup').style.display = tab === 'signup' ? '' : 'none';
+  document.getElementById('tab-login').classList.toggle('active',  tab === 'login');
+  document.getElementById('tab-signup').classList.toggle('active', tab === 'signup');
+  document.getElementById('auth-error').classList.remove('show');
+}
+
+function selectPlan(plan) {
+  _selectedPlan = plan;
+  document.getElementById('plan-monthly').classList.toggle('selected', plan === 'monthly');
+  document.getElementById('plan-annual').classList.toggle('selected',  plan === 'annual');
+}
+
+function authShowError(msg) {
+  var el = document.getElementById('auth-error');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+async function doLogin() {
+  var email    = document.getElementById('login-email').value.trim();
+  var password = document.getElementById('login-password').value;
+  if (!email || !password) return authShowError('Please enter your email and password.');
+  var btn = document.getElementById('login-btn');
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  try {
+    var res = await fetch(CF_PROXY + 'auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    var data = await res.json();
+    if (!res.ok) { authShowError(data.error || 'Login failed.'); return; }
+    authSuccess(data);
+  } catch(e) {
+    authShowError('Connection error. Please try again.');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Sign In';
+  }
+}
+
+async function doSignup() {
+  var email    = document.getElementById('signup-email').value.trim();
+  var password = document.getElementById('signup-password').value;
+  if (!email || !password) return authShowError('Please enter your email and password.');
+  if (password.length < 8) return authShowError('Password must be at least 8 characters.');
+  var btn = document.getElementById('signup-btn');
+  btn.disabled = true; btn.textContent = 'Creating account…';
+  try {
+    var res = await fetch(CF_PROXY + 'auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    var data = await res.json();
+    if (!res.ok) { authShowError(data.error || 'Signup failed.'); return; }
+    // Account created — now redirect to Stripe checkout
+    _authToken = data.token;
+    _authUser  = data;
+    await doCheckout(_selectedPlan);
+  } catch(e) {
+    authShowError('Connection error. Please try again.');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Start Free Trial →';
+  }
+}
+
+async function doCheckout(plan) {
+  try {
+    var res = await fetch(CF_PROXY + 'stripe/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _authToken },
+      body: JSON.stringify({
+        plan: plan,
+        successUrl: window.location.href,
+        cancelUrl:  window.location.href
+      })
+    });
+    var data = await res.json();
+    if (data.url) { window.location.href = data.url; }
+    else { authShowError(data.error || 'Could not create checkout session.'); }
+  } catch(e) {
+    authShowError('Connection error. Please try again.');
+  }
+}
+
+async function doUpgrade() {
+  if (!_authToken) return;
+  var btn = document.getElementById('trial-upgrade-btn');
+  btn.textContent = 'Loading…';
+  await doCheckout('monthly');
+  btn.textContent = 'Upgrade Now';
+}
+
+function authSuccess(data) {
+  _authToken = data.token;
+  _authUser  = data;
+  document.getElementById('auth-overlay').classList.add('hidden');
+  updateTrialBanner(data);
+}
+
+function updateTrialBanner(data) {
+  var banner = document.getElementById('trial-banner');
+  if (data.status === 'trialing' && data.trialEnd) {
+    var daysLeft = Math.max(0, Math.ceil((data.trialEnd - Math.floor(Date.now()/1000)) / 86400));
+    document.getElementById('trial-days-left').textContent = daysLeft + ' day' + (daysLeft !== 1 ? 's' : '');
+    banner.classList.remove('hidden');
+  } else {
+    banner.classList.add('hidden');
+  }
+}
+
+async function initAuth() {
+  // Check if returning from Stripe checkout
+  var params = new URLSearchParams(window.location.search);
+  if (params.get('session_id') && _authToken) {
+    // Verify token and refresh status
+    var res = await fetch(CF_PROXY + 'auth/verify', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + _authToken }
+    });
+    var data = await res.json();
+    if (data.valid) {
+      authSuccess({ token: _authToken, ...data });
+      // Clean URL
+      window.history.replaceState({}, '', window.location.pathname);
+      return;
+    }
+  }
+  // Show overlay for unauthenticated users
+  document.getElementById('auth-overlay').classList.remove('hidden');
+}
+
+// Run auth check on load
+document.addEventListener('DOMContentLoaded', function() {
+  initAuth();
+});
 
 const DEFAULT_TICKERS = ['TSLA','NVDA','PLTR']; // DEV: trimmed to 3 for testing — restore full list before prod
 
@@ -1278,7 +1646,10 @@ async function fetchTD(endpoint, params) {
   var url = new URL('https://api.twelvedata.com/' + endpoint);
   params['apikey'] = TD_KEY;
   Object.keys(params).forEach(function(k) { url.searchParams.set(k, params[k]); });
-  var r = await fetch(url.toString());
+  // Route through proxy with auth token
+  var proxyUrl = CF_PROXY + '?url=' + encodeURIComponent(url.toString());
+  var headers = _authToken ? { 'Authorization': 'Bearer ' + _authToken } : {};
+  var r = await fetch(proxyUrl, { headers: headers });
   if (!r.ok) throw new Error('Twelve Data HTTP ' + r.status);
   var data = await r.json();
   if (data.status === 'error') throw new Error('TD: ' + (data.message || 'API error'));
