@@ -2219,53 +2219,59 @@ async function runSynth(forceTicker) {
       fetchChain(ticker, bestExpiry, 'put')
     ]);
 
-    // ATM call delta 0.45-0.55
-    var atmCall = null;
+    // James split-strike structure:
+    // BUY call: ~7% ITM (delta 0.60-0.70) — lower strike
+    // SELL put: near ATM (delta 0.45-0.55) — higher strike, maximises credit
+    var slCall = null;
     if (callChain && callChain.strike) {
-      var bAtm = Infinity;
+      var bC = Infinity;
       for (var i = 0; i < callChain.strike.length; i++) {
-        var d6 = callChain.delta ? callChain.delta[i] : null;
-        if (d6 === null) continue;
-        var dif6 = Math.abs(d6 - 0.50);
-        if (d6 >= 0.40 && d6 <= 0.60 && dif6 < bAtm) {
-          bAtm = dif6;
-          atmCall = { strike: callChain.strike[i], bid: callChain.bid ? callChain.bid[i] : null,
+        var dC = callChain.delta ? callChain.delta[i] : null;
+        if (dC === null) continue;
+        var difC = Math.abs(dC - 0.65);
+        if (dC >= 0.55 && dC <= 0.75 && difC < bC) {
+          bC = difC;
+          slCall = { strike: callChain.strike[i], bid: callChain.bid ? callChain.bid[i] : null,
             ask: callChain.ask ? callChain.ask[i] : null, mid: callChain.mid ? callChain.mid[i] : null,
-            delta: d6, oi: callChain.openInterest ? callChain.openInterest[i] : null };
+            delta: dC, oi: callChain.openInterest ? callChain.openInterest[i] : null };
         }
       }
     }
-    if (!atmCall) throw new Error('No ATM call found (delta 0.45–0.55).');
+    if (!slCall) throw new Error('No ITM call found (delta 0.55–0.75).');
 
-    // ATM put at same strike
-    var atmPut = null;
+    // Sell put near ATM — target delta ~0.50, must be higher strike than the call
+    var slPut = null;
     if (putChain && putChain.strike) {
-      var bPut = Infinity;
+      var bP = Infinity;
       for (var j = 0; j < putChain.strike.length; j++) {
-        var dif7 = Math.abs(putChain.strike[j] - atmCall.strike);
-        if (dif7 < bPut) {
-          bPut = dif7;
-          atmPut = { strike: putChain.strike[j], bid: putChain.bid ? putChain.bid[j] : null,
+        var dP = putChain.delta ? putChain.delta[j] : null;
+        var sP = putChain.strike[j];
+        if (dP === null || sP <= slCall.strike) continue; // put must be higher strike than call
+        var difP = Math.abs(Math.abs(dP) - 0.50);
+        if (Math.abs(dP) >= 0.35 && Math.abs(dP) <= 0.65 && difP < bP) {
+          bP = difP;
+          slPut = { strike: sP, bid: putChain.bid ? putChain.bid[j] : null,
             ask: putChain.ask ? putChain.ask[j] : null, mid: putChain.mid ? putChain.mid[j] : null,
-            delta: putChain.delta ? putChain.delta[j] : null,
-            oi: putChain.openInterest ? putChain.openInterest[j] : null };
+            delta: dP, oi: putChain.openInterest ? putChain.openInterest[j] : null };
         }
       }
     }
-    if (!atmPut) throw new Error('No ATM put found at matching strike.');
+    if (!slPut) throw new Error('No ATM put found above call strike.');
 
-    var netCost    = (atmCall.mid !== null && atmPut.mid !== null) ? atmCall.mid - atmPut.mid : null;
+    var netCost    = (slCall.mid !== null && slPut.mid !== null) ? slCall.mid - slPut.mid : null;
     var netCostPct = (netCost !== null && pd.price) ? (netCost / pd.price * 100) : null;
-    var callSpread = (atmCall.bid !== null && atmCall.ask !== null) ? atmCall.ask - atmCall.bid : null;
-    var putSpread  = (atmPut.bid  !== null && atmPut.ask  !== null) ? atmPut.ask  - atmPut.bid  : null;
-    var aboveSMA   = pd.price > pd.sma200;
+    var callSpread = (slCall.bid !== null && slCall.ask !== null) ? slCall.ask - slCall.bid : null;
+    var putSpread  = (slPut.bid  !== null && slPut.ask  !== null) ? slPut.ask  - slPut.bid  : null;
+    var strikeGap  = slPut.strike - slCall.strike;
+    var breakeven  = netCost !== null ? slCall.strike + netCost : null; // above call strike by net debit
+    var beAboveCur = (breakeven !== null && pd.price) ? ((breakeven / pd.price - 1) * 100) : null;
 
     var c1 = pd.rsi < 30;
-    var c2 = pd.rsi < 40;  // Directional entry — RSI not extended (replaces 200 SMA)
-    var c3 = atmCall.delta >= 0.45 && atmCall.delta <= 0.55;
+    var c2 = pd.rsi < 40;
+    var c3 = slCall.delta >= 0.55 && slCall.delta <= 0.75;  // ITM call
     var c4 = dte >= 365;
-    var c5 = netCostPct !== null ? netCostPct <= 3 : null;
-    var c6 = (atmCall.oi !== null && atmPut.oi !== null) ? (atmCall.oi >= 200 && atmPut.oi >= 200) : null;
+    var c5 = netCostPct !== null ? netCostPct <= 2 : null;   // James targets <1%, we use 2% as pass
+    var c6 = (slCall.oi !== null && slPut.oi !== null) ? (slCall.oi >= 200 && slPut.oi >= 200) : null;
     var c7 = (callSpread !== null && putSpread !== null) ? (callSpread <= 1.0 && putSpread <= 1.0) : null;
     var score = [c1,c2,c3,c4,c5,c6,c7].filter(function(x){return x===true;}).length;
 
@@ -2273,89 +2279,96 @@ async function runSynth(forceTicker) {
 
     var html = priceBarHtml(ticker, pd);
     html += '<div class="info-box">' +
-      '<div class="info-item"><div class="info-label">Strategy</div><div class="info-val">Synthetic Long</div></div>' +
       '<div class="info-item"><div class="info-label">Expiry</div><div class="info-val">' + bestExpiry + '</div></div>' +
       '<div class="info-item"><div class="info-label">DTE</div><div class="info-val">' + dte + '</div></div>' +
-      '<div class="info-item"><div class="info-label">ATM Strike</div><div class="info-val">' + fmtDollar(atmCall.strike) + '</div></div>' +
-      '<div class="info-item"><div class="info-label">Net Cost</div><div class="info-val">' + (netCost !== null ? fmtDollar(netCost) : '—') + '</div></div>' +
-      '<div class="info-item"><div class="info-label">Net Cost %</div><div class="info-val">' + (netCostPct !== null ? fmt(netCostPct,2)+'%' : '—') + '</div></div>' +
+      '<div class="info-item"><div class="info-label">Call Strike</div><div class="info-val">' + fmtDollar(slCall.strike) + '</div></div>' +
+      '<div class="info-item"><div class="info-label">Put Strike</div><div class="info-val">' + fmtDollar(slPut.strike) + '</div></div>' +
+      '<div class="info-item"><div class="info-label">Net Debit</div><div class="info-val">' + (netCost !== null ? fmtDollar(netCost) : '—') + ' (' + (netCostPct !== null ? fmt(netCostPct,2)+'%' : '—') + ')</div></div>' +
+      '<div class="info-item"><div class="info-label">Breakeven</div><div class="info-val">' + (breakeven !== null ? fmtDollar(breakeven) : '—') + (beAboveCur !== null ? ' ('+fmt(beAboveCur,1)+'% away)' : '') + '</div></div>' +
     '</div>';
 
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">';
-    html += '<div class="scenario-card"><h4>BUY — Call Leg</h4>' +
-      '<div class="sc-row"><span class="sc-key">Strike</span><span class="sc-val">' + fmtDollar(atmCall.strike) + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">Bid/Ask</span><span class="sc-val">' + fmtDollar(atmCall.bid) + ' / ' + fmtDollar(atmCall.ask) + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">Mid</span><span class="sc-val">' + fmtDollar(atmCall.mid) + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">Delta</span><span class="sc-val">' + fmt(atmCall.delta,2) + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">OI</span><span class="sc-val">' + fmtK(atmCall.oi) + '</span></div>' +
+    html += '<div class="scenario-card"><h4>BUY — Call Leg (ITM)</h4>' +
+      '<div class="sc-row"><span class="sc-key">Strike</span><span class="sc-val">' + fmtDollar(slCall.strike) + '</span></div>' +
+      '<div class="sc-row"><span class="sc-key">Bid/Ask</span><span class="sc-val">' + fmtDollar(slCall.bid) + ' / ' + fmtDollar(slCall.ask) + '</span></div>' +
+      '<div class="sc-row"><span class="sc-key">Mid</span><span class="sc-val">' + fmtDollar(slCall.mid) + '</span></div>' +
+      '<div class="sc-row"><span class="sc-key">Delta</span><span class="sc-val">' + fmt(slCall.delta,2) + '</span></div>' +
+      '<div class="sc-row"><span class="sc-key">OI</span><span class="sc-val">' + fmtK(slCall.oi) + '</span></div>' +
       '<div class="sc-row"><span class="sc-key">Spread</span><span class="sc-val ' + (callSpread && callSpread > 1 ? 'down' : 'up') + '">' + (callSpread !== null ? fmtDollar(callSpread) : '—') + '</span></div>' +
     '</div>';
-    html += '<div class="scenario-card"><h4>SELL — Put Leg</h4>' +
-      '<div class="sc-row"><span class="sc-key">Strike</span><span class="sc-val">' + fmtDollar(atmPut.strike) + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">Bid/Ask</span><span class="sc-val">' + fmtDollar(atmPut.bid) + ' / ' + fmtDollar(atmPut.ask) + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">Mid</span><span class="sc-val">' + fmtDollar(atmPut.mid) + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">Delta</span><span class="sc-val">' + fmt(atmPut.delta,2) + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">OI</span><span class="sc-val">' + fmtK(atmPut.oi) + '</span></div>' +
+    html += '<div class="scenario-card"><h4>SELL — Put Leg (near ATM)</h4>' +
+      '<div class="sc-row"><span class="sc-key">Strike</span><span class="sc-val">' + fmtDollar(slPut.strike) + '</span></div>' +
+      '<div class="sc-row"><span class="sc-key">Bid/Ask</span><span class="sc-val">' + fmtDollar(slPut.bid) + ' / ' + fmtDollar(slPut.ask) + '</span></div>' +
+      '<div class="sc-row"><span class="sc-key">Mid</span><span class="sc-val">' + fmtDollar(slPut.mid) + '</span></div>' +
+      '<div class="sc-row"><span class="sc-key">Delta</span><span class="sc-val">' + fmt(slPut.delta,2) + '</span></div>' +
+      '<div class="sc-row"><span class="sc-key">OI</span><span class="sc-val">' + fmtK(slPut.oi) + '</span></div>' +
       '<div class="sc-row"><span class="sc-key">Spread</span><span class="sc-val ' + (putSpread && putSpread > 1 ? 'down' : 'up') + '">' + (putSpread !== null ? fmtDollar(putSpread) : '—') + '</span></div>' +
     '</div></div>';
 
     html += '<div class="scorecard"><h3>Synthetic Long — Score</h3><div class="criteria-list">';
     html += critRow(1,'RSI(10) < 30 (Oversold Entry)', c1, fmt(pd.rsi,1));
     html += critRow(2,'RSI(10) < 40 (Not Extended)', c2, fmt(pd.rsi,1));
-    html += critRow(3,'ATM Call Delta 0.45–0.55', c3, fmt(atmCall.delta,2));
+    html += critRow(3,'Call ITM Δ0.55–0.75 (Lower Strike)', c3, fmt(slCall.delta,2));
     html += critRow(4,'Duration ≥ 365 Days', c4, dte+' days');
-    html += critRow(5,'Net Cost ≤ 3% of Price', c5, netCostPct !== null ? fmt(netCostPct,2)+'%' : 'N/A');
-    html += critRow(6,'Both Legs OI ≥ 200', c6, 'Call: '+fmtK(atmCall.oi)+' / Put: '+fmtK(atmPut.oi));
+    html += critRow(5,'Net Debit ≤ 2% of Price', c5, netCostPct !== null ? fmt(netCostPct,2)+'%' : 'N/A');
+    html += critRow(6,'Both Legs OI ≥ 200', c6, 'Call: '+fmtK(slCall.oi)+' / Put: '+fmtK(slPut.oi));
     html += critRow(7,'Both Spreads ≤ $1.00', c7, (callSpread !== null ? fmtDollar(callSpread) : '—')+' / '+(putSpread !== null ? fmtDollar(putSpread) : '—'));
     html += '</div>' + scoreSummaryHtml(score,7) + '</div>';
 
     // ── Contextual suggestions (warnings first, positives last) ──
     var suggWarn = [], suggGood = [];
     if (!c1 && pd.rsi < 40) {
-      suggWarn.push('💡 <strong>RSI approaching entry:</strong> RSI is ' + fmt(pd.rsi,1) + ' — not deeply oversold yet. Watch for a continued dip below 30 before entering the synthetic long.');
+      suggWarn.push('💡 <strong>RSI approaching entry:</strong> RSI is ' + fmt(pd.rsi,1) + ' — not deeply oversold yet. Watch for a continued dip below 30 before entering.');
     } else if (!c1) {
-      suggWarn.push('💡 <strong>RSI too high:</strong> RSI is ' + fmt(pd.rsi,1) + ' — wait for a pullback. A synthetic long entered at elevated RSI leaves little room before a mean-reversion dip hurts both legs.');
+      suggWarn.push('💡 <strong>RSI too high:</strong> RSI is ' + fmt(pd.rsi,1) + ' — wait for a pullback before entering. Entering on strength increases your breakeven distance.');
     }
     if (!c5 && netCostPct !== null) {
-      suggWarn.push('💡 <strong>Net cost elevated:</strong> Net debit is ' + fmt(netCostPct,2) + '% of price — the call premium significantly exceeds the put credit. The position starts with a larger hole to dig out of.');
+      suggWarn.push('💡 <strong>Net debit elevated:</strong> Net debit is ' + fmt(netCostPct,2) + '% — James targets under 1%. Try a higher call strike or lower put strike to reduce cost.');
     }
     if (!c6) {
-      suggWarn.push('💡 <strong>Liquidity concern:</strong> One or both legs have OI below 200. Thin liquidity means wider fills and harder exits — use limit orders at the mid.');
+      suggWarn.push('💡 <strong>Liquidity concern:</strong> One or both legs have OI below 200. Use limit orders at the mid and be patient with fills.');
     }
     if (!c7) {
-      suggWarn.push('💡 <strong>Wide spreads:</strong> One or both leg spreads exceed $1.00. Try legging in separately during high-liquidity hours (9:45–11am ET) to get better fills.');
+      suggWarn.push('💡 <strong>Wide spreads:</strong> One or both spreads exceed $1.00. Leg in separately during high-liquidity hours (9:45–11am ET).');
     }
-    if (netCostPct !== null && netCostPct < 0) {
-      suggGood.push('✅ <strong>Net credit entry:</strong> You collect a net credit of ' + fmt(Math.abs(netCostPct),2) + '% — ideal synthetic long setup. The sold put funds the call with room to spare.');
+    if (netCostPct !== null && netCostPct <= 1) {
+      suggGood.push('✅ <strong>Minimal debit:</strong> Net debit under 1% — classic James structure. The put credit nearly fully funds the call.');
+    } else if (netCostPct !== null && netCostPct < 0) {
+      suggGood.push('✅ <strong>Net credit entry:</strong> You collect a net credit of ' + fmt(Math.abs(netCostPct),2) + '% — the sold put fully funds the call with room to spare.');
+    }
+    if (beAboveCur !== null && beAboveCur <= 5) {
+      suggGood.push('✅ <strong>Tight breakeven:</strong> Stock only needs to move ' + fmt(beAboveCur,1) + '% to break even — very efficient entry.');
     }
     if (score === 7) {
-      suggGood.push('✅ <strong>All criteria met</strong> — ideal synthetic long setup. Enter both legs simultaneously as a combo order to avoid leg risk.');
+      suggGood.push('✅ <strong>All criteria met</strong> — ideal James-style synthetic long. Enter as a combo order to avoid leg risk.');
     }
     var suggestions = suggWarn.concat(suggGood);
     if (suggestions.length > 0) {
       html += '<div class="suggestions-box">' + suggestions.map(function(s){ return '<div class="suggestion-item">' + s + '</div>'; }).join('') + '</div>';
     }
 
-    // Position scenarios — proper two-leg P&L
-    // Call value: Max(0, futurePrice - strike)
-    // Put obligation: -Max(0, strike - futurePrice)  (we sold the put)
-    // Net P&L = callValue - putObligation - netCost
-    //         = Max(0, F-K) - Max(0, K-F) - netCost
-    //         = (F - K) - netCost  [since one of the two max() terms is always 0]
+    // Split-strike P&L scenarios:
+    // Below put strike: put gets assigned — Max loss zone
+    // Between put & call strike: both expire worthless, keep/pay net debit
+    // Above call strike: call gains intrinsic value
+    // P&L = Max(0, F - callStrike) - Max(0, putStrike - F) - netCost
     var scenarioPcts = [-10, 0, 10, 20];
     var scenarioLabels = ['-10% (Drawdown)', 'Flat (0%)', '+10% Rally', '+20% Strong Rally'];
     html += '<div class="chain-section"><h3>Position Scenarios</h3><div class="scenarios">';
     scenarioPcts.forEach(function(pct, si) {
-      var futurePrice    = pd.price * (1 + pct / 100);
-      var callValue      = Math.max(0, futurePrice - atmCall.strike);
-      var putObligation  = Math.max(0, atmCall.strike - futurePrice); // loss if stock below strike
-      var pnl            = callValue - putObligation - (netCost || 0);
-      var pnlPct         = pd.price ? (pnl / pd.price * 100) : null;
+      var futurePrice   = pd.price * (1 + pct / 100);
+      var callValue     = Math.max(0, futurePrice - slCall.strike);
+      var putObligation = Math.max(0, slPut.strike - futurePrice);
+      var pnl           = callValue - putObligation - (netCost || 0);
+      var pnlPct        = pd.price ? (pnl / pd.price * 100) : null;
+      var zone = futurePrice > slCall.strike ? 'Above call → profit zone' :
+                 futurePrice >= slPut.strike  ? 'Dead zone — both expire worthless' :
+                 'Below put → assignment risk';
       html += '<div class="scenario-card"><h4>' + scenarioLabels[si] + '</h4>' +
         '<div class="sc-row"><span class="sc-key">Price Target</span><span class="sc-val">' + fmtDollar(futurePrice) + '</span></div>' +
+        '<div class="sc-row"><span class="sc-key">Zone</span><span class="sc-val" style="font-size:10px;color:var(--text-muted)">' + zone + '</span></div>' +
         '<div class="sc-row"><span class="sc-key">Call Value</span><span class="sc-val ' + (callValue > 0 ? 'up' : '') + '">' + fmtDollar(callValue) + '</span></div>' +
         '<div class="sc-row"><span class="sc-key">Put Obligation</span><span class="sc-val ' + (putObligation > 0 ? 'down' : '') + '">' + (putObligation > 0 ? '-' : '') + fmtDollar(putObligation) + '</span></div>' +
-        '<div class="sc-row"><span class="sc-key">Net Credit</span><span class="sc-val up">' + (netCost !== null ? fmtDollar(-netCost) : '—') + '</span></div>' +
         '<div class="sc-row"><span class="sc-key">Net P&L</span><span class="sc-val ' + (pnl >= 0 ? 'up' : 'down') + '">' + fmtDollar(pnl) + '</span></div>' +
         '<div class="sc-row"><span class="sc-key">P&L %</span><span class="sc-val ' + (pnlPct !== null && pnlPct >= 0 ? 'up' : 'down') + '">' + (pnlPct !== null ? fmt(pnlPct,2)+'%' : '—') + '</span></div>' +
       '</div>';
