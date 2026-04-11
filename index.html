@@ -1518,11 +1518,19 @@ function buildColCard(ticker, d, strategy) {
   var priceColor = rangePos > 70 ? 'up' : rangePos < 30 ? 'down' : '';
 
   // Criteria mini boxes — PUT/CC use scored criteria, LEAPS/Synth show RSI + price position
+  // Pick the right criteria set based on strategy
+  var cx = {};
+  if (strategy === 'put') {
+    cx = { c1: d.put_c1, c2: d.put_c2, c3: d.put_c3, c4: d.put_c4, c5: d.put_c5, c6: d.put_c6 };
+  } else if (strategy === 'cc') {
+    cx = { c1: d.cc_c1, c2: d.cc_c2, c3: d.cc_c3, c4: d.cc_c4, c5: d.cc_c5, c6: d.cc_c6 };
+  }
+
   var ivDisp   = d.ivRank !== null && d.ivRank !== undefined ? Math.round(d.ivRank) + '%' : (d.phase < 2 ? '…' : '—');
-  var earnDisp = d.c3 === true ? 'OK' : d.c3 === false ? 'RISK' : (d.phase < 2 ? '…' : '—');
+  var earnDisp = cx.c3 === true ? 'OK' : cx.c3 === false ? 'RISK' : (d.phase < 2 ? '…' : '—');
   var premDisp = d.premPct !== null && d.premPct !== undefined ? fmt(d.premPct, 1) + '%' : (d.phase < 2 ? '…' : '—');
   var dteDisp  = d.dte !== null && d.dte !== undefined ? d.dte + 'd' : (d.phase < 2 ? '…' : '—');
-  var strkDisp = d.phase < 2 ? '…' : (d.c5 === true ? '✓' : d.c5 === false ? '✗' : '—');
+  var strkDisp = d.phase < 2 ? '…' : (cx.c5 === true ? '✓' : cx.c5 === false ? '✗' : '—');
 
   function mb(label, pass, val) {
     var cls = pass === true ? 'mini-pass' : pass === false ? 'mini-fail' : 'mini-na';
@@ -1532,23 +1540,28 @@ function buildColCard(ticker, d, strategy) {
   var criteriaHtml;
   if (isScored) {
     criteriaHtml =
-      mb('IV',    d.c1, ivDisp) +
-      mb('RSI',   null, rsiDisp) +
-      mb('EARN',  d.c3, earnDisp) +
-      mb('PREM',  d.c4, premDisp) +
-      mb('DELTA', d.c5, strkDisp) +
-      mb('DTE',   d.c6, dteDisp);
+      mb('IV',    cx.c1, ivDisp) +
+      mb('RSI',   cx.c2, rsiDisp) +
+      mb('EARN',  cx.c3, earnDisp) +
+      mb('PREM',  cx.c4, premDisp) +
+      mb('DELTA', cx.c5, strkDisp) +
+      mb('DTE',   cx.c6, dteDisp);
   } else {
-    // LEAPS/Synth — show RSI, 52W position, IV as proxy indicators
-    var posDisp  = fmt(rangePos, 0) + '%';
-    var posCls   = rangePos < 30 ? true : rangePos > 70 ? false : null;
+    // LEAPS/Synth — proxy indicators: RSI, IV, 52W position, earnings, premium, DTE
+    var posDisp = fmt(rangePos, 0) + '%';
+    var posCls  = rangePos < 30 ? true : rangePos > 70 ? false : null;
+    var rsiPass = !isNaN(rsi) ? (rsi < 30 ? true : rsi > 65 ? false : null) : null;
+    // Use shared cc_c3/put_c3 for earnings, put_c4 for premium, put_c6 for DTE
+    var sharedEarn = d.put_c3 !== undefined ? d.put_c3 : null;
+    var sharedPrem = d.put_c4 !== undefined ? d.put_c4 : null;
+    var sharedDte  = d.put_c6 !== undefined ? d.put_c6 : null;
     criteriaHtml =
-      mb('RSI',   !isNaN(rsi) && rsi < 30 ? true : (!isNaN(rsi) && rsi > 65 ? false : null), rsiDisp) +
-      mb('IV',    null, ivDisp) +
-      mb('52W%',  posCls, posDisp) +
-      mb('EARN',  d.c3, earnDisp) +
-      mb('PREM',  d.c4, premDisp) +
-      mb('DTE',   d.c6, dteDisp);
+      mb('RSI',  rsiPass, rsiDisp) +
+      mb('IV',   null, ivDisp) +
+      mb('52W%', posCls, posDisp) +
+      mb('EARN', sharedEarn, earnDisp) +
+      mb('PREM', sharedPrem, premDisp) +
+      mb('DTE',  sharedDte, dteDisp);
   }
 
   // Footer score / label
@@ -1737,6 +1750,11 @@ async function fetchTickerData(ticker) {
     d.phase      = 2;
     d.putScore   = putScore;
     d.ccScore    = ccScore;
+    // Store per-strategy criteria for card rendering
+    d.put_c1 = put_c1; d.put_c2 = put_c2; d.put_c3 = put_c3;
+    d.put_c4 = put_c4; d.put_c5 = put_c5; d.put_c6 = put_c6;
+    d.cc_c1  = cc_c1;  d.cc_c2  = cc_c2;  d.cc_c3  = cc_c3;
+    d.cc_c4  = cc_c4;  d.cc_c5  = cc_c5;  d.cc_c6  = cc_c6;
     d.ivRank     = ivRank;
     d.expiry     = bestExpiry;
     d.dte        = dte;
