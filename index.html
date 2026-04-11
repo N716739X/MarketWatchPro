@@ -1195,25 +1195,41 @@ document.getElementById('settings-modal').addEventListener('click', function(e) 
 // Position sizing helper — returns HTML block for analyzer results
 // costPerContract: total cost for 1 contract (e.g. strike*100 for CSP, premium*100 for LEAPS)
 // strategy: 'csp'|'cc'|'leaps'|'synth' for context label
-function positionSizingHtml(costPerContract, strategy) {
+function positionSizingHtml(costPerContract, strategy, score, maxScore) {
   if (!costPerContract || costPerContract <= 0 || !accountSize) return '';
+
+  // Score-based allocation: bigger position when setup is ideal
+  var alloc, conviction;
+  var pct = score / maxScore;
+  if (pct >= 1.0)       { alloc = 0.10; conviction = 'Ideal Setup — Full Size';     }
+  else if (pct >= 0.85) { alloc = 0.07; conviction = 'Strong Setup — Standard Size'; }
+  else if (pct >= 0.70) { alloc = 0.04; conviction = 'Moderate Setup — Half Size';   }
+  else                  { alloc = 0;    conviction = 'Below threshold — No trade';   }
+
+  if (alloc === 0) {
+    return '<div class="scorecard" style="margin-top:10px;">' +
+      '<h3>Position Sizing</h3>' +
+      '<div style="font-size:11px;color:var(--red);margin-bottom:4px;">' + conviction + '</div>' +
+      '<div style="font-size:10px;color:var(--text-muted);">Score too low to suggest a position. Wait for a stronger setup.</div>' +
+    '</div>';
+  }
+
   var maxContracts = Math.floor(accountSize / costPerContract);
-  // Suggest conservative: ~5% of account per position, min 1
-  var suggested = Math.max(1, Math.floor(accountSize * 0.05 / costPerContract));
-  var totalCost = suggested * costPerContract;
-  var pctOfAcct = (totalCost / accountSize * 100);
+  var suggested    = Math.max(1, Math.floor(accountSize * alloc / costPerContract));
+  var totalCost    = suggested * costPerContract;
+  var pctOfAcct    = (totalCost / accountSize * 100);
   var labels = {
-    csp: 'Cash Required (100 shares)',
-    cc: 'Shares Required (100 shares)',
-    leaps: 'Premium per Contract',
-    synth: 'Net Debit per Contract'
+    csp:  'Cash Required (100 shares)',
+    cc:   'Share Cost (100 shares)',
+    leaps:'Premium per Contract',
+    synth:'Net Debit per Contract'
   };
   return '<div class="scorecard" style="margin-top:10px;">' +
     '<h3>Position Sizing</h3>' +
-    '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Based on $' + accountSize.toLocaleString() + ' account · ~5% per position</div>' +
+    '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">$' + accountSize.toLocaleString() + ' account · ' + conviction + '</div>' +
     '<div class="info-box">' +
       '<div class="info-item"><div class="info-label">' + (labels[strategy] || 'Cost/Contract') + '</div><div class="info-val">$' + costPerContract.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) + '</div></div>' +
-      '<div class="info-item"><div class="info-label">Max Contracts</div><div class="info-val">' + maxContracts + '</div></div>' +
+      '<div class="info-item"><div class="info-label">Allocation</div><div class="info-val">' + Math.round(alloc*100) + '% of account</div></div>' +
       '<div class="info-item"><div class="info-label">Suggested</div><div class="info-val" style="color:var(--accent);font-weight:700;">' + suggested + ' contract' + (suggested > 1 ? 's' : '') + '</div></div>' +
       '<div class="info-item"><div class="info-label">Total Cost</div><div class="info-val">$' + totalCost.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) + '</div></div>' +
       '<div class="info-item"><div class="info-label">% of Account</div><div class="info-val">' + fmt(pctOfAcct,1) + '%</div></div>' +
@@ -2330,7 +2346,7 @@ async function runPut(forceTicker) {
     }
 
     // Position sizing: CSP requires cash = strike * 100
-    html += positionSizingHtml(assignCap, 'csp');
+    html += positionSizingHtml(assignCap, 'csp', score, 6);
 
     html += '<div class="chain-section"><h3>Put Chain — '+bestExpiry+' ('+dte+' DTE)</h3>';
     html += buildChainTable(chain, -0.20, pd.price, true) + '</div>';
@@ -2448,7 +2464,7 @@ async function runCC(forceTicker) {
     html += '<div class="btc-note">📌 BTC at 80% profit or 21 DTE, whichever comes first.</div>';
 
     // Position sizing: CC requires owning 100 shares
-    html += positionSizingHtml(pd.price * 100, 'cc');
+    html += positionSizingHtml(pd.price * 100, 'cc', score, 6);
 
     html += '<div class="chain-section" style="margin-top:14px"><h3>Call Chain — '+bestExpiry+' ('+dte+' DTE)</h3>';
     html += buildChainTable(chain, bestStrike, pd.price, false, true) + '</div>'; // true = match by strike not delta
@@ -2701,7 +2717,7 @@ async function runLeaps(forceTicker) {
 
     // Position sizing: LEAPS cost = best premium * 100
     var leapsCost = bestPremium ? bestPremium * 100 : null;
-    html += positionSizingHtml(leapsCost, 'leaps');
+    html += positionSizingHtml(leapsCost, 'leaps', score, 7);
 
     document.getElementById('leaps-results').innerHTML = html;
   } catch(e) {
@@ -2936,7 +2952,7 @@ async function runSynth(forceTicker) {
 
     // Position sizing: Synth cost = net debit * 100
     var synthCost = netCost !== null && netCost > 0 ? netCost * 100 : null;
-    html += positionSizingHtml(synthCost, 'synth');
+    html += positionSizingHtml(synthCost, 'synth', score, 7);
 
     document.getElementById('synth-results').innerHTML = html;
   } catch(e) {
