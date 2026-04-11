@@ -2607,7 +2607,7 @@ function renderTickerStrip() {
     var isActive   = t === activeStripTicker;
     html += '<div class="ticker-chip' + (isActive ? ' active' : '') + '" onclick="stripSelect(\'' + t + '\')">'
       + t
-      + (grade ? '<span' + gradeStyle + ' style="margin-left:4px;font-size:9px">' + grade + '</span>' : '')
+      + (grade ? '<span' + gradeStyle + ' style="margin-left:3px;font-size:8px;opacity:0.8;vertical-align:super;line-height:1">' + grade + '</span>' : '')
       + '</div>';
   });
   strip.innerHTML = html;
