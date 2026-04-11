@@ -2068,11 +2068,16 @@ async function runLeaps(forceTicker) {
         var dif = Math.abs(r.delta - 0.75);
         if (dif < bestRD) { bestRD = dif; bestR = ri; }
       });
+      // Slice to ±5 rows around the recommended strike
+      var sliceStart = Math.max(0, bestR - 5);
+      var sliceEnd   = Math.min(rows.length, bestR + 6);
+      var visRows    = rows.slice(sliceStart, sliceEnd);
+      var visBestR   = bestR - sliceStart;
       html += '<div class="leaps-table-wrap"><table><thead><tr>' +
         '<th>Strike</th><th>Bid</th><th>Ask</th><th>Mid</th><th>Delta</th><th>OI</th><th>Sprd%</th><th>CAGR%</th>' +
         '</tr></thead><tbody>';
-      rows.forEach(function(row, ri) {
-        var isR = ri === bestR;
+      visRows.forEach(function(row, ri) {
+        var isR = ri === visBestR;
         html += '<tr class="' + (isR ? 'recommended' : '') + '">' +
           '<td class="strike-cell">' + (isR ? '<span class="star">★</span>' : '') + fmtDollar(row.strike) + '</td>' +
           '<td>' + fmtDollar(row.bid) + '</td>' +
