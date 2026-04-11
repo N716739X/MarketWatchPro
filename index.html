@@ -1583,17 +1583,12 @@ function renderColumns() {
   colLeaps.innerHTML = leapsSorted.slice(0,5).map(function(t)  { return buildColCard(t, cardData[t], 'leaps'); }).join('');
   colSynth.innerHTML = synthSorted.slice(0,5).map(function(t)  { return buildColCard(t, cardData[t], 'synth'); }).join('');
 
-  // Also refresh mini rankings for whichever analyzer tab is currently active
-  var activeTabEl = document.querySelector('.tab.active');
-  if (activeTabEl) {
-    var tid = activeTabEl.dataset.tab;
-    if (tid === 'put' || tid === 'cc' || tid === 'leaps' || tid === 'synth') {
-      // Preserve active ticker if one is already shown
-      var activeInput = document.getElementById(tid + '-ticker');
-      var activeTicker = activeInput ? (activeInput.value || null) : null;
-      renderMiniRankings(tid, activeTicker);
-    }
-  }
+  // Refresh mini rankings for ALL analyzer tabs (panels are hidden but DOM exists)
+  ['put', 'cc', 'leaps', 'synth'].forEach(function(tid) {
+    var activeInput = document.getElementById(tid + '-ticker');
+    var activeTicker = activeInput ? (activeInput.value || null) : null;
+    renderMiniRankings(tid, activeTicker);
+  });
 }
 
 // Keep renderSorted as a no-op alias so existing call in fetchTickerData still works
