@@ -2038,6 +2038,32 @@ async function runLeaps(forceTicker) {
     html += critRow(7,'Breakeven CAGR ≤ 35%/yr', c7, breakevenCAGR !== null ? fmt(breakevenCAGR,1)+'%' : 'N/A');
     html += '</div>' + scoreSummaryHtml(score,7) + '</div>';
 
+    // ── Contextual suggestions ──
+    var suggestions = [];
+    if (!c1 && pd.rsi < 40) {
+      suggestions.push('💡 <strong>RSI approaching entry:</strong> RSI is ' + fmt(pd.rsi,1) + ' — not deeply oversold but acceptable for a long-duration LEAPS entry. Watch for a continued dip below 30 for a stronger signal.');
+    } else if (!c1) {
+      suggestions.push('💡 <strong>RSI too high:</strong> RSI is ' + fmt(pd.rsi,1) + ' — wait for a pullback before buying a deep ITM call. Entering on strength increases your breakeven CAGR.');
+    }
+    if (!c2 && currentIV !== null) {
+      suggestions.push('💡 <strong>IV elevated:</strong> Current IV is ' + fmt(currentIV,1) + '% — you are paying a premium for this option. Wait for a volatility cooldown to get a cheaper entry on the same strike.');
+    }
+    if (!c5 && bestOI !== null) {
+      suggestions.push('💡 <strong>Low liquidity:</strong> Open interest is ' + fmtK(bestOI) + ' — below the 300 threshold. Wide spreads and difficulty exiting are risks. Check a different expiry or a more liquid underlying.');
+    }
+    if (!c6 && bestSpread !== null) {
+      suggestions.push('💡 <strong>Wide spread:</strong> Bid/ask spread is ' + fmt(bestSpread,1) + '% — this eats directly into your return. Use a limit order at the mid price and be patient filling it.');
+    }
+    if (!c7 && breakevenCAGR !== null) {
+      suggestions.push('💡 <strong>Demanding breakeven:</strong> Stock needs to grow ' + fmt(breakevenCAGR,1) + '%/yr just to break even. Consider a higher (less deep) strike to reduce cost, or wait for a lower IV environment.');
+    }
+    if (score === 7) {
+      suggestions.push('✅ <strong>All criteria met</strong> — strong LEAPS setup. Consider entering at the ★ strike in the best expiry table below.');
+    }
+    if (suggestions.length > 0) {
+      html += '<div class="suggestions-box">' + suggestions.map(function(s){ return '<div class="suggestion-item">' + s + '</div>'; }).join('') + '</div>';
+    }
+
     // Pick the single best expiry — the one whose nearest-Δ0.75 strike has the lowest CAGR
     var bestExpIdx = 0, bestExpCAGR = Infinity;
     leapsExpiries.forEach(function(exp, eIdx) {
