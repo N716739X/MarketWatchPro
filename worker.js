@@ -455,10 +455,10 @@ function scoreToGrade(score, total) {
 }
 
 function badgeInfo(score, total, isScored) {
-  const max = isScored ? 6 : 7;
-  if (score >= 5) return { cls: 'badge-ideal', txt: 'IDEAL \u00b7 ' + score + '/' + max };
-  if (score >= 3) return { cls: 'badge-watch', txt: (isScored ? 'WATCH' : 'WATCH') + ' \u00b7 ' + score + '/' + max };
-  return { cls: 'badge-notready', txt: (isScored ? 'NO TRADE' : 'WAIT') + ' \u00b7 ' + score + '/' + max };
+  const pct = total > 0 ? (score / total) * 100 : 0;
+  if (pct >= 75) return { cls: 'badge-ideal', txt: 'IDEAL \u00b7 ' + score + '/' + total };
+  if (pct >= 40) return { cls: 'badge-watch', txt: 'WATCH \u00b7 ' + score + '/' + total };
+  return { cls: 'badge-notready', txt: (isScored ? 'NO TRADE' : 'WAIT') + ' \u00b7 ' + score + '/' + total };
 }
 
 async function scoreTicker(ticker) {
