@@ -1645,7 +1645,7 @@ function scoreSummaryHtml(score, total) {
   '</div>';
 }
 
-function buildChainTable(chain, targetDelta, price, isPut) {
+function buildChainTable(chain, targetDeltaOrStrike, price, isPut, matchByStrike) {
   if (!chain || !chain.optionSymbol) return '<p style="color:var(--text-muted);font-size:12px">No chain data.</p>';
   var rows = [];
   for (var i = 0; i < chain.optionSymbol.length; i++) {
@@ -1667,7 +1667,9 @@ function buildChainTable(chain, targetDelta, price, isPut) {
   rows.forEach(function(r, i) {
     var d = Math.abs(r.delta || 0);
     if (d >= 0.10 && d <= 0.35) {
-      var diff = Math.abs(d - Math.abs(targetDelta));
+      var diff = matchByStrike
+        ? Math.abs(r.strike - targetDeltaOrStrike)
+        : Math.abs(d - Math.abs(targetDeltaOrStrike));
       if (diff < bestDiff) { bestDiff = diff; bestIdx = i; }
     }
   });
@@ -1846,15 +1848,15 @@ async function runCC(forceTicker) {
       }
     }
     var premPct   = (bestPremium && pd.price) ? (bestPremium / pd.price * 100) : null;
-    var deltaOk   = bestDelta !== null && bestDelta >= 0.10 && bestDelta <= 0.35; // wider range since OTM% drives selection
     var upsidePct = (bestStrike && pd.price) ? ((bestStrike - pd.price) / pd.price * 100) : null;
+    var otmOk     = upsidePct !== null ? (upsidePct >= 5 && upsidePct <= 15) : null;
     var totalRet  = (upsidePct !== null && premPct !== null) ? (upsidePct + premPct) : null;
 
     var c1 = ivRank !== null ? ivRank >= 50 : null;
     var c2 = pd.rsi > 65;
     var c3 = !earningsRisk;
     var c4 = premPct !== null ? premPct >= 2 : null;
-    var c5 = deltaOk;
+    var c5 = otmOk;
     var c6 = dte >= 30 && dte <= 45;
     var score = [c1,c2,c3,c4,c5,c6].filter(function(x){return x===true;}).length;
 
@@ -1880,7 +1882,7 @@ async function runCC(forceTicker) {
     html += '</div>' + scoreSummaryHtml(score,6) + '</div>';
     html += '<div class="btc-note">📌 BTC at 80% profit or 21 DTE, whichever comes first.</div>';
     html += '<div class="chain-section" style="margin-top:14px"><h3>Call Chain — '+bestExpiry+' ('+dte+' DTE)</h3>';
-    html += buildChainTable(chain, 0.18, pd.price, false) + '</div>';
+    html += buildChainTable(chain, bestStrike, pd.price, false, true) + '</div>'; // true = match by strike not delta
 
     document.getElementById('cc-results').innerHTML = html;
   } catch(e) {
