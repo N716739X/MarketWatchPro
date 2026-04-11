@@ -1900,34 +1900,18 @@ async function runSynthPhase3(ticker) {
     var callChain = results[0], putChain = results[1];
 
     // Find put near ATM first — OTM only (strike ≤ current price), price-proximity primary
-    var slPut = null;
-    if (putChain && putChain.strike) {
-      var bD2 = Infinity;
-      for (var j = 0; j < putChain.strike.length; j++) {
-        var sP = putChain.strike[j];
-        if (sP > pd.price) continue;  // OTM puts only
-        var dist = Math.abs(sP - pd.price);
-        if (dist < bD2) {
-          bD2 = dist;
-          var dP = putChain.delta ? putChain.delta[j] : null;
-          slPut = { strike: sP, mid: putChain.mid ? putChain.mid[j] : null,
-            bid: putChain.bid ? putChain.bid[j] : null, ask: putChain.ask ? putChain.ask[j] : null,
-            delta: dP, oi: putChain.openInterest ? putChain.openInterest[j] : null };
-        }
-      }
-    }
-    if (!slPut) return;
-
-    // Find call below put strike
+    // James split-strike: BUY call ~7% ITM, SELL put near ATM above call strike
+    var callTarget3 = pd.price * 0.93;
     var slCall = null;
     if (callChain && callChain.strike) {
       var bC = Infinity;
       for (var i = 0; i < callChain.strike.length; i++) {
         var dC = callChain.delta ? Math.abs(callChain.delta[i]) : null;
         var sC = callChain.strike[i];
-        if (sC >= slPut.strike || dC === null) continue;
-        var difC = Math.abs(dC - 0.80);
-        if (dC >= 0.75 && dC <= 0.90 && difC < bC) {
+        if (sC > pd.price) continue;
+        if (dC === null) continue;
+        var difC = Math.abs(sC - callTarget3);
+        if (dC >= 0.55 && dC <= 0.85 && difC < bC) {
           bC = difC;
           slCall = { strike: sC, mid: callChain.mid ? callChain.mid[i] : null,
             bid: callChain.bid ? callChain.bid[i] : null, ask: callChain.ask ? callChain.ask[i] : null,
@@ -1938,19 +1922,55 @@ async function runSynthPhase3(ticker) {
         var bCD = Infinity;
         for (var i2 = 0; i2 < callChain.strike.length; i2++) {
           var sC2 = callChain.strike[i2];
-          if (sC2 >= slPut.strike) continue;
-          var d2 = Math.abs(sC2 - pd.price * 0.80);
+          if (sC2 > pd.price) continue;
+          var d2 = Math.abs(sC2 - callTarget3);
           if (d2 < bCD) {
             bCD = d2;
             slCall = { strike: sC2, mid: callChain.mid ? callChain.mid[i2] : null,
               bid: callChain.bid ? callChain.bid[i2] : null, ask: callChain.ask ? callChain.ask[i2] : null,
-              delta: null, oi: callChain.openInterest ? callChain.openInterest[i2] : null };
+              delta: callChain.delta ? Math.abs(callChain.delta[i2]) : null,
+              oi: callChain.openInterest ? callChain.openInterest[i2] : null };
           }
         }
       }
     }
     if (!slCall) return;
 
+    var putTarget3 = pd.price * 0.98;
+    var slPut = null;
+    if (putChain && putChain.strike) {
+      var bP = Infinity;
+      for (var j = 0; j < putChain.strike.length; j++) {
+        var dP = putChain.delta ? Math.abs(putChain.delta[j]) : null;
+        var sP = putChain.strike[j];
+        if (sP <= slCall.strike || sP > pd.price) continue;
+        if (dP === null) continue;
+        var difP = Math.abs(sP - putTarget3);
+        if (dP >= 0.30 && dP <= 0.60 && difP < bP) {
+          bP = difP;
+          slPut = { strike: sP, mid: putChain.mid ? putChain.mid[j] : null,
+            bid: putChain.bid ? putChain.bid[j] : null, ask: putChain.ask ? putChain.ask[j] : null,
+            delta: putChain.delta ? putChain.delta[j] : null,
+            oi: putChain.openInterest ? putChain.openInterest[j] : null };
+        }
+      }
+      if (!slPut) {
+        var bPD = Infinity;
+        for (var k = 0; k < putChain.strike.length; k++) {
+          var sK = putChain.strike[k];
+          if (sK <= slCall.strike || sK > pd.price) continue;
+          var distP = Math.abs(sK - putTarget3);
+          if (distP < bPD) {
+            bPD = distP;
+            slPut = { strike: sK, mid: putChain.mid ? putChain.mid[k] : null,
+              bid: putChain.bid ? putChain.bid[k] : null, ask: putChain.ask ? putChain.ask[k] : null,
+              delta: putChain.delta ? putChain.delta[k] : null,
+              oi: putChain.openInterest ? putChain.openInterest[k] : null };
+          }
+        }
+      }
+    }
+    if (!slPut) return;
     var netCost    = (slCall.mid !== null && slPut.mid !== null) ? slCall.mid - slPut.mid : null;
     var netCostPct = (netCost !== null && pd.price) ? (netCost / pd.price * 100) : null;
     var callSpread = (slCall.bid !== null && slCall.ask !== null) ? slCall.ask - slCall.bid : null;
@@ -1958,9 +1978,9 @@ async function runSynthPhase3(ticker) {
 
     d.synth_c1 = pd.rsi < 30;
     d.synth_c2 = pd.rsi < 40;
-    d.synth_c3 = slCall.delta !== null ? (slCall.delta >= 0.75 && slCall.delta <= 0.90) : null;
+    d.synth_c3 = slCall.delta !== null ? (slCall.delta >= 0.55 && slCall.delta <= 0.85) : null;
     d.synth_c4 = dte >= 365;
-    d.synth_c5 = netCostPct !== null ? netCostPct <= 2 : null;
+    d.synth_c5 = netCostPct !== null ? netCostPct <= 15 : null;
     d.synth_c6 = (slCall.oi !== null && slPut.oi !== null) ? (slCall.oi >= 200 && slPut.oi >= 200) : null;
     d.synth_c7 = (callSpread !== null && putSpread !== null) ? (callSpread <= 1.0 && putSpread <= 1.0) : null;
     d.synthScore = [d.synth_c1,d.synth_c2,d.synth_c3,d.synth_c4,d.synth_c5,d.synth_c6,d.synth_c7]
@@ -2642,68 +2662,84 @@ async function runSynth(forceTicker) {
       fetchChain(ticker, bestExpiry, 'put')
     ]);
 
-    // James split-strike structure:
-    // Step 1 — SELL put: find nearest strike to current price (ATM anchor)
-    // Step 2 — BUY call: find best ITM call BELOW the put strike
-    // This order avoids the put-chain-above-call problem since put anchors to price first.
+    // James split-strike Bull Synthetic (from real TSLA trades Jan28 + Mar3):
+    // BUY call: ~7% ITM (5-10% below price), delta 0.55-0.85
+    // SELL put: ~2% below price (near ATM), delta 0.30-0.60, ABOVE call strike
+    // Net debit ~5-15% of price is acceptable (James: "less than 1% of my bag")
 
-    // --- STEP 1: Find put strike near ATM ---
-    var slPut = null;
-    if (putChain && putChain.strike) {
-      // Primary: strike closest to current price on OTM side (≤ price)
-      // Delta used only as tiebreaker — not reliable for long-dated chains
-      var bDist = Infinity;
-      for (var j = 0; j < putChain.strike.length; j++) {
-        var sP = putChain.strike[j];
-        if (sP > pd.price) continue;  // OTM puts only — must be at or below current price
-        var dist = Math.abs(sP - pd.price);
-        if (dist < bDist) {
-          bDist = dist;
-          var dP = putChain.delta ? putChain.delta[j] : null;
-          slPut = { strike: sP, bid: putChain.bid ? putChain.bid[j] : null,
-            ask: putChain.ask ? putChain.ask[j] : null, mid: putChain.mid ? putChain.mid[j] : null,
-            delta: dP, oi: putChain.openInterest ? putChain.openInterest[j] : null };
-        }
-      }
-    }
-    if (!slPut) throw new Error('No put strike found near current price.');
-
-    // --- STEP 2: Find call strike BELOW put strike, targeting delta 0.65 ITM ---
+    // --- STEP 1: BUY call ~7% below current price (ITM) ---
+    var callTarget = pd.price * 0.93;
     var slCall = null;
     if (callChain && callChain.strike) {
-      // Pass 1: delta 0.55-0.75, must be below put strike
       var bC = Infinity;
       for (var i = 0; i < callChain.strike.length; i++) {
         var dC = callChain.delta ? Math.abs(callChain.delta[i]) : null;
         var sC = callChain.strike[i];
-        if (sC >= slPut.strike) continue; // call must be lower strike than put
+        if (sC > pd.price) continue; // must be ITM
         if (dC === null) continue;
-        var difC = Math.abs(dC - 0.80);
-        if (dC >= 0.75 && dC <= 0.90 && difC < bC) {
+        var difC = Math.abs(sC - callTarget);
+        if (dC >= 0.55 && dC <= 0.85 && difC < bC) {
           bC = difC;
           slCall = { strike: sC, bid: callChain.bid ? callChain.bid[i] : null,
             ask: callChain.ask ? callChain.ask[i] : null, mid: callChain.mid ? callChain.mid[i] : null,
             delta: dC, oi: callChain.openInterest ? callChain.openInterest[i] : null };
         }
       }
-      // Pass 2 fallback: closest to 90% of price, below put strike
-      if (!slCall) {
-        var targetC = pd.price * 0.80;
+      if (!slCall) { // fallback: closest to 93% of price
         var bCD = Infinity;
         for (var i2 = 0; i2 < callChain.strike.length; i2++) {
           var sC2 = callChain.strike[i2];
-          if (sC2 >= slPut.strike) continue;
-          var dist2 = Math.abs(sC2 - targetC);
+          if (sC2 > pd.price) continue;
+          var dist2 = Math.abs(sC2 - callTarget);
           if (dist2 < bCD) {
             bCD = dist2;
             slCall = { strike: sC2, bid: callChain.bid ? callChain.bid[i2] : null,
               ask: callChain.ask ? callChain.ask[i2] : null, mid: callChain.mid ? callChain.mid[i2] : null,
-              delta: null, oi: callChain.openInterest ? callChain.openInterest[i2] : null };
+              delta: callChain.delta ? Math.abs(callChain.delta[i2]) : null,
+              oi: callChain.openInterest ? callChain.openInterest[i2] : null };
           }
         }
       }
     }
-    if (!slCall) throw new Error('No ITM call found below put strike.');
+    if (!slCall) throw new Error('No ITM call strike found (5-10% below price).');
+
+    // --- STEP 2: SELL put ~2% below price, ABOVE call strike (near ATM) ---
+    var putTarget = pd.price * 0.98;
+    var slPut = null;
+    if (putChain && putChain.strike) {
+      var bP = Infinity;
+      for (var j = 0; j < putChain.strike.length; j++) {
+        var dP = putChain.delta ? Math.abs(putChain.delta[j]) : null;
+        var sP = putChain.strike[j];
+        if (sP <= slCall.strike) continue; // put must be ABOVE call strike
+        if (sP > pd.price) continue;       // put must be OTM (below current price)
+        if (dP === null) continue;
+        var difP = Math.abs(sP - putTarget);
+        if (dP >= 0.30 && dP <= 0.60 && difP < bP) {
+          bP = difP;
+          slPut = { strike: sP, bid: putChain.bid ? putChain.bid[j] : null,
+            ask: putChain.ask ? putChain.ask[j] : null, mid: putChain.mid ? putChain.mid[j] : null,
+            delta: putChain.delta ? putChain.delta[j] : null,
+            oi: putChain.openInterest ? putChain.openInterest[j] : null };
+        }
+      }
+      if (!slPut) { // fallback: any strike above call, below price
+        var bPD = Infinity;
+        for (var k = 0; k < putChain.strike.length; k++) {
+          var sK = putChain.strike[k];
+          if (sK <= slCall.strike || sK > pd.price) continue;
+          var distP = Math.abs(sK - putTarget);
+          if (distP < bPD) {
+            bPD = distP;
+            slPut = { strike: sK, bid: putChain.bid ? putChain.bid[k] : null,
+              ask: putChain.ask ? putChain.ask[k] : null, mid: putChain.mid ? putChain.mid[k] : null,
+              delta: putChain.delta ? putChain.delta[k] : null,
+              oi: putChain.openInterest ? putChain.openInterest[k] : null };
+          }
+        }
+      }
+    }
+    if (!slPut) throw new Error('No near-ATM put found above call strike.');
 
     var netCost    = (slCall.mid !== null && slPut.mid !== null) ? slCall.mid - slPut.mid : null;
     var netCostPct = (netCost !== null && pd.price) ? (netCost / pd.price * 100) : null;
@@ -2716,9 +2752,9 @@ async function runSynth(forceTicker) {
 
     var c1 = pd.rsi < 30;
     var c2 = pd.rsi < 40;
-    var c3 = slCall.delta !== null ? (slCall.delta >= 0.75 && slCall.delta <= 0.90) : null;  // Deep ITM call
+    var c3 = slCall.delta !== null ? (slCall.delta >= 0.55 && slCall.delta <= 0.85) : null;  // ITM call 5-10% below price (James)
     var c4 = dte >= 365;
-    var c5 = netCostPct !== null ? netCostPct <= 2 : null;   // James targets <1%, we use 2% as pass
+    var c5 = netCostPct !== null ? netCostPct <= 15 : null;  // James accepts ~5-15% net debit
     var c6 = (slCall.oi !== null && slPut.oi !== null) ? (slCall.oi >= 200 && slPut.oi >= 200) : null;
     var c7 = (callSpread !== null && putSpread !== null) ? (callSpread <= 1.0 && putSpread <= 1.0) : null;
     var score = [c1,c2,c3,c4,c5,c6,c7].filter(function(x){return x===true;}).length;
@@ -2756,9 +2792,9 @@ async function runSynth(forceTicker) {
     html += '<div class="scorecard"><h3>Bull Synthetic — Score</h3><div class="criteria-list">';
     html += critRow(1,'RSI(10) < 30 (Oversold Entry)', c1, fmt(pd.rsi,1));
     html += critRow(2,'RSI(10) < 40 (Not Extended)', c2, fmt(pd.rsi,1));
-    html += critRow(3,'Call Deep ITM Δ0.75–0.90 (Lower Strike)', c3, fmt(slCall.delta,2));
+    html += critRow(3,'Call ITM 5-10% Below Price (Δ0.55–0.85)', c3, fmt(slCall.delta,2));
     html += critRow(4,'Duration ≥ 365 Days', c4, dte+' days');
-    html += critRow(5,'Net Debit ≤ 2% of Price', c5, netCostPct !== null ? fmt(netCostPct,2)+'%' : 'N/A');
+    html += critRow(5,'Net Debit ≤ 15% of Price', c5, netCostPct !== null ? fmt(netCostPct,2)+'%' : 'N/A');
     html += critRow(6,'Both Legs OI ≥ 200', c6, 'Call: '+fmtK(slCall.oi)+' / Put: '+fmtK(slPut.oi));
     html += critRow(7,'Both Spreads ≤ $1.00', c7, (callSpread !== null ? fmtDollar(callSpread) : '—')+' / '+(putSpread !== null ? fmtDollar(putSpread) : '—'));
     html += '</div>' + scoreSummaryHtml(score,7) + '</div>';
