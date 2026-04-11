@@ -396,6 +396,9 @@ header {
   gap: 3px;
   margin-bottom: 8px;
 }
+.criteria-row.criteria-7 {
+  grid-template-columns: repeat(7, 1fr);
+}
 .mini-box {
   text-align: center;
   padding: 3px 2px;
@@ -1561,7 +1564,7 @@ function buildColCard(ticker, d, strategy) {
         '<div class="range-dot" style="left:' + rangePos + '%"></div>' +
       '</div>' +
     '</div>' +
-    '<div class="criteria-row">' + criteriaHtml + '</div>' +
+    '<div class="criteria-row' + (isScored ? '' : ' criteria-7') + '">' + criteriaHtml + '</div>' +
     '<div class="card-footer">' + scoreHtml + '<span style="font-size:9px;color:var(--text-muted)">RSI ' + rsiDisp + '</span></div>' +
   '</div>';
 }
