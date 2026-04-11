@@ -306,9 +306,14 @@ async function handleProxy(req, env) {
       if (k !== 'path') params.set(k, v);
     }
     proxyUrl = 'https://api.marketdata.app/v1/' + mdPath + '?' + params.toString();
-  } else {
-    // Generic URL proxy: ?url=https://api.twelvedata.com/...
+  } else if (target) {
+    // TwelveData proxy: inject API key server-side so frontend never sees it
     proxyUrl = target;
+    if (proxyUrl.includes('api.twelvedata.com')) {
+      const tdUrl = new URL(proxyUrl);
+      tdUrl.searchParams.set('apikey', TD_KEY);
+      proxyUrl = tdUrl.toString();
+    }
   }
 
   // ── Check cache before hitting upstream API ──
