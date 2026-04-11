@@ -2676,7 +2676,7 @@ function buildMiniRankings(strategy, activeTicker) {
       var gradeHtml = '';
     }
 
-    return '<div class="mini-rank-row' + (isActive ? ' is-active' : '') + '" onclick="navigateToAnalyzer('' + t + '','' + strategy + '')">' +
+    return '<div class="mini-rank-row' + (isActive ? ' is-active' : '') + '" onclick="navigateToAnalyzer(\'' + t + '\',\'' + strategy + '\')">' +
       '<span class="mini-rank-num">' + (idx + 1) + '</span>' +
       '<span class="mini-rank-ticker">' + t + '</span>' +
       '<span class="mini-rank-price">' + priceDisp + '</span>' +
