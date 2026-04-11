@@ -256,70 +256,16 @@ header {
 
 /* Compact row card inside columns */
 .col-card {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 7px 10px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  padding: 12px 14px;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
-  position: relative;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
-.col-card:hover { border-color: var(--accent); background: rgba(119,0,255,0.08); }
+.col-card:hover { border-color: var(--accent); box-shadow: 0 0 12px rgba(119,0,255,0.2); }
 .col-card.col-loading { opacity: 0.45; animation: shimmer 1.5s ease-in-out infinite; }
-
-.col-rank {
-  font-size: 9px;
-  font-weight: 700;
-  color: var(--text-muted);
-  width: 14px;
-  text-align: center;
-  flex-shrink: 0;
-}
-.col-ticker {
-  font-size: 13px;
-  font-weight: 900;
-  color: var(--text);
-  width: 44px;
-  flex-shrink: 0;
-}
-.col-price {
-  font-size: 10px;
-  color: var(--text-muted);
-  flex: 1;
-  min-width: 0;
-}
-.col-rsi {
-  font-size: 10px;
-  font-weight: 700;
-  width: 32px;
-  text-align: right;
-  flex-shrink: 0;
-}
-.col-badge {
-  font-size: 8px;
-  font-weight: 800;
-  padding: 2px 6px;
-  border-radius: 6px;
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-.col-grade {
-  font-size: 11px;
-  font-weight: 900;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  border: 1px solid currentColor;
-}
+/* col-badge / col-grade merged into card-badge / grade-box */
 
 /* ═══════════════════════════════════════════════════════
    TICKER CARD
@@ -1497,55 +1443,129 @@ function renderSkeletons() {
 }
 
 function buildSkeletonRow(ticker) {
-  return '<div class="col-card col-loading" id="colrow-' + ticker + '-loading">' +
-    '<span class="col-rank">—</span>' +
-    '<span class="col-ticker">' + ticker + '</span>' +
-    '<span class="col-price">Loading…</span>' +
-    '<span class="col-rsi" style="color:var(--text-muted)">—</span>' +
-    '<span class="col-badge badge-notready" style="opacity:0.4">…</span>' +
+  var skMini = ['IV','RSI','EARN','PREM','DELTA','DTE'].map(function(l) {
+    return '<div class="mini-box mini-na"><span class="mini-label">' + l + '</span><span class="mini-val">—</span></div>';
+  }).join('');
+  return '<div class="col-card col-loading">' +
+    '<div class="card-header">' +
+      '<div><div class="card-ticker">' + ticker + '</div><div class="card-name">Loading…</div></div>' +
+      '<div class="grade-box grade-">—</div>' +
+    '</div>' +
+    '<div style="height:14px;background:var(--surface2);border-radius:4px;margin-bottom:8px"></div>' +
+    '<div style="height:14px;background:var(--surface2);border-radius:4px;margin-bottom:8px"></div>' +
+    '<div class="criteria-row">' + skMini + '</div>' +
+    '<div class="card-footer"><span class="score-text">Loading…</span></div>' +
   '</div>';
 }
 
-// Build a compact row card for a column
+// Build a full rich card for a dashboard column
 function buildColCard(ticker, d, strategy) {
-  // strategy: 'put' | 'cc' | 'leaps' | 'synth'
-  var isScored  = (strategy === 'put' || strategy === 'cc');
-  var score     = isScored ? (strategy === 'put' ? d.putScore : d.ccScore) : null;
-  var grade     = isScored ? scoreToGrade(score, d.phase) : null;
-  var rsi       = d.rsi;
-  var rsiColor  = !isNaN(rsi) ? (rsi < 30 ? 'down' : rsi > 65 ? 'up' : '') : '';
+  var isScored = (strategy === 'put' || strategy === 'cc');
+  var score    = isScored ? (strategy === 'put' ? (d.putScore || 0) : (d.ccScore || 0)) : null;
+  var grade    = scoreToGrade(isScored ? score : 0, d.phase);
+
+  // For LEAPS/Synth use RSI as proxy grade
+  if (!isScored) {
+    var rsiVal = d.rsi;
+    if (!isNaN(rsiVal)) {
+      grade = rsiVal < 30 ? 'A' : rsiVal < 40 ? 'B' : rsiVal < 50 ? 'C' : rsiVal < 60 ? 'D' : 'F';
+    } else { grade = ''; }
+  }
+
+  var rsi      = d.rsi;
+  var rsiColor = !isNaN(rsi) ? (rsi < 30 ? 'down' : rsi > 65 ? 'up' : '') : '';
+  var rsiDisp  = !isNaN(rsi) ? fmt(rsi, 1) : '—';
 
   // Badge
   var badgeCls, badgeTxt;
   if (isScored) {
-    if (score >= 5)      { badgeCls = 'badge-ideal';    badgeTxt = score + '/6 IDEAL'; }
-    else if (score >= 3) { badgeCls = 'badge-watch';    badgeTxt = score + '/6 WATCH'; }
-    else                 { badgeCls = 'badge-notready'; badgeTxt = score + '/6'; }
+    if (score >= 5)      { badgeCls = 'badge-ideal';    badgeTxt = 'IDEAL · ' + score + '/6'; }
+    else if (score >= 3) { badgeCls = 'badge-watch';    badgeTxt = 'WATCH · ' + score + '/6'; }
+    else                 { badgeCls = 'badge-notready'; badgeTxt = 'NO TRADE · ' + score + '/6'; }
   } else {
-    // Proxy: rank by RSI. Show RSI-based readiness label
-    if (!isNaN(rsi) && rsi < 30)       { badgeCls = 'badge-ideal';    badgeTxt = 'OVERSOLD'; }
-    else if (!isNaN(rsi) && rsi < 40)  { badgeCls = 'badge-watch';    badgeTxt = 'WATCH'; }
-    else                               { badgeCls = 'badge-notready'; badgeTxt = 'WAIT'; }
+    if (!isNaN(rsi) && rsi < 30)      { badgeCls = 'badge-ideal';    badgeTxt = 'OVERSOLD'; }
+    else if (!isNaN(rsi) && rsi < 40) { badgeCls = 'badge-watch';    badgeTxt = 'WATCH'; }
+    else                              { badgeCls = 'badge-notready'; badgeTxt = 'WAIT'; }
   }
 
-  // Grade circle (scored columns only)
-  var gradeHtml = '';
-  if (grade) {
-    gradeHtml = '<span class="col-grade grade-' + grade + '">' + grade + '</span>';
-  }
-
+  // Price / change
   var priceDisp = d.price ? fmtDollar(d.price) : '—';
-  var chgDisp   = (d.changePct !== undefined && d.changePct !== null)
-    ? (d.changePct >= 0 ? '+' : '') + fmt(d.changePct, 1) + '%' : '';
+  var chgSign   = (d.changePct >= 0) ? '+' : '';
+  var chgDisp   = (d.changePct !== null && d.changePct !== undefined) ? chgSign + fmt(d.changePct, 2) + '%' : '';
   var chgColor  = (d.changePct >= 0) ? 'up' : 'down';
-  var rsiDisp   = !isNaN(rsi) ? fmt(rsi, 0) : '—';
+
+  // 52W range
+  var rangePos = 50;
+  if (d.week52H && d.week52L && d.price) {
+    var span = d.week52H - d.week52L;
+    rangePos = span > 0 ? Math.min(100, Math.max(0, (d.price - d.week52L) / span * 100)) : 50;
+  }
+  var priceColor = rangePos > 70 ? 'up' : rangePos < 30 ? 'down' : '';
+
+  // Criteria mini boxes — PUT/CC use scored criteria, LEAPS/Synth show RSI + price position
+  var ivDisp   = d.ivRank !== null && d.ivRank !== undefined ? Math.round(d.ivRank) + '%' : (d.phase < 2 ? '…' : '—');
+  var earnDisp = d.c3 === true ? 'OK' : d.c3 === false ? 'RISK' : (d.phase < 2 ? '…' : '—');
+  var premDisp = d.premPct !== null && d.premPct !== undefined ? fmt(d.premPct, 1) + '%' : (d.phase < 2 ? '…' : '—');
+  var dteDisp  = d.dte !== null && d.dte !== undefined ? d.dte + 'd' : (d.phase < 2 ? '…' : '—');
+  var strkDisp = d.phase < 2 ? '…' : (d.c5 === true ? '✓' : d.c5 === false ? '✗' : '—');
+
+  function mb(label, pass, val) {
+    var cls = pass === true ? 'mini-pass' : pass === false ? 'mini-fail' : 'mini-na';
+    return '<div class="mini-box ' + cls + '"><span class="mini-label">' + label + '</span><span class="mini-val">' + (val !== undefined ? val : (pass === true ? '✓' : pass === false ? '✗' : '?')) + '</span></div>';
+  }
+
+  var criteriaHtml;
+  if (isScored) {
+    criteriaHtml =
+      mb('IV',    d.c1, ivDisp) +
+      mb('RSI',   null, rsiDisp) +
+      mb('EARN',  d.c3, earnDisp) +
+      mb('PREM',  d.c4, premDisp) +
+      mb('DELTA', d.c5, strkDisp) +
+      mb('DTE',   d.c6, dteDisp);
+  } else {
+    // LEAPS/Synth — show RSI, 52W position, IV as proxy indicators
+    var posDisp  = fmt(rangePos, 0) + '%';
+    var posCls   = rangePos < 30 ? true : rangePos > 70 ? false : null;
+    criteriaHtml =
+      mb('RSI',   !isNaN(rsi) && rsi < 30 ? true : (!isNaN(rsi) && rsi > 65 ? false : null), rsiDisp) +
+      mb('IV',    null, ivDisp) +
+      mb('52W%',  posCls, posDisp) +
+      mb('EARN',  d.c3, earnDisp) +
+      mb('PREM',  d.c4, premDisp) +
+      mb('DTE',   d.c6, dteDisp);
+  }
+
+  // Footer score / label
+  var scoreHtml = d.phase >= 2
+    ? '<span class="' + badgeCls + ' card-badge" style="font-size:9px;padding:1px 6px">' + badgeTxt + '</span>'
+    : '<span class="score-text">Loading <span class="loading-dot"></span></span>';
 
   return '<div class="col-card" id="colrow-' + ticker + '-' + strategy + '" onclick="navigateToAnalyzer(\'' + ticker + '\',\'' + strategy + '\')">' +
-    '<span class="col-ticker">' + ticker + '</span>' +
-    '<span class="col-price"><span class="' + chgColor + '">' + priceDisp + '</span> <span class="' + chgColor + '" style="font-size:9px">' + chgDisp + '</span></span>' +
-    '<span class="col-rsi ' + rsiColor + '">RSI ' + rsiDisp + '</span>' +
-    '<span class="col-badge ' + badgeCls + '">' + badgeTxt + '</span>' +
-    (gradeHtml ? gradeHtml : '') +
+    '<div class="card-header">' +
+      '<div>' +
+        '<div class="card-ticker">' + ticker + '</div>' +
+        '<div class="card-name" style="font-size:9px;color:var(--text-muted)">' + (strategy.toUpperCase()) + (d.expiry ? ' · ' + d.expiry : '') + '</div>' +
+      '</div>' +
+      '<div class="grade-box grade-' + grade + '">' + (grade || '—') + '</div>' +
+    '</div>' +
+    '<div class="card-price-row">' +
+      '<span class="card-price ' + priceColor + '">' + priceDisp + '</span>' +
+      '<span class="card-chg ' + chgColor + '">' + chgDisp + '</span>' +
+    '</div>' +
+    '<div class="range-row">' +
+      '<div class="range-labels">' +
+        '<span>' + (d.week52L ? fmtDollar(d.week52L) : '—') + '</span>' +
+        '<span style="color:var(--text-muted);font-size:8px">52W</span>' +
+        '<span>' + (d.week52H ? fmtDollar(d.week52H) : '—') + '</span>' +
+      '</div>' +
+      '<div class="range-track">' +
+        '<div class="range-fill" style="width:' + rangePos + '%"></div>' +
+        '<div class="range-dot" style="left:' + rangePos + '%"></div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="criteria-row">' + criteriaHtml + '</div>' +
+    '<div class="card-footer">' + scoreHtml + '<span style="font-size:9px;color:var(--text-muted)">RSI ' + rsiDisp + '</span></div>' +
   '</div>';
 }
 
