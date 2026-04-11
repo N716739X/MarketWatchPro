@@ -546,7 +546,7 @@ async function scoreTicker(ticker) {
   const deltaOk = bestDelta !== null && Math.abs(bestDelta) >= 0.15 && Math.abs(bestDelta) <= 0.25;
 
   // ── Score all 4 strategies ──
-  const put_c1 = ivRank !== null ? ivRank > 90 : null;
+  const put_c1 = ivRank !== null ? ivRank >= 50 : null;
   const put_c2 = rsi < 30;
   const put_c3 = earningsRisk === null ? null : !earningsRisk;
   const put_c4 = premPct !== null ? premPct > 2 : null;
