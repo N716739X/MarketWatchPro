@@ -2239,10 +2239,10 @@ async function runSynth(forceTicker) {
     }
     if (!slCall) throw new Error('No ITM call found (delta 0.55–0.75).');
 
-    // Sell put near ATM — must be higher strike than call AND within 10% of current price
-    // This mirrors James: put is near/at ATM (0-5% OTM), not deep ITM
-    var putPriceMin = pd.price * 0.90;
-    var putPriceMax = pd.price * 1.10;
+    // Sell put near ATM — must be higher strike than call AND within 20% of current price
+    // Upper bound keeps us from picking a deep ITM $580 put; lower bound is the call strike itself
+    var putPriceMin = slCall.strike; // already enforced in loop, but set for clarity
+    var putPriceMax = pd.price * 1.20;
     var slPut = null;
     if (putChain && putChain.strike) {
       var bP = Infinity;
