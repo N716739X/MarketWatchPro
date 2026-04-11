@@ -1899,36 +1899,20 @@ async function runSynthPhase3(ticker) {
     ]);
     var callChain = results[0], putChain = results[1];
 
-    // Find put near ATM first — OTM only (strike ≤ current price)
+    // Find put near ATM first — OTM only (strike ≤ current price), price-proximity primary
     var slPut = null;
     if (putChain && putChain.strike) {
-      var bP = Infinity;
+      var bD2 = Infinity;
       for (var j = 0; j < putChain.strike.length; j++) {
-        var dP = putChain.delta ? putChain.delta[j] : null;
         var sP = putChain.strike[j];
         if (sP > pd.price) continue;  // OTM puts only
-        if (dP === null) continue;
-        var difP = Math.abs(Math.abs(dP) - 0.50);
-        if (Math.abs(dP) >= 0.20 && Math.abs(dP) <= 0.85 && difP < bP) {
-          bP = difP;
+        var dist = Math.abs(sP - pd.price);
+        if (dist < bD2) {
+          bD2 = dist;
+          var dP = putChain.delta ? putChain.delta[j] : null;
           slPut = { strike: sP, mid: putChain.mid ? putChain.mid[j] : null,
             bid: putChain.bid ? putChain.bid[j] : null, ask: putChain.ask ? putChain.ask[j] : null,
             delta: dP, oi: putChain.openInterest ? putChain.openInterest[j] : null };
-        }
-      }
-      if (!slPut) {
-        var bD2 = Infinity;
-        for (var k = 0; k < putChain.strike.length; k++) {
-          var sK2 = putChain.strike[k];
-          if (sK2 > pd.price) continue;  // OTM only
-          var dist = Math.abs(sK2 - pd.price);
-          if (dist < bD2) {
-            bD2 = dist;
-            var dK = putChain.delta ? putChain.delta[k] : null;
-            slPut = { strike: sK2, mid: putChain.mid ? putChain.mid[k] : null,
-              bid: putChain.bid ? putChain.bid[k] : null, ask: putChain.ask ? putChain.ask[k] : null,
-              delta: dK, oi: putChain.openInterest ? putChain.openInterest[k] : null };
-          }
         }
       }
     }
@@ -1942,8 +1926,8 @@ async function runSynthPhase3(ticker) {
         var dC = callChain.delta ? Math.abs(callChain.delta[i]) : null;
         var sC = callChain.strike[i];
         if (sC >= slPut.strike || dC === null) continue;
-        var difC = Math.abs(dC - 0.65);
-        if (dC >= 0.55 && dC <= 0.75 && difC < bC) {
+        var difC = Math.abs(dC - 0.80);
+        if (dC >= 0.75 && dC <= 0.90 && difC < bC) {
           bC = difC;
           slCall = { strike: sC, mid: callChain.mid ? callChain.mid[i] : null,
             bid: callChain.bid ? callChain.bid[i] : null, ask: callChain.ask ? callChain.ask[i] : null,
@@ -1955,7 +1939,7 @@ async function runSynthPhase3(ticker) {
         for (var i2 = 0; i2 < callChain.strike.length; i2++) {
           var sC2 = callChain.strike[i2];
           if (sC2 >= slPut.strike) continue;
-          var d2 = Math.abs(sC2 - pd.price * 0.90);
+          var d2 = Math.abs(sC2 - pd.price * 0.80);
           if (d2 < bCD) {
             bCD = d2;
             slCall = { strike: sC2, mid: callChain.mid ? callChain.mid[i2] : null,
@@ -1974,7 +1958,7 @@ async function runSynthPhase3(ticker) {
 
     d.synth_c1 = pd.rsi < 30;
     d.synth_c2 = pd.rsi < 40;
-    d.synth_c3 = slCall.delta !== null ? (slCall.delta >= 0.55 && slCall.delta <= 0.75) : null;
+    d.synth_c3 = slCall.delta !== null ? (slCall.delta >= 0.75 && slCall.delta <= 0.90) : null;
     d.synth_c4 = dte >= 365;
     d.synth_c5 = netCostPct !== null ? netCostPct <= 2 : null;
     d.synth_c6 = (slCall.oi !== null && slPut.oi !== null) ? (slCall.oi >= 200 && slPut.oi >= 200) : null;
@@ -2666,35 +2650,19 @@ async function runSynth(forceTicker) {
     // --- STEP 1: Find put strike near ATM ---
     var slPut = null;
     if (putChain && putChain.strike) {
-      // Pass 1: delta near 0.50, strike must be OTM (≤ current price)
-      var bP = Infinity;
+      // Primary: strike closest to current price on OTM side (≤ price)
+      // Delta used only as tiebreaker — not reliable for long-dated chains
+      var bDist = Infinity;
       for (var j = 0; j < putChain.strike.length; j++) {
-        var dP = putChain.delta ? putChain.delta[j] : null;
         var sP = putChain.strike[j];
-        if (sP > pd.price) continue;  // OTM puts must be at or below current price
-        if (dP === null) continue;
-        var difP = Math.abs(Math.abs(dP) - 0.50);
-        if (Math.abs(dP) >= 0.20 && Math.abs(dP) <= 0.85 && difP < bP) {
-          bP = difP;
+        if (sP > pd.price) continue;  // OTM puts only — must be at or below current price
+        var dist = Math.abs(sP - pd.price);
+        if (dist < bDist) {
+          bDist = dist;
+          var dP = putChain.delta ? putChain.delta[j] : null;
           slPut = { strike: sP, bid: putChain.bid ? putChain.bid[j] : null,
             ask: putChain.ask ? putChain.ask[j] : null, mid: putChain.mid ? putChain.mid[j] : null,
             delta: dP, oi: putChain.openInterest ? putChain.openInterest[j] : null };
-        }
-      }
-      // Pass 2 fallback: strike closest to current price (OTM side only)
-      if (!slPut) {
-        var bDist = Infinity;
-        for (var k = 0; k < putChain.strike.length; k++) {
-          var sK = putChain.strike[k];
-          if (sK > pd.price) continue;  // OTM only
-          var dist = Math.abs(sK - pd.price);
-          if (dist < bDist) {
-            bDist = dist;
-            var dK = putChain.delta ? putChain.delta[k] : null;
-            slPut = { strike: sK, bid: putChain.bid ? putChain.bid[k] : null,
-              ask: putChain.ask ? putChain.ask[k] : null, mid: putChain.mid ? putChain.mid[k] : null,
-              delta: dK, oi: putChain.openInterest ? putChain.openInterest[k] : null };
-          }
         }
       }
     }
@@ -2710,8 +2678,8 @@ async function runSynth(forceTicker) {
         var sC = callChain.strike[i];
         if (sC >= slPut.strike) continue; // call must be lower strike than put
         if (dC === null) continue;
-        var difC = Math.abs(dC - 0.65);
-        if (dC >= 0.55 && dC <= 0.75 && difC < bC) {
+        var difC = Math.abs(dC - 0.80);
+        if (dC >= 0.75 && dC <= 0.90 && difC < bC) {
           bC = difC;
           slCall = { strike: sC, bid: callChain.bid ? callChain.bid[i] : null,
             ask: callChain.ask ? callChain.ask[i] : null, mid: callChain.mid ? callChain.mid[i] : null,
@@ -2720,7 +2688,7 @@ async function runSynth(forceTicker) {
       }
       // Pass 2 fallback: closest to 90% of price, below put strike
       if (!slCall) {
-        var targetC = pd.price * 0.90;
+        var targetC = pd.price * 0.80;
         var bCD = Infinity;
         for (var i2 = 0; i2 < callChain.strike.length; i2++) {
           var sC2 = callChain.strike[i2];
@@ -2748,7 +2716,7 @@ async function runSynth(forceTicker) {
 
     var c1 = pd.rsi < 30;
     var c2 = pd.rsi < 40;
-    var c3 = slCall.delta >= 0.55 && slCall.delta <= 0.75;  // ITM call
+    var c3 = slCall.delta !== null ? (slCall.delta >= 0.75 && slCall.delta <= 0.90) : null;  // Deep ITM call
     var c4 = dte >= 365;
     var c5 = netCostPct !== null ? netCostPct <= 2 : null;   // James targets <1%, we use 2% as pass
     var c6 = (slCall.oi !== null && slPut.oi !== null) ? (slCall.oi >= 200 && slPut.oi >= 200) : null;
@@ -2788,7 +2756,7 @@ async function runSynth(forceTicker) {
     html += '<div class="scorecard"><h3>Bull Synthetic — Score</h3><div class="criteria-list">';
     html += critRow(1,'RSI(10) < 30 (Oversold Entry)', c1, fmt(pd.rsi,1));
     html += critRow(2,'RSI(10) < 40 (Not Extended)', c2, fmt(pd.rsi,1));
-    html += critRow(3,'Call ITM Δ0.55–0.75 (Lower Strike)', c3, fmt(slCall.delta,2));
+    html += critRow(3,'Call Deep ITM Δ0.75–0.90 (Lower Strike)', c3, fmt(slCall.delta,2));
     html += critRow(4,'Duration ≥ 365 Days', c4, dte+' days');
     html += critRow(5,'Net Debit ≤ 2% of Price', c5, netCostPct !== null ? fmt(netCostPct,2)+'%' : 'N/A');
     html += critRow(6,'Both Legs OI ≥ 200', c6, 'Call: '+fmtK(slCall.oi)+' / Put: '+fmtK(slPut.oi));
