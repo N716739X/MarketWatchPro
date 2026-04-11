@@ -2807,7 +2807,7 @@ async function runSynth(forceTicker) {
       suggWarn.push('💡 <strong>RSI too high:</strong> RSI is ' + fmt(pd.rsi,1) + ' — wait for a pullback before entering. Entering on strength increases your breakeven distance.');
     }
     if (!c5 && netCostPct !== null) {
-      suggWarn.push('💡 <strong>Net debit elevated:</strong> Net debit is ' + fmt(netCostPct,2) + '% — James targets under 1%. Try a higher call strike or lower put strike to reduce cost.');
+      suggWarn.push('💡 <strong>Net debit elevated:</strong> Net debit is ' + fmt(netCostPct,2) + '% — above 15%. James typically pays 5–15% of stock price. Consider a shallower call strike or waiting for a lower-priced entry.');
     }
     if (!c6) {
       suggWarn.push('💡 <strong>Liquidity concern:</strong> One or both legs have OI below 200. Use limit orders at the mid and be patient with fills.');
