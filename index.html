@@ -864,12 +864,6 @@ tbody td:first-child { text-align:left; }
 <!-- ═══ DASHBOARD PANEL ═══ -->
 <div id="panel-dashboard" class="panel">
   <div class="dash-toolbar">
-    <span class="toolbar-label">Timeframe:</span>
-    <div class="btn-group" id="tf-group">
-      <button class="tgl active" data-tf="4h" onclick="setTimeframe('4h')">4H</button>
-      <button class="tgl" data-tf="1day" onclick="setTimeframe('1day')">1D</button>
-      <button class="tgl" data-tf="1week" onclick="setTimeframe('1week')">1W</button>
-    </div>
     <div id="refresh-info">Auto-refresh: market hours only</div>
   </div>
   <div class="dash-columns">
@@ -999,7 +993,7 @@ const EARNINGS = {
 // STATE
 // ═══════════════════════════════════════════════════════
 var currentTheme    = localStorage.getItem('owp-theme')    || 'cyberpunk';
-var currentTF       = localStorage.getItem('owp-tf')       || '4h';
+var currentTF       = '1day'; // fixed — dashboard uses per-strategy TFs, analyzer uses this
 var currentSort     = localStorage.getItem('owp-sort')     || 'score';
 var currentTab      = localStorage.getItem('owp-tab')      || 'dashboard';
 var tickers         = JSON.parse(localStorage.getItem('owp-tickers') || 'null') || DEFAULT_TICKERS.slice();
@@ -1102,17 +1096,8 @@ function scheduleAutoRefresh() {
 scheduleAutoRefresh();
 
 // ═══════════════════════════════════════════════════════
-// TIMEFRAME & SORT
+// SORT
 // ═══════════════════════════════════════════════════════
-function setTimeframe(tf) {
-  currentTF = tf;
-  localStorage.setItem('owp-tf', tf);
-  document.querySelectorAll('#tf-group .tgl').forEach(function(b) {
-    b.classList.toggle('active', b.dataset.tf === tf);
-  });
-  refreshDashboard();
-}
-
 function setSort(s) {
   currentSort = s;
   localStorage.setItem('owp-sort', s);
@@ -2050,9 +2035,6 @@ function refreshDashboard(forceRefresh) {
 
 // Initial load
 // Set toolbar state from saved prefs
-document.querySelectorAll('#tf-group .tgl').forEach(function(b) {
-  b.classList.toggle('active', b.dataset.tf === currentTF);
-});
 // sort-group removed (4-column layout has no sort toolbar)
 refreshDashboard();
 
