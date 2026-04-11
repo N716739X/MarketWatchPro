@@ -740,6 +740,17 @@ tbody td:first-child { text-align:left; }
   transition: all 0.15s;
   letter-spacing: 0.5px;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.chip-grade {
+  font-size: 9px;
+  font-weight: 900;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: rgba(255,255,255,0.08);
+  line-height: 1.4;
 }
 .ticker-chip:hover {
   background: var(--accent);
@@ -2858,13 +2869,23 @@ function renderTickerStrip() {
   var html  = '<span class="strip-label">Watchlist:</span>';
   tickers.forEach(function(t) {
     var d     = cardData[t];
-    var bestScore = (d && d.phase >= 2) ? Math.max(d.putScore || 0, d.ccScore || 0) : null;
-    var grade = (onDashboard && bestScore !== null) ? scoreToGrade(bestScore, 2) : '';
-    var gradeStyle = grade ? ' style="color:var(--grade-' + grade.toLowerCase() + ')"' : '';
+    var grade = '';
+    if (d && d.phase >= 2 && onDashboard) {
+      // Best grade across all 4 strategies
+      var scores = [
+        d.putScore   || 0,
+        d.ccScore    || 0,
+        d.leapsScore || 0,
+        d.synthScore || 0
+      ];
+      var bestScore = Math.max.apply(null, scores);
+      grade = scoreToGrade(bestScore, 2);
+    }
+    var gradeColor = grade ? 'color:var(--grade-' + grade.toLowerCase() + ')' : '';
     var isActive   = t === activeStripTicker;
     html += '<div class="ticker-chip' + (isActive ? ' active' : '') + '" onclick="stripSelect(\'' + t + '\')">'
       + t
-      + (grade ? '<span' + gradeStyle + ' style="margin-left:4px;font-size:8px;font-weight:700;opacity:0.85;vertical-align:middle;background:rgba(255,255,255,0.07);border-radius:3px;padding:0 3px;line-height:14px;display:inline-block">' + grade + '</span>' : '')
+      + (grade ? '<span class="chip-grade" style="' + gradeColor + '">' + grade + '</span>' : '')
       + '</div>';
   });
   strip.innerHTML = html;
