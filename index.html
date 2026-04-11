@@ -2308,28 +2308,29 @@ async function runSynth(forceTicker) {
     html += critRow(7,'Both Spreads ≤ $1.00', c7, (callSpread !== null ? fmtDollar(callSpread) : '—')+' / '+(putSpread !== null ? fmtDollar(putSpread) : '—'));
     html += '</div>' + scoreSummaryHtml(score,7) + '</div>';
 
-    // ── Contextual suggestions ──
-    var suggestions = [];
+    // ── Contextual suggestions (warnings first, positives last) ──
+    var suggWarn = [], suggGood = [];
     if (!c1 && pd.rsi < 40) {
-      suggestions.push('💡 <strong>RSI approaching entry:</strong> RSI is ' + fmt(pd.rsi,1) + ' — not deeply oversold yet. Watch for a continued dip below 30 before entering the synthetic long.');
+      suggWarn.push('💡 <strong>RSI approaching entry:</strong> RSI is ' + fmt(pd.rsi,1) + ' — not deeply oversold yet. Watch for a continued dip below 30 before entering the synthetic long.');
     } else if (!c1) {
-      suggestions.push('💡 <strong>RSI too high:</strong> RSI is ' + fmt(pd.rsi,1) + ' — wait for a pullback. A synthetic long entered at elevated RSI leaves little room before a mean-reversion dip hurts both legs.');
+      suggWarn.push('💡 <strong>RSI too high:</strong> RSI is ' + fmt(pd.rsi,1) + ' — wait for a pullback. A synthetic long entered at elevated RSI leaves little room before a mean-reversion dip hurts both legs.');
     }
     if (!c5 && netCostPct !== null) {
-      suggestions.push('💡 <strong>Net cost elevated:</strong> Net debit is ' + fmt(netCostPct,2) + '% of price — the call premium significantly exceeds the put credit. The position starts with a larger hole to dig out of.');
-    }
-    if (netCostPct !== null && netCostPct < 0) {
-      suggestions.push('✅ <strong>Net credit entry:</strong> You collect a net credit of ' + fmt(Math.abs(netCostPct),2) + '% — ideal synthetic long setup. The sold put funds the call with room to spare.');
+      suggWarn.push('💡 <strong>Net cost elevated:</strong> Net debit is ' + fmt(netCostPct,2) + '% of price — the call premium significantly exceeds the put credit. The position starts with a larger hole to dig out of.');
     }
     if (!c6) {
-      suggestions.push('💡 <strong>Liquidity concern:</strong> One or both legs have OI below 200. Thin liquidity means wider fills and harder exits — use limit orders at the mid.');
+      suggWarn.push('💡 <strong>Liquidity concern:</strong> One or both legs have OI below 200. Thin liquidity means wider fills and harder exits — use limit orders at the mid.');
     }
     if (!c7) {
-      suggestions.push('💡 <strong>Wide spreads:</strong> One or both leg spreads exceed $1.00. Try legging in separately during high-liquidity hours (9:45–11am ET) to get better fills.');
+      suggWarn.push('💡 <strong>Wide spreads:</strong> One or both leg spreads exceed $1.00. Try legging in separately during high-liquidity hours (9:45–11am ET) to get better fills.');
+    }
+    if (netCostPct !== null && netCostPct < 0) {
+      suggGood.push('✅ <strong>Net credit entry:</strong> You collect a net credit of ' + fmt(Math.abs(netCostPct),2) + '% — ideal synthetic long setup. The sold put funds the call with room to spare.');
     }
     if (score === 7) {
-      suggestions.push('✅ <strong>All criteria met</strong> — ideal synthetic long setup. Enter both legs simultaneously as a combo order to avoid leg risk.');
+      suggGood.push('✅ <strong>All criteria met</strong> — ideal synthetic long setup. Enter both legs simultaneously as a combo order to avoid leg risk.');
     }
+    var suggestions = suggWarn.concat(suggGood);
     if (suggestions.length > 0) {
       html += '<div class="suggestions-box">' + suggestions.map(function(s){ return '<div class="suggestion-item">' + s + '</div>'; }).join('') + '</div>';
     }
