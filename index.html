@@ -1799,27 +1799,27 @@ async function runPut(forceTicker) {
     html += critRow(6,'Duration 30–45 DTE', c6, dte+' days');
     html += '</div>' + scoreSummaryHtml(score,6) + '</div>';
 
-    // ── Contextual suggestions ──
-    var suggestions = [];
+    // ── Contextual suggestions (warnings first, positives last) ──
+    var suggWarnP = [], suggGoodP = [];
     if (earningsRisk && c2 && c4) {
-      // Earnings is the only blocker — suggest shorter expiry
       var eDate = EARNINGS[ticker];
-      suggestions.push('💡 <strong>Earnings workaround:</strong> ' + ticker + ' has earnings on ' + eDate + ' inside your expiry window. Consider a shorter DTE expiring <strong>before ' + eDate + '</strong> to avoid earnings risk while still capturing the oversold setup.');
+      suggWarnP.push('💡 <strong>Earnings workaround:</strong> ' + ticker + ' has earnings on ' + eDate + ' inside your expiry window. Consider a shorter DTE expiring <strong>before ' + eDate + '</strong> to avoid earnings risk while still capturing the oversold setup.');
     }
     if (!c2 && pd.rsi > 30 && pd.rsi < 45) {
-      suggestions.push('💡 <strong>RSI almost there:</strong> RSI is ' + fmt(pd.rsi,1) + ' — watch for a continued dip below 30 before entering. Set a price alert.');
+      suggWarnP.push('💡 <strong>RSI almost there:</strong> RSI is ' + fmt(pd.rsi,1) + ' — watch for a continued dip below 30 before entering. Set a price alert.');
     }
     if (!c1 && ivRank !== null && ivRank >= 35) {
-      suggestions.push('💡 <strong>IV warming up:</strong> IV is ' + fmt(ivRank,1) + '% — approaching the 50% threshold. Wait for a volatility spike (news, market selloff) before selling the put for maximum premium.');
+      suggWarnP.push('💡 <strong>IV warming up:</strong> IV is ' + fmt(ivRank,1) + '% — approaching the 50% threshold. Wait for a volatility spike (news, market selloff) before selling the put for maximum premium.');
     }
     if (!c4 && premPct !== null && premPct >= 1.5) {
-      suggestions.push('💡 <strong>Premium close:</strong> Premium is ' + fmt(premPct,2) + '% — just below the 2% floor. Try a slightly lower strike to collect more premium.');
+      suggWarnP.push('💡 <strong>Premium close:</strong> Premium is ' + fmt(premPct,2) + '% — just below the 2% floor. Try a slightly lower strike to collect more premium.');
     }
     if (score === 6) {
-      suggestions.push('✅ <strong>All criteria met</strong> — this is an ideal setup. Consider entering today with the recommended strike above.');
+      suggGoodP.push('✅ <strong>All criteria met</strong> — this is an ideal setup. Consider entering today with the recommended strike above.');
     }
-    if (suggestions.length > 0) {
-      html += '<div class="suggestions-box">' + suggestions.map(function(s){ return '<div class="suggestion-item">' + s + '</div>'; }).join('') + '</div>';
+    var suggestionsP = suggWarnP.concat(suggGoodP);
+    if (suggestionsP.length > 0) {
+      html += '<div class="suggestions-box">' + suggestionsP.map(function(s){ return '<div class="suggestion-item">' + s + '</div>'; }).join('') + '</div>';
     }
 
     html += '<div class="chain-section"><h3>Put Chain — '+bestExpiry+' ('+dte+' DTE)</h3>';
@@ -1909,29 +1909,30 @@ async function runCC(forceTicker) {
     html += critRow(6,'Duration 30–45 DTE', c6, dte+' days');
     html += '</div>' + scoreSummaryHtml(score,6) + '</div>';
 
-    // ── Contextual suggestions ──
-    var suggestions = [];
+    // ── Contextual suggestions (warnings first, positives last) ──
+    var suggWarnC = [], suggGoodC = [];
     if (earningsRisk && c2 && c4) {
       var eDate = EARNINGS[ticker];
-      suggestions.push('💡 <strong>Earnings workaround:</strong> ' + ticker + ' has earnings on ' + eDate + ' inside your expiry window. Consider a shorter DTE expiring <strong>before ' + eDate + '</strong> to avoid the IV crush and gap risk.');
+      suggWarnC.push('💡 <strong>Earnings workaround:</strong> ' + ticker + ' has earnings on ' + eDate + ' inside your expiry window. Consider a shorter DTE expiring <strong>before ' + eDate + '</strong> to avoid the IV crush and gap risk.');
     }
     if (!c2 && pd.rsi < 65 && pd.rsi > 55) {
-      suggestions.push('💡 <strong>RSI almost there:</strong> RSI is ' + fmt(pd.rsi,1) + ' — approaching overbought. Watch for a continued rally above 65 before selling the call.');
+      suggWarnC.push('💡 <strong>RSI almost there:</strong> RSI is ' + fmt(pd.rsi,1) + ' — approaching overbought. Watch for a continued rally above 65 before selling the call.');
     }
     if (!c1 && ivRank !== null && ivRank >= 35) {
-      suggestions.push('💡 <strong>IV warming up:</strong> IV is ' + fmt(ivRank,1) + '% — wait for a volatility spike to get richer premium before capping your upside.');
+      suggWarnC.push('💡 <strong>IV warming up:</strong> IV is ' + fmt(ivRank,1) + '% — wait for a volatility spike to get richer premium before capping your upside.');
     }
     if (!c4 && premPct !== null && premPct >= 1.5) {
-      suggestions.push('💡 <strong>Premium close:</strong> Premium is ' + fmt(premPct,2) + '% — just below 2%. Try a slightly lower (closer) strike to collect more premium.');
+      suggWarnC.push('💡 <strong>Premium close:</strong> Premium is ' + fmt(premPct,2) + '% — just below 2%. Try a slightly lower (closer) strike to collect more premium.');
     }
     if (!c5 && upsidePct !== null) {
-      suggestions.push('💡 <strong>Strike too far OTM:</strong> ' + fmt(upsidePct,1) + '% OTM is outside the 5–10% target. The app selected the closest available strike — consider checking if a strike closer to 8% OTM is available.');
+      suggWarnC.push('💡 <strong>Strike too far OTM:</strong> ' + fmt(upsidePct,1) + '% OTM is outside the 5–10% target. The app selected the closest available strike — consider checking if a strike closer to 8% OTM is available.');
     }
     if (score === 6) {
-      suggestions.push('✅ <strong>All criteria met</strong> — this is an ideal setup. Consider entering today with the recommended strike above.');
+      suggGoodC.push('✅ <strong>All criteria met</strong> — this is an ideal setup. Consider entering today with the recommended strike above.');
     }
-    if (suggestions.length > 0) {
-      html += '<div class="suggestions-box">' + suggestions.map(function(s){ return '<div class="suggestion-item">' + s + '</div>'; }).join('') + '</div>';
+    var suggestionsC = suggWarnC.concat(suggGoodC);
+    if (suggestionsC.length > 0) {
+      html += '<div class="suggestions-box">' + suggestionsC.map(function(s){ return '<div class="suggestion-item">' + s + '</div>'; }).join('') + '</div>';
     }
 
     html += '<div class="btc-note">📌 BTC at 80% profit or 21 DTE, whichever comes first.</div>';
