@@ -1350,6 +1350,8 @@ function authSuccess(data) {
   try { localStorage.setItem('oe_token', data.token); } catch(e) {}
   document.getElementById('auth-overlay').classList.add('hidden');
   updateTrialBanner(data);
+  // Now that we have a valid token, load the dashboard data
+  refreshDashboard();
 }
 
 function authLogout() {
@@ -2521,10 +2523,9 @@ function refreshDashboard(forceRefresh) {
   });
 }
 
-// Initial load
-// Set toolbar state from saved prefs
+// Initial load — deferred until auth completes
 // sort-group removed (4-column layout has no sort toolbar)
-refreshDashboard();
+// refreshDashboard() is now called from authSuccess() after login/token verify
 
 // ═══════════════════════════════════════════════════════
 // ANALYZER SHARED HELPERS
