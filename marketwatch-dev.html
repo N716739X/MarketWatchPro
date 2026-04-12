@@ -1841,20 +1841,32 @@ function getIEThreshold() { return ieMode === '50' ? 60 : 30; }
 function getIELabel()     { return ieMode === '50' ? '50/50' : '75/25'; }
 
 function toggleIERatio() {
-  ieMode = ieMode === '75' ? '50' : '75';
+  ieMode = (ieMode === '75') ? '50' : '75';
   localStorage.setItem('owp-ie-mode', ieMode);
   var lbl = document.getElementById('ie-toggle-label');
   if (lbl) lbl.textContent = getIELabel();
-  // Re-score all LEAPS cards
-  Object.keys(cardData).forEach(function(ticker) {
-    var d = cardData[ticker];
-    if (d.leapsIEPct !== null && d.leapsIEPct !== undefined) {
-      var thresh = getIEThreshold();
-      d.leaps_c2 = ieMode === '50' ? (d.leapsIEPct >= 40 && d.leapsIEPct <= 60) : (d.leapsIEPct <= thresh);
-      d.leapsScore = [d.leaps_c1,d.leaps_c2,d.leaps_c3,d.leaps_c4,d.leaps_c5,d.leaps_c6,d.leaps_c7]
-        .filter(function(x){return x===true;}).length;
+  // Re-score all LEAPS cards with new I/E threshold
+  var allTickers = Object.keys(cardData);
+  for (var i = 0; i < allTickers.length; i++) {
+    var d = cardData[allTickers[i]];
+    if (d && d.leapsIEPct !== null && d.leapsIEPct !== undefined && !isNaN(d.leapsIEPct)) {
+      var ext = d.leapsIEPct;
+      if (ieMode === '50') {
+        d.leaps_c2 = (ext >= 40 && ext <= 60);
+      } else {
+        d.leaps_c2 = (ext <= 30);
+      }
+      var passed = 0;
+      if (d.leaps_c1 === true) passed++;
+      if (d.leaps_c2 === true) passed++;
+      if (d.leaps_c3 === true) passed++;
+      if (d.leaps_c4 === true) passed++;
+      if (d.leaps_c5 === true) passed++;
+      if (d.leaps_c6 === true) passed++;
+      if (d.leaps_c7 === true) passed++;
+      d.leapsScore = passed;
     }
-  });
+  }
   renderColumns();
 }
 
