@@ -37,33 +37,33 @@
   --fail:      #ff2266;
   --na:        #554477;
 }
-body.classic {
-  --bg:        #0d1117;
-  --bg2:       #0d1117;
-  --surface:   #161b22;
-  --surface2:  #21262d;
-  --border:    #30363d;
-  --border2:   #444c56;
-  --text:      #e6edf3;
-  --text-muted:#8b949e;
-  --accent:    #58a6ff;
-  --neg:       #f85149;
-  --green:     #3fb950;
-  --red:       #f85149;
-  --yellow:    #d29922;
-  --purple:    #bc8cff;
-  --grade-a:   #3fb950;
-  --grade-b:   #58a6ff;
-  --grade-c:   #d29922;
-  --grade-d:   #ffa657;
-  --grade-f:   #f85149;
-  --card-bg:   #161b22;
-  --card-border:#30363d;
-  --glow:      none;
-  --glow2:     none;
-  --pass:      #3fb950;
-  --fail:      #f85149;
-  --na:        #484f58;
+body.matrix {
+  --bg:        #050505;
+  --bg2:       #0A0A0A;
+  --surface:   #0A0A0A;
+  --surface2:  #0E0E0E;
+  --border:    #1A2A1A;
+  --border2:   #2A4A2A;
+  --text:      #B0E0B0;
+  --text-muted:#5A8A5A;
+  --accent:    #00FF41;
+  --neg:       #FF3333;
+  --green:     #00FF41;
+  --red:       #FF3333;
+  --yellow:    #CCFF00;
+  --purple:    #00FF41;
+  --grade-a:   #00FF41;
+  --grade-b:   #00FFCC;
+  --grade-c:   #CCFF00;
+  --grade-d:   #FF8800;
+  --grade-f:   #FF3333;
+  --card-bg:   #080808;
+  --card-border:#1A2A1A;
+  --glow:      0 0 12px rgba(0,255,65,0.08);
+  --glow2:     0 0 20px rgba(0,255,65,0.15);
+  --pass:      #00CC33;
+  --fail:      #FF3333;
+  --na:        #2A4A2A;
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -1066,6 +1066,90 @@ tbody td:first-child { text-align:left; }
   50%     { box-shadow: 0 0 12px rgba(0,255,204,0.8), 0 0 20px rgba(0,255,204,0.3); }
 }
 
+/* ═══════════════════════════════════════════════════════
+   MATRIX THEME OVERRIDES
+═══════════════════════════════════════════════════════ */
+/* Scanline overlay */
+body.matrix::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,255,65,0.015) 2px,
+    rgba(0,255,65,0.015) 4px
+  );
+  pointer-events: none;
+  z-index: 9998;
+}
+/* Monospace font override */
+body.matrix,
+body.matrix input,
+body.matrix button,
+body.matrix select,
+body.matrix textarea {
+  font-family: 'Courier New', 'Lucida Console', monospace;
+}
+/* Green glow overrides for Matrix */
+body.matrix .card-ideal {
+  border-color: var(--green) !important;
+  box-shadow: 0 0 10px rgba(0,255,65,0.25), 0 0 0 1px rgba(0,255,65,0.15);
+}
+body.matrix .card-ideal:hover {
+  box-shadow: 0 0 18px rgba(0,255,65,0.45), 0 0 0 1px rgba(0,255,65,0.3);
+}
+body.matrix .card-notrade:hover {
+  box-shadow: 0 0 8px rgba(255,51,51,0.2);
+}
+body.matrix .badge-ideal {
+  animation: matrix-badge-shimmer 2.4s ease-in-out infinite;
+}
+@keyframes matrix-badge-shimmer {
+  0%,100% { box-shadow: 0 0 4px rgba(0,255,65,0.3); }
+  50%     { box-shadow: 0 0 12px rgba(0,255,65,0.8), 0 0 20px rgba(0,255,65,0.3); }
+}
+body.matrix .col-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 12px rgba(0,255,65,0.2);
+}
+body.matrix .card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 20px rgba(0,255,65,0.15);
+}
+body.matrix .logo-text span {
+  color: var(--green);
+  text-shadow: 0 0 10px rgba(0,255,65,0.4);
+}
+body.matrix .grade-A { color: var(--grade-a); background: rgba(0,255,65,0.12); }
+body.matrix .grade-B { color: var(--grade-b); background: rgba(0,255,204,0.10); }
+body.matrix .grade-C { color: var(--grade-c); background: rgba(204,255,0,0.10); }
+body.matrix .grade-D { color: var(--grade-d); background: rgba(255,136,0,0.10); }
+body.matrix .grade-F { color: var(--grade-f); background: rgba(255,51,51,0.10); }
+body.matrix .ticker-chip:hover {
+  box-shadow: 0 0 8px var(--accent);
+}
+body.matrix .tab.active {
+  text-shadow: 0 0 8px rgba(0,255,65,0.5);
+}
+body.matrix .pb-ticker {
+  text-shadow: 0 0 10px rgba(0,255,65,0.4);
+}
+body.matrix .star {
+  text-shadow: 0 0 6px rgba(0,255,65,0.5);
+}
+body.matrix tbody tr:hover { background: rgba(0,255,65,0.04); }
+/* Vignette for Matrix */
+body.matrix::after {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.4) 100%);
+  pointer-events: none;
+  z-index: 9997;
+}
+
 /* ── Anti-copy protections ── */
 body {
   -webkit-user-select: none;
@@ -1577,7 +1661,8 @@ const EARNINGS = {
 // ═══════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════
-var currentTheme    = localStorage.getItem('owp-theme')    || 'cyberpunk';
+var _storedTheme = localStorage.getItem('owp-theme') || 'cyberpunk';
+var currentTheme    = (['cyberpunk','matrix'].indexOf(_storedTheme) >= 0) ? _storedTheme : 'cyberpunk';
 var currentTF       = '1day'; // fixed — dashboard uses per-strategy TFs, analyzer uses this
 var currentSort     = localStorage.getItem('owp-sort')     || 'score';
 var currentTab      = localStorage.getItem('owp-tab')      || 'dashboard';
@@ -1588,15 +1673,16 @@ var refreshTimer    = null;
 // ═══════════════════════════════════════════════════════
 // THEME
 // ═══════════════════════════════════════════════════════
+var THEMES = ['cyberpunk', 'matrix'];
 function applyTheme() {
-  if (currentTheme === 'classic') {
-    document.body.classList.add('classic');
-  } else {
-    document.body.classList.remove('classic');
+  document.body.classList.remove('matrix');
+  if (currentTheme === 'matrix') {
+    document.body.classList.add('matrix');
   }
 }
 function toggleTheme() {
-  currentTheme = currentTheme === 'cyberpunk' ? 'classic' : 'cyberpunk';
+  var idx = THEMES.indexOf(currentTheme);
+  currentTheme = THEMES[(idx + 1) % THEMES.length];
   localStorage.setItem('owp-theme', currentTheme);
   applyTheme();
 }
