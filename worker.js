@@ -578,13 +578,14 @@ async function scoreTicker(ticker, env) {
   const deltaOk = bestDelta !== null && Math.abs(bestDelta) >= 0.15 && Math.abs(bestDelta) <= 0.25;
 
   // ── Score all 4 strategies ──
-  const put_c1 = ivRank !== null ? ivRank >= 50 : null;
+  const put_c1 = ivRank !== null ? ivRank > 80 : null;
   const put_c2 = rsi < 30;
-  const put_c3 = earningsRisk === null ? null : !earningsRisk;
-  const put_c4 = premPct !== null ? premPct > 2 : null;
-  const put_c5 = deltaOk;
-  const put_c6 = dte !== null ? (dte >= 30 && dte <= 45) : null;
-  const putScore = [put_c1, put_c2, put_c3, put_c4, put_c5, put_c6].filter(x => x === true).length;
+  const put_c3 = !isNaN(sma200) ? price < sma200 : null;  // Price below 200 SMA (pullback/discount)
+  const put_c4 = earningsRisk === null ? null : !earningsRisk;
+  const put_c5 = premPct !== null ? premPct > 2 : null;
+  const put_c6 = deltaOk;
+  const put_c7 = dte !== null ? (dte >= 30 && dte <= 45) : null;
+  const putScore = [put_c1, put_c2, put_c3, put_c4, put_c5, put_c6, put_c7].filter(x => x === true).length;
 
   const cc_c1 = ivRank !== null ? ivRank > 80 : null;
   const cc_c2 = rsi > 65;
@@ -616,7 +617,7 @@ async function scoreTicker(ticker, env) {
   const synthScore = [synth_c1, synth_c2, synth_c3, synth_c4, synth_c5, synth_c6, synth_c7].filter(x => x === true).length;
 
   // Build response — grades + badge info + display data (no raw scoring logic exposed)
-  const putBadge = badgeInfo(putScore, 6, true);
+  const putBadge = badgeInfo(putScore, 7, true);
   const ccBadge = badgeInfo(ccScore, 7, true);
   const leapsBadge = badgeInfo(leapsScore, 7, false);
   const synthBadge = badgeInfo(synthScore, 7, false);
@@ -626,7 +627,7 @@ async function scoreTicker(ticker, env) {
     price, change, changePct, week52H, week52L, rsi, sma200,
     ivRank, expiry: bestExpiry, dte, bestStrike, bestPremium, premPct, earningsRisk,
     atrSeries,
-    put:   { score: putScore, total: 6, grade: scoreToGrade(putScore, 6), badge: putBadge, c1: put_c1, c2: put_c2, c3: put_c3, c4: put_c4, c5: put_c5, c6: put_c6 },
+    put:   { score: putScore, total: 7, grade: scoreToGrade(putScore, 7), badge: putBadge, c1: put_c1, c2: put_c2, c3: put_c3, c4: put_c4, c5: put_c5, c6: put_c6, c7: put_c7 },
     cc:    { score: ccScore, total: 7, grade: scoreToGrade(ccScore, 7), badge: ccBadge, c1: cc_c1, c2: cc_c2, c3: cc_c3, c4: cc_c4, c5: cc_c5, c6: cc_c6, c7: cc_c7 },
     leaps: { score: leapsScore, total: 7, grade: scoreToGrade(leapsScore, 7), badge: leapsBadge, c1: leaps_c1, c2: leaps_c2, c3: leaps_c3, c4: leaps_c4, c5: leaps_c5, c6: leaps_c6, c7: leaps_c7 },
     synth: { score: synthScore, total: 7, grade: scoreToGrade(synthScore, 7), badge: synthBadge, c1: synth_c1, c2: synth_c2, c3: synth_c3, c4: synth_c4, c5: synth_c5, c6: synth_c6, c7: synth_c7 },
