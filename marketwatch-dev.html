@@ -2668,10 +2668,10 @@ async function fetchTickerData(ticker) {
     var ccScore = [cc_c1,cc_c2,cc_c3,cc_c4,cc_c5,cc_c6,cc_c7].filter(function(x){return x===true;}).length;
 
     // Score LEAPS criteria (proxy — from available data, no extra fetches)
-    // LEAPS 7 criteria: IV<55%, Intrinsic/Extrinsic~50/50, Strike ITM, Duration 18+mo, RSI<30, OI≥300, Bid/Ask≤10%
+    // LEAPS 7 criteria: IV<55%, Intrinsic/Extrinsic~75/25, Strike ITM, Duration 18+mo, RSI<30, OI≥300, Bid/Ask≤10%
     var hasLeapsExp = expirations.some(function(e) { return dteFromStr(e) >= 540; });
     var leaps_c1 = ivRank !== null ? ivRank < 55 : null;             // IV < 55% (Buy Low IV)
-    var leaps_c2 = null;                                             // Intrinsic/Extrinsic ~50/50 (need chain)
+    var leaps_c2 = null;                                             // Intrinsic/Extrinsic ~75/25 (need chain)
     var leaps_c3 = null;                                             // Strike Deep ITM (need chain)
     var leaps_c4 = hasLeapsExp;                                      // Duration 18+ months
     var leaps_c5 = null;                                              // RSI < 30 Weekly (needs weekly RSI from phase 3)
@@ -2797,7 +2797,7 @@ async function runLeapsPhase3(ticker) {
     var bestIntrinsic = (bestStrike && pd.price) ? Math.max(0, pd.price - bestStrike) : null;
     var bestExtrinsic = (bestPremium && bestIntrinsic !== null) ? Math.max(0, bestPremium - bestIntrinsic) : null;
     var extPct = (bestExtrinsic !== null && bestPremium > 0) ? (bestExtrinsic / bestPremium * 100) : null;
-    var ieOk = extPct !== null ? (extPct >= 40 && extPct <= 60) : null;
+    var ieOk = extPct !== null ? extPct <= 30 : null;
 
     d.leaps_c1 = currentIV !== null ? currentIV < 55 : null;
     d.leaps_c2 = ieOk;
@@ -3495,7 +3495,7 @@ async function runLeaps(forceTicker) {
     var bestIntrinsic = (bestStrike && pd.price) ? Math.max(0, pd.price - bestStrike) : null;
     var bestExtrinsic = (bestPremium && bestIntrinsic !== null) ? Math.max(0, bestPremium - bestIntrinsic) : null;
     var extPct = (bestExtrinsic !== null && bestPremium > 0) ? (bestExtrinsic / bestPremium * 100) : null;
-    var ieOk = extPct !== null ? (extPct >= 40 && extPct <= 60) : null;
+    var ieOk = extPct !== null ? extPct <= 30 : null;
 
     var c1 = currentIV !== null ? currentIV < 55 : null;
     var c2 = ieOk;
@@ -3521,7 +3521,7 @@ async function runLeaps(forceTicker) {
     '</div>';
     html += '<div class="scorecard"><h3>LEAPS Deep ITM Call — Score</h3><div class="criteria-list">';
     html += critRow(1,'IV < 55% (Buy Low IV)', c1, currentIV !== null ? fmt(currentIV,1)+'%' : 'N/A');
-    html += critRow(2,'Intrinsic/Extrinsic ~50/50 (40–60%)', c2, extPct !== null ? fmt(extPct,1)+'% ext' : 'N/A');
+    html += critRow(2,'Intrinsic/Extrinsic ~75/25 (Ext ≤ 30%)', c2, extPct !== null ? fmt(extPct,1)+'% ext' : 'N/A');
     html += critRow(3,'Strike Deep ITM Δ 0.70–0.90', c3, bestDelta !== null ? fmt(bestDelta,2) : 'N/A');
     html += critRow(4,'Duration 18+ months (540+ DTE)', c4, repDTE+' days');
     html += critRow(5,'RSI(10) < 30 · Weekly (Entry Timing)', c5, fmt(pd.rsi,1));
@@ -3557,10 +3557,7 @@ async function runLeaps(forceTicker) {
       suggestions.push('💡 <strong>IV elevated:</strong> Current IV is ' + fmt(currentIV,1) + '% — you are paying a premium for this option. Wait for a volatility cooldown to get a cheaper entry on the same strike.');
     }
     if (!c2 && extPct !== null) {
-      var ieMsg = extPct < 40
-        ? 'Extrinsic is only ' + fmt(extPct,1) + '% — strike may be too deep ITM. Consider a slightly higher strike to get closer to 50/50.'
-        : 'Extrinsic is ' + fmt(extPct,1) + '% — too much time value. Consider a deeper ITM strike to bring the ratio closer to 50/50.';
-      suggestions.push('💡 <strong>I/E ratio off target:</strong> ' + ieMsg);
+      suggestions.push('💡 <strong>Too much extrinsic:</strong> Extrinsic is ' + fmt(extPct,1) + '% of the premium — above the 30% cap. Go deeper ITM to reduce time value and get closer to the 75/25 intrinsic/extrinsic target.');
     }
     if (!c5 && pd.rsi < 40) {
       suggestions.push('💡 <strong>RSI approaching entry:</strong> RSI is ' + fmt(pd.rsi,1) + ' — not deeply oversold but acceptable for a long-duration LEAPS entry. Watch for a continued dip below 30 for a stronger signal.');
