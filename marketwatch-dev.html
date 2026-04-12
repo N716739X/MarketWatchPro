@@ -2194,8 +2194,8 @@ function buildColCard(ticker, d, strategy) {
   } else {
     // Bull Synthetic: 7 criteria — RSI<30, RSI<40, CallΔ, Duration, Debit, OI, Spread
     criteriaHtml =
-      mb('RSI30', d.synth_c1, rsiDisp) +
-      mb('RSI40', d.synth_c2, rsiDisp) +
+      mb('RSI',   d.synth_c1, rsiDisp) +
+      mb('SMA',   d.synth_c2, d.synth_c2 === true ? '▼' : d.synth_c2 === false ? '▲' : '—') +
       mb('CALLΔ', d.synth_c3, d.synth_c3 === null ? '—' : (d.synth_c3 ? '✓' : '✗')) +
       mb('DUR',   d.synth_c4, d.synth_c4 === true ? '✓' : d.synth_c4 === false ? '✗' : '—') +
       mb('DEBIT', d.synth_c5, d.synth_c5 === null ? '—' : (d.synth_c5 ? '✓' : '✗')) +
@@ -2427,7 +2427,7 @@ async function fetchTickerData(ticker) {
     // Synth 7: RSI<30, RSI<40, Call ITM Δ0.55-0.75, Duration≥365d, Net Debit≤2%, Both OI≥200, Spreads≤$1
     var hasSynthExp = expirations.some(function(e) { return dteFromStr(e) >= 365; });
     var synth_c1 = pd.rsi < 30;                                     // RSI < 30
-    var synth_c2 = pd.rsi < 40;                                     // RSI < 40
+    var synth_c2 = !isNaN(pd.sma200) ? pd.price < pd.sma200 : null; // Price below 200 SMA
     var synth_c3 = null;                                             // Call ITM delta (need chain)
     var synth_c4 = hasSynthExp;                                      // Duration ≥ 365 days
     var synth_c5 = null;                                             // Net Debit ≤ 2% (need chain)
@@ -2653,7 +2653,7 @@ async function runSynthPhase3(ticker) {
     var putSpread  = (slPut.bid  !== null && slPut.ask  !== null) ? slPut.ask  - slPut.bid  : null;
 
     d.synth_c1 = pd.rsi < 30;
-    d.synth_c2 = pd.rsi < 40;
+    d.synth_c2 = !isNaN(d.sma200) ? d.price < d.sma200 : null;
     d.synth_c3 = slCall.delta !== null ? (slCall.delta >= 0.55 && slCall.delta <= 0.85) : null;
     d.synth_c4 = dte >= 365;
     d.synth_c5 = netCostPct !== null ? netCostPct <= 15 : null;
@@ -3519,7 +3519,7 @@ async function runSynth(forceTicker) {
     var beAboveCur = (breakeven !== null && pd.price) ? ((breakeven / pd.price - 1) * 100) : null;
 
     var c1 = pd.rsi < 30;
-    var c2 = pd.rsi < 40;
+    var c2 = !isNaN(pd.sma200) ? pd.price < pd.sma200 : null;
     var c3 = slCall.delta !== null ? (slCall.delta >= 0.55 && slCall.delta <= 0.85) : null;  // ITM call 5-10% below price
     var c4 = dte >= 365;
     var c5 = netCostPct !== null ? netCostPct <= 15 : null;  // target ~5-15% net debit
@@ -3559,7 +3559,7 @@ async function runSynth(forceTicker) {
 
     html += '<div class="scorecard"><h3>Bull Synthetic — Score</h3><div class="criteria-list">';
     html += critRow(1,'RSI(10) < 30 · Daily (Oversold Entry)', c1, fmt(pd.rsi,1));
-    html += critRow(2,'RSI(10) < 40 · Daily (Not Extended)', c2, fmt(pd.rsi,1));
+    html += critRow(2,'Price Below 200 SMA (Pullback)', c2, pd.sma200 ? fmtDollar(pd.price) + ' vs ' + fmtDollar(pd.sma200) : 'N/A');
     html += critRow(3,'Call ITM 5-10% Below Price (Δ0.55–0.85)', c3, fmt(slCall.delta,2));
     html += critRow(4,'Duration ≥ 365 Days', c4, dte+' days');
     html += critRow(5,'Net Debit ≤ 15% of Price', c5, netCostPct !== null ? fmt(netCostPct,2)+'%' : 'N/A');
@@ -3573,6 +3573,9 @@ async function runSynth(forceTicker) {
       suggWarn.push('💡 <strong>RSI approaching entry:</strong> RSI is ' + fmt(pd.rsi,1) + ' — not deeply oversold yet. Watch for a continued dip below 30 before entering.');
     } else if (!c1) {
       suggWarn.push('💡 <strong>RSI too high:</strong> RSI is ' + fmt(pd.rsi,1) + ' — wait for a pullback before entering. Entering on strength increases your breakeven distance.');
+    }
+    if (!c2 && pd.sma200) {
+      suggWarn.push('💡 <strong>Above 200 SMA:</strong> Price (' + fmtDollar(pd.price) + ') is above the 200 SMA (' + fmtDollar(pd.sma200) + '). Wait for a pullback below the SMA — buying into a confirmed downtrend improves your risk/reward.');
     }
     if (!c5 && netCostPct !== null) {
       suggWarn.push('💡 <strong>Net debit elevated:</strong> Net debit is ' + fmt(netCostPct,2) + '% — above 15%. Target 5–15% of stock price for an efficient structure. Consider a shallower call strike or waiting for a lower entry point.');

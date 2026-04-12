@@ -606,7 +606,7 @@ async function scoreTicker(ticker, env) {
 
   const hasSynthExp = expirations.some(e => dteFromStr(e) >= 365);
   const synth_c1 = rsi < 30;
-  const synth_c2 = rsi < 40;
+  const synth_c2 = !isNaN(sma200) ? price < sma200 : null;  // Price below 200 SMA (pullback confirmation)
   const synth_c3 = null;
   const synth_c4 = hasSynthExp;
   const synth_c5 = null;
