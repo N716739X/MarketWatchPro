@@ -315,6 +315,23 @@ header {
   color: var(--text-muted);
   font-weight: 500;
 }
+.ie-toggle {
+  background: var(--surface2);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 3px;
+  cursor: pointer;
+  letter-spacing: 0.3px;
+  font-family: inherit;
+  transition: background 0.2s, color 0.2s;
+}
+.ie-toggle:hover {
+  background: var(--accent);
+  color: #000;
+}
 .dash-col-body {
   padding: 6px 8px;
   display: flex;
@@ -1431,7 +1448,12 @@ input, textarea, select { -webkit-user-select: text; user-select: text; }
     <div class="dash-col">
       <div class="dash-col-header">
         <span class="dash-col-title">LEAPS</span>
-        <span class="dash-col-sub">Ranked by RSI ↑</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button id="ie-toggle" class="ie-toggle" onclick="toggleIERatio()" title="Switch Intrinsic/Extrinsic target">
+            <span id="ie-toggle-label">75/25</span>
+          </button>
+          <span class="dash-col-sub">Ranked by RSI ↑</span>
+        </div>
       </div>
       <div class="dash-col-body" id="col-leaps"></div>
     </div>
@@ -1813,6 +1835,28 @@ var currentTab      = localStorage.getItem('owp-tab')      || 'dashboard';
 var tickers         = JSON.parse(localStorage.getItem('owp-tickers') || 'null') || DEFAULT_TICKERS.slice();
 var cardData        = {}; // ticker -> data object
 var refreshTimer    = null;
+var ieMode          = localStorage.getItem('owp-ie-mode') || '75'; // '75' or '50'
+
+function getIEThreshold() { return ieMode === '50' ? 60 : 30; }
+function getIELabel()     { return ieMode === '50' ? '50/50' : '75/25'; }
+
+function toggleIERatio() {
+  ieMode = ieMode === '75' ? '50' : '75';
+  localStorage.setItem('owp-ie-mode', ieMode);
+  var lbl = document.getElementById('ie-toggle-label');
+  if (lbl) lbl.textContent = getIELabel();
+  // Re-score all LEAPS cards
+  Object.keys(cardData).forEach(function(ticker) {
+    var d = cardData[ticker];
+    if (d.leapsIEPct !== null && d.leapsIEPct !== undefined) {
+      var thresh = getIEThreshold();
+      d.leaps_c2 = ieMode === '50' ? (d.leapsIEPct >= 40 && d.leapsIEPct <= 60) : (d.leapsIEPct <= thresh);
+      d.leapsScore = [d.leaps_c1,d.leaps_c2,d.leaps_c3,d.leaps_c4,d.leaps_c5,d.leaps_c6,d.leaps_c7]
+        .filter(function(x){return x===true;}).length;
+    }
+  });
+  renderColumns();
+}
 
 // ═══════════════════════════════════════════════════════
 // THEME
@@ -2797,7 +2841,7 @@ async function runLeapsPhase3(ticker) {
     var bestIntrinsic = (bestStrike && pd.price) ? Math.max(0, pd.price - bestStrike) : null;
     var bestExtrinsic = (bestPremium && bestIntrinsic !== null) ? Math.max(0, bestPremium - bestIntrinsic) : null;
     var extPct = (bestExtrinsic !== null && bestPremium > 0) ? (bestExtrinsic / bestPremium * 100) : null;
-    var ieOk = extPct !== null ? extPct <= 30 : null;
+    var ieOk = extPct !== null ? (ieMode === '50' ? (extPct >= 40 && extPct <= 60) : extPct <= 30) : null;
 
     d.leaps_c1 = currentIV !== null ? currentIV < 55 : null;
     d.leaps_c2 = ieOk;
@@ -3007,6 +3051,9 @@ function applyServerScores(s) {
 }
 
 function refreshDashboard(forceRefresh) {
+  // Sync I/E toggle label with persisted state
+  var ieLbl = document.getElementById('ie-toggle-label');
+  if (ieLbl) ieLbl.textContent = getIELabel();
   if (forceRefresh) clearMDCache(); // manual refresh clears cache
   cardData = {};
   _phase3Triggered = false;
@@ -3495,7 +3542,7 @@ async function runLeaps(forceTicker) {
     var bestIntrinsic = (bestStrike && pd.price) ? Math.max(0, pd.price - bestStrike) : null;
     var bestExtrinsic = (bestPremium && bestIntrinsic !== null) ? Math.max(0, bestPremium - bestIntrinsic) : null;
     var extPct = (bestExtrinsic !== null && bestPremium > 0) ? (bestExtrinsic / bestPremium * 100) : null;
-    var ieOk = extPct !== null ? extPct <= 30 : null;
+    var ieOk = extPct !== null ? (ieMode === '50' ? (extPct >= 40 && extPct <= 60) : extPct <= 30) : null;
 
     var c1 = currentIV !== null ? currentIV < 55 : null;
     var c2 = ieOk;
@@ -3521,7 +3568,7 @@ async function runLeaps(forceTicker) {
     '</div>';
     html += '<div class="scorecard"><h3>LEAPS Deep ITM Call — Score</h3><div class="criteria-list">';
     html += critRow(1,'IV < 55% (Buy Low IV)', c1, currentIV !== null ? fmt(currentIV,1)+'%' : 'N/A');
-    html += critRow(2,'Intrinsic/Extrinsic ~75/25 (Ext ≤ 30%)', c2, extPct !== null ? fmt(extPct,1)+'% ext' : 'N/A');
+    html += critRow(2, ieMode === '50' ? 'Intrinsic/Extrinsic ~50/50 (40–60%)' : 'Intrinsic/Extrinsic ~75/25 (Ext ≤ 30%)', c2, extPct !== null ? fmt(extPct,1)+'% ext' : 'N/A');
     html += critRow(3,'Strike Deep ITM Δ 0.70–0.90', c3, bestDelta !== null ? fmt(bestDelta,2) : 'N/A');
     html += critRow(4,'Duration 18+ months (540+ DTE)', c4, repDTE+' days');
     html += critRow(5,'RSI(10) < 30 · Weekly (Entry Timing)', c5, fmt(pd.rsi,1));
@@ -3557,7 +3604,11 @@ async function runLeaps(forceTicker) {
       suggestions.push('💡 <strong>IV elevated:</strong> Current IV is ' + fmt(currentIV,1) + '% — you are paying a premium for this option. Wait for a volatility cooldown to get a cheaper entry on the same strike.');
     }
     if (!c2 && extPct !== null) {
-      suggestions.push('💡 <strong>Too much extrinsic:</strong> Extrinsic is ' + fmt(extPct,1) + '% of the premium — above the 30% cap. Go deeper ITM to reduce time value and get closer to the 75/25 intrinsic/extrinsic target.');
+      if (ieMode === '50') {
+        suggestions.push('💡 <strong>I/E ratio off target:</strong> Extrinsic is ' + fmt(extPct,1) + '% of the premium — outside the 40–60% range. Adjust strike depth to bring extrinsic closer to 50% for a balanced intrinsic/extrinsic split.');
+      } else {
+        suggestions.push('💡 <strong>Too much extrinsic:</strong> Extrinsic is ' + fmt(extPct,1) + '% of the premium — above the 30% cap. Go deeper ITM to reduce time value and get closer to the 75/25 intrinsic/extrinsic target.');
+      }
     }
     if (!c5 && pd.rsi < 40) {
       suggestions.push('💡 <strong>RSI approaching entry:</strong> RSI is ' + fmt(pd.rsi,1) + ' — not deeply oversold but acceptable for a long-duration LEAPS entry. Watch for a continued dip below 30 for a stronger signal.');
