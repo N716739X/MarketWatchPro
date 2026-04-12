@@ -3078,6 +3078,27 @@ async function runCC(forceTicker) {
       '<div class="info-item"><div class="info-label">Premium (Mid)</div><div class="info-val">' + (bestPremium ? fmtDollar(bestPremium) : '—') + '</div></div>' +
       '<div class="info-item"><div class="info-label">IV Rank</div><div class="info-val">' + (ivRank !== null ? fmt(ivRank,1)+'%' : '—') + '</div></div>' +
     '</div>';
+    // Trade Summary calculations for CC
+    var ccMaxGain  = (bestStrike && bestPremium && pd.price) ? ((bestStrike - pd.price) + bestPremium) * 100 : null;
+    var ccMaxLoss  = (bestPremium && pd.price) ? (pd.price - bestPremium) * 100 : null;
+    var ccBreakeven = (pd.price && bestPremium) ? pd.price - bestPremium : null;
+    var ccCapital   = pd.price ? pd.price * 100 : null;
+    var ccROC       = (ccMaxGain && ccCapital) ? (ccMaxGain / ccCapital * 100) : null;
+    var ccAnnReturn = (ccROC && dte) ? (ccROC * (365 / dte)) : null;
+
+    function tsItem(label, val, cls, note) {
+      return '<div class="ts-item"><div class="ts-label">' + label + '</div>' +
+        '<div class="ts-val ' + cls + '">' + val + '</div>' +
+        (note ? '<div class="ts-note">' + note + '</div>' : '') + '</div>';
+    }
+    html += '<div class="trade-summary"><h4>Trade Summary — 1 Contract (100 shares)</h4><div class="trade-summary-grid">' +
+      tsItem('Max Gain',        ccMaxGain  ? '$' + fmt(ccMaxGain,2)  : '—', 'ts-gain',    'If assigned at strike + premium') +
+      tsItem('Max Loss',        ccMaxLoss  ? '$' + fmt(ccMaxLoss,2)  : '—', 'ts-loss',    'If stock goes to $0') +
+      tsItem('Breakeven',       ccBreakeven ? fmtDollar(ccBreakeven) : '—', 'ts-neutral', 'Stock price at expiry') +
+      tsItem('Return on Capital', ccROC    ? fmt(ccROC,2) + '%'      : '—', 'ts-neutral', 'Per contract') +
+      tsItem('Annualized Return', ccAnnReturn ? fmt(ccAnnReturn,1) + '%' : '—', 'ts-neutral', 'Projected annual') +
+    '</div></div>';
+
     html += '<div class="scorecard"><h3>Covered Call — Score</h3><div class="criteria-list">';
     html += critRow(1,'IV Elevated > 50%', c1, ivRank !== null ? fmt(ivRank,1)+'%' : 'N/A');
     html += critRow(2,'RSI(10) > 65 · Daily (Overbought)', c2, fmt(pd.rsi,1));
