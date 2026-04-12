@@ -1806,7 +1806,7 @@ const EARNINGS = {
 // STATE
 // ═══════════════════════════════════════════════════════
 var _storedTheme = localStorage.getItem('owp-theme') || 'cyberpunk';
-var currentTheme    = (['cyberpunk','matrix','dark','light'].indexOf(_storedTheme) >= 0) ? _storedTheme : 'cyberpunk';
+var currentTheme    = (['cyberpunk','matrix'].indexOf(_storedTheme) >= 0) ? _storedTheme : 'cyberpunk';
 var currentTF       = '1day'; // fixed — dashboard uses per-strategy TFs, analyzer uses this
 var currentSort     = localStorage.getItem('owp-sort')     || 'score';
 var currentTab      = localStorage.getItem('owp-tab')      || 'dashboard';
@@ -1817,7 +1817,7 @@ var refreshTimer    = null;
 // ═══════════════════════════════════════════════════════
 // THEME
 // ═══════════════════════════════════════════════════════
-var THEMES = ['cyberpunk', 'matrix', 'dark', 'light'];
+var THEMES = ['cyberpunk', 'matrix'];
 function applyTheme() {
   document.body.classList.remove('matrix', 'dark', 'light');
   if (currentTheme !== 'cyberpunk') {
