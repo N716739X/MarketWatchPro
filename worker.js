@@ -620,14 +620,15 @@ async function scoreTicker(ticker, env) {
   const leaps_c7 = null;                                            // Bid/Ask Spread <= 10% (need chain)
   const leapsScore = [leaps_c1, leaps_c2, leaps_c3, leaps_c4, leaps_c5, leaps_c6, leaps_c7].filter(x => x === true).length;
 
-  const hasSynthExp = expirations.some(e => dteFromStr(e) >= 365);
-  const synth_c1 = rsi < 30;
-  const synth_c2 = !isNaN(sma200) ? price < sma200 : null;  // Price below 200 SMA (pullback confirmation)
-  const synth_c3 = null;
-  const synth_c4 = hasSynthExp;
-  const synth_c5 = null;
-  const synth_c6 = null;
-  const synth_c7 = null;
+  // Synth: James-aligned same-strike synthetic long
+  const hasSynthExp = expirations.some(e => dteFromStr(e) >= 540);
+  const synth_c1 = rsi < 30;                                     // RSI < 30 (proxy for weekly)
+  const synth_c2 = ivRank !== null ? ivRank > 50 : null;          // IV > 50%
+  const synth_c3 = hasSynthExp;                                   // Duration >= 540 DTE
+  const synth_c4 = null;                                          // Net Debit <= 5% (need chain)
+  const synth_c5 = null;                                          // Call OI >= 300 (need chain)
+  const synth_c6 = null;                                          // Put OI >= 300 (need chain)
+  const synth_c7 = null;                                          // Spreads <= 10% (need chain)
   const synthScore = [synth_c1, synth_c2, synth_c3, synth_c4, synth_c5, synth_c6, synth_c7].filter(x => x === true).length;
 
   // Build response — grades + badge info + display data (no raw scoring logic exposed)
