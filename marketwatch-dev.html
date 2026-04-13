@@ -1885,11 +1885,13 @@ function updateClock() {
   var month  = now.getUTCMonth() + 1;
   if (month > 3 && month < 11) offset = -5;
   var cst = new Date(now.getTime() + offset * 3600000);
-  var h   = String(cst.getUTCHours()).padStart(2,'0');
-  var m   = String(cst.getUTCMinutes()).padStart(2,'0');
-  var s   = String(cst.getUTCSeconds()).padStart(2,'0');
-  var tz  = offset === -5 ? 'CDT' : 'CST';
-  document.getElementById('clock').textContent = h + ':' + m + ':' + s + ' ' + tz;
+  var hr24 = cst.getUTCHours();
+  var ampm  = hr24 >= 12 ? 'PM' : 'AM';
+  var hr12  = hr24 % 12 || 12;
+  var m     = String(cst.getUTCMinutes()).padStart(2,'0');
+  var s     = String(cst.getUTCSeconds()).padStart(2,'0');
+  var tz    = offset === -5 ? 'CDT' : 'CST';
+  document.getElementById('clock').textContent = hr12 + ':' + m + ':' + s + ' ' + ampm + ' ' + tz;
 
   var open = isMarketOpen();
   var el   = document.getElementById('mkt-status');
