@@ -3968,8 +3968,8 @@ async function runSynth(forceTicker) {
 
     // Same-strike P&L scenarios
     // P&L = Max(0, F - strike) - Max(0, strike - F) - netCost  =  F - strike - netCost
-    var scenarioPcts = [-20, -10, 0, 10, 20, 50];
-    var scenarioLabels = ['-20% Crash', '-10% Dip', 'Flat', '+10% Rally', '+20% Rally', '+50% Rip'];
+    var scenarioPcts = [-30, -20, -10, 0, 10, 20, 50, 100];
+    var scenarioLabels = ['-30% Crash', '-20% Drop', '-10% Dip', 'Flat', '+10% Rally', '+20% Rally', '+50% Rip', '+100% Moon'];
     html += '<div class="chain-section"><h3>Position Scenarios at Expiry</h3><div class="scenarios">';
     scenarioPcts.forEach(function(pct, si) {
       var futurePrice   = pd.price * (1 + pct / 100);
