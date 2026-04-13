@@ -325,6 +325,13 @@ header {
   text-transform: uppercase;
   color: var(--accent);
 }
+.dash-col-desc {
+  font-size: 9px;
+  color: var(--text-muted);
+  font-style: italic;
+  opacity: 0.7;
+  margin-top: 2px;
+}
 .dash-col-sub {
   font-size: 9px;
   color: var(--text-muted);
@@ -1437,6 +1444,7 @@ input, textarea, select { -webkit-user-select: text; user-select: text; }
     <div class="dash-col">
       <div class="dash-col-header">
         <span class="dash-col-title">Cash-Secured Put</span>
+        <span class="dash-col-desc">Get paid to buy stocks at a discount</span>
         <span class="dash-col-sub">Ranked by score</span>
       </div>
       <div class="dash-col-body" id="col-put"></div>
@@ -1445,6 +1453,7 @@ input, textarea, select { -webkit-user-select: text; user-select: text; }
     <div class="dash-col">
       <div class="dash-col-header">
         <span class="dash-col-title">Covered Call</span>
+        <span class="dash-col-desc">Generate income on stocks you already own</span>
         <span class="dash-col-sub">Ranked by score</span>
       </div>
       <div class="dash-col-body" id="col-cc"></div>
@@ -1453,6 +1462,7 @@ input, textarea, select { -webkit-user-select: text; user-select: text; }
     <div class="dash-col">
       <div class="dash-col-header">
         <span class="dash-col-title">LEAPS</span>
+        <span class="dash-col-desc">Leveraged long-term exposure for less capital</span>
         <span class="dash-col-sub">Ranked by RSI ↑</span>
       </div>
       <div class="dash-col-body" id="col-leaps"></div>
@@ -1461,6 +1471,7 @@ input, textarea, select { -webkit-user-select: text; user-select: text; }
     <div class="dash-col">
       <div class="dash-col-header">
         <span class="dash-col-title">Synthetic Long</span>
+        <span class="dash-col-desc">Replicate stock ownership with options</span>
         <span class="dash-col-sub">Ranked by RSI ↑</span>
       </div>
       <div class="dash-col-body" id="col-synth"></div>
