@@ -3954,6 +3954,72 @@ async function runSynth(forceTicker) {
       '<div class="sc-row"><span class="sc-key">Spread</span><span class="sc-val ' + (putSpread && putSpread > 1 ? 'down' : 'up') + '">' + (putSpread !== null ? fmtDollar(putSpread) : '—') + '</span></div>' +
     '</div></div>';
 
+    // ── Call chain ±3 strikes around recommended ──
+    if (callChain && callChain.strike) {
+      var callIdx = -1;
+      for (var ci = 0; ci < callChain.strike.length; ci++) {
+        if (callChain.strike[ci] === slCall.strike) { callIdx = ci; break; }
+      }
+      if (callIdx >= 0) {
+        var cStart = Math.max(0, callIdx - 3);
+        var cEnd   = Math.min(callChain.strike.length, callIdx + 4);
+        html += '<div class="chain-section"><h3>Call Strikes <span style="color:var(--text-muted);font-weight:400;font-size:11px">— ITM calls, ★ = recommended</span></h3>' +
+          '<div class="leaps-table-wrap"><table><thead><tr>' +
+          '<th>Strike</th><th>Bid</th><th>Ask</th><th>Mid</th><th>Delta</th><th>OI</th><th>Sprd</th>' +
+          '</tr></thead><tbody>';
+        for (var cx = cStart; cx < cEnd; cx++) {
+          var isRec = cx === callIdx;
+          var cBid = callChain.bid ? callChain.bid[cx] : null;
+          var cAsk = callChain.ask ? callChain.ask[cx] : null;
+          var cMid = callChain.mid ? callChain.mid[cx] : null;
+          var cDlt = callChain.delta ? callChain.delta[cx] : null;
+          var cOi  = callChain.openInterest ? callChain.openInterest[cx] : null;
+          var cSpr = (cBid && cAsk) ? cAsk - cBid : null;
+          html += '<tr' + (isRec ? ' class="recommended"' : '') + '>' +
+            '<td class="strike-cell">' + (isRec ? '<span class="star">★</span>' : '') + fmtDollar(callChain.strike[cx]) + '</td>' +
+            '<td>' + fmtDollar(cBid) + '</td><td>' + fmtDollar(cAsk) + '</td>' +
+            '<td><strong>' + fmtDollar(cMid) + '</strong></td>' +
+            '<td>' + (cDlt !== null ? fmt(Math.abs(cDlt),2) : '—') + '</td>' +
+            '<td>' + fmtK(cOi) + '</td>' +
+            '<td' + (cSpr && cSpr > 1 ? ' style="color:var(--red)"' : '') + '>' + (cSpr !== null ? fmtDollar(cSpr) : '—') + '</td></tr>';
+        }
+        html += '</tbody></table></div></div>';
+      }
+    }
+
+    // ── Put chain ±3 strikes around recommended ──
+    if (putChain && putChain.strike) {
+      var putIdx = -1;
+      for (var pi = 0; pi < putChain.strike.length; pi++) {
+        if (putChain.strike[pi] === slPut.strike) { putIdx = pi; break; }
+      }
+      if (putIdx >= 0) {
+        var pStart = Math.max(0, putIdx - 3);
+        var pEnd   = Math.min(putChain.strike.length, putIdx + 4);
+        html += '<div class="chain-section"><h3>Put Strikes <span style="color:var(--text-muted);font-weight:400;font-size:11px">— near-ATM puts, ★ = recommended</span></h3>' +
+          '<div class="leaps-table-wrap"><table><thead><tr>' +
+          '<th>Strike</th><th>Bid</th><th>Ask</th><th>Mid</th><th>Delta</th><th>OI</th><th>Sprd</th>' +
+          '</tr></thead><tbody>';
+        for (var px = pStart; px < pEnd; px++) {
+          var isPRec = px === putIdx;
+          var pBid = putChain.bid ? putChain.bid[px] : null;
+          var pAsk = putChain.ask ? putChain.ask[px] : null;
+          var pMid = putChain.mid ? putChain.mid[px] : null;
+          var pDlt = putChain.delta ? putChain.delta[px] : null;
+          var pOi  = putChain.openInterest ? putChain.openInterest[px] : null;
+          var pSpr = (pBid && pAsk) ? pAsk - pBid : null;
+          html += '<tr' + (isPRec ? ' class="recommended"' : '') + '>' +
+            '<td class="strike-cell">' + (isPRec ? '<span class="star">★</span>' : '') + fmtDollar(putChain.strike[px]) + '</td>' +
+            '<td>' + fmtDollar(pBid) + '</td><td>' + fmtDollar(pAsk) + '</td>' +
+            '<td><strong>' + fmtDollar(pMid) + '</strong></td>' +
+            '<td>' + (pDlt !== null ? fmt(Math.abs(pDlt),2) : '—') + '</td>' +
+            '<td>' + fmtK(pOi) + '</td>' +
+            '<td' + (pSpr && pSpr > 1 ? ' style="color:var(--red)"' : '') + '>' + (pSpr !== null ? fmtDollar(pSpr) : '—') + '</td></tr>';
+        }
+        html += '</tbody></table></div></div>';
+      }
+    }
+
     html += '<div class="scorecard"><h3>Bull Synthetic — Score</h3><div class="criteria-list">';
     html += critRow(1,'RSI(10) < 30 · Daily (Oversold Entry)', c1, fmt(pd.rsi,1));
     html += critRow(2,'Price Below 200 SMA (Pullback)', c2, pd.sma200 ? fmtDollar(pd.price) + ' vs ' + fmtDollar(pd.sma200) : 'N/A');
