@@ -3512,9 +3512,31 @@ async function runLeaps(forceTicker) {
     var ivRank     = ivResult ? ivResult.ivRank : null;
     var currentIV  = ivResult ? ivResult.atmIV  : null;
 
-    // Grade from first expiry
-    var repChain = chains[0];
-    var repDTE   = dteFromStr(leapsExpiries[0]);
+    // Find best expiry (lowest breakeven CAGR at Δ0.75) — used for grading, info box, and chain table
+    var bestExpIdx = 0, bestExpCAGR = Infinity;
+    leapsExpiries.forEach(function(exp, eIdx) {
+      var ch  = chains[eIdx];
+      var dte = dteFromStr(exp);
+      if (!ch || !ch.strike) return;
+      var yr  = dte / 365;
+      var bD  = Infinity, bC = null;
+      for (var i = 0; i < ch.strike.length; i++) {
+        var d = ch.delta ? ch.delta[i] : null;
+        if (d === null || d < 0.60 || d > 0.95) continue;
+        var dif = Math.abs(d - 0.75);
+        if (dif < bD) {
+          bD = dif;
+          var m = ch.mid ? ch.mid[i] : null;
+          var be = ch.strike[i] + (m || 0);
+          bC = (be && pd.price && yr > 0) ? (Math.pow(be / pd.price, 1 / yr) - 1) * 100 : null;
+        }
+      }
+      if (bC !== null && bC < bestExpCAGR) { bestExpCAGR = bC; bestExpIdx = eIdx; }
+    });
+
+    // Grade from best expiry
+    var repChain = chains[bestExpIdx];
+    var repDTE   = dteFromStr(leapsExpiries[bestExpIdx]);
     var bestStrike = null, bestDelta = null, bestPremium = null, bestOI = null, bestSpread = null;
 
     if (repChain && repChain.strike) {
@@ -3627,27 +3649,6 @@ async function runLeaps(forceTicker) {
     html += critRow(7,'Bid/Ask Spread ≤ 10%', c7, bestSpread !== null ? fmt(bestSpread,1)+'%' : 'N/A');
     html += '</div>' + scoreSummaryHtml(score,7) + '</div>';
 
-    // ── Pre-calculate best expiry index (used by both CAGR table and chain section) ──
-    var bestExpIdx = 0, bestExpCAGR = Infinity;
-    leapsExpiries.forEach(function(exp, eIdx) {
-      var ch  = chains[eIdx];
-      var dte = dteFromStr(exp);
-      if (!ch || !ch.strike) return;
-      var yr  = dte / 365;
-      var bD  = Infinity, bC = null;
-      for (var i = 0; i < ch.strike.length; i++) {
-        var d = ch.delta ? ch.delta[i] : null;
-        if (d === null || d < 0.60 || d > 0.95) continue;
-        var dif = Math.abs(d - 0.75);
-        if (dif < bD) {
-          bD = dif;
-          var m = ch.mid ? ch.mid[i] : null;
-          var be = ch.strike[i] + (m || 0);
-          bC = (be && pd.price && yr > 0) ? (Math.pow(be / pd.price, 1 / yr) - 1) * 100 : null;
-        }
-      }
-      if (bC !== null && bC < bestExpCAGR) { bestExpCAGR = bC; bestExpIdx = eIdx; }
-    });
 
     // ── Contextual suggestions ──
     var suggestions = [];
