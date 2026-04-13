@@ -3610,15 +3610,21 @@ async function runLeaps(forceTicker) {
       '<div class="sc-row"><span class="sc-key">Spread</span><span class="sc-val ' + (bestSpread !== null && bestSpread > 10 ? 'down' : '') + '">' + (bestSpread !== null ? fmt(bestSpread,1)+'%' : '—') + '</span></div>' +
     '</div>';
 
-    // ── Standalone Trade Summary ──
-    html += '<div class="scenario-card" style="margin-bottom:16px"><h4>Trade Summary</h4>' +
-      '<div class="sc-row"><span class="sc-key">Cost (1 ct)</span><span class="sc-val">' + (cost1ct ? '$'+fmt(cost1ct,2) : '—') + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">Max Loss</span><span class="sc-val down">' + (cost1ct ? '$'+fmt(cost1ct,2) : '—') + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">Max Gain</span><span class="sc-val up">∞</span></div>' +
-      '<div class="sc-row"><span class="sc-key">Breakeven</span><span class="sc-val">' + (breakeven ? fmtDollar(breakeven) : '—') + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">BE CAGR</span><span class="sc-val ' + (breakevenCAGR !== null && breakevenCAGR <= 15 ? 'up' : breakevenCAGR !== null && breakevenCAGR > 20 ? 'down' : '') + '">' + (breakevenCAGR !== null ? fmt(breakevenCAGR,1)+'%' : '—') + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">Leverage</span><span class="sc-val">' + (leverage ? fmt(leverage,1)+'x' : '—') + '</span></div>' +
-    '</div>';
+    // ── Standalone Trade Summary (horizontal grid) ──
+    var beAwayPct = (breakeven && pd.price) ? ((breakeven / pd.price - 1) * 100) : null;
+    function tsItem(label, val, cls, note) {
+      return '<div class="ts-item"><div class="ts-label">' + label + '</div>' +
+        '<div class="ts-val ' + cls + '">' + val + '</div>' +
+        (note ? '<div class="ts-note">' + note + '</div>' : '') + '</div>';
+    }
+    html += '<div class="trade-summary"><h4>Trade Summary — 1 Contract (100 shares)</h4><div class="trade-summary-grid">' +
+      tsItem('Cost (1 ct)', cost1ct ? '$' + fmt(cost1ct,2) : '—', 'ts-loss', 'Premium paid for LEAPS call') +
+      tsItem('Max Loss',    cost1ct ? '$' + fmt(cost1ct,2) : '—', 'ts-loss', 'Total premium at risk') +
+      tsItem('Max Gain',    '∞', 'ts-gain', 'Unlimited upside above breakeven') +
+      tsItem('Breakeven',   breakeven ? fmtDollar(breakeven) + (beAwayPct !== null ? ' (' + (beAwayPct >= 0 ? '+' : '') + fmt(beAwayPct,1) + '%)' : '') : '—', 'ts-neutral', 'Stock price needed at expiry') +
+      tsItem('BE CAGR',     breakevenCAGR !== null ? fmt(breakevenCAGR,1) + '%' : '—', breakevenCAGR !== null && breakevenCAGR <= 15 ? 'ts-gain' : 'ts-loss', 'Annual growth to break even') +
+      tsItem('Leverage',    leverage ? fmt(leverage,1) + 'x' : '—', 'ts-neutral', 'Stock exposure per dollar') +
+    '</div></div>';
 
     html += '<div class="scorecard"><h3>LEAPS Deep ITM Call — Score</h3><div class="criteria-list">';
     html += critRow(1,'Delta ≥ 0.80 (Deep ITM, ~stock exposure)', c1, bestDelta !== null ? fmt(bestDelta,2) + (shareEquiv ? ' (~' + shareEquiv + ' sh)' : '') : 'N/A');
