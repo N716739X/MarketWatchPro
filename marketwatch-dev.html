@@ -3585,6 +3585,29 @@ async function runLeaps(forceTicker) {
       '<div class="info-item"><div class="info-label">Extrinsic</div><div class="info-val">' + (bestExtrinsic !== null ? fmtDollar(bestExtrinsic) : '—') + '</div></div>' +
       '<div class="info-item"><div class="info-label">Ext %</div><div class="info-val">' + (extPct !== null ? fmt(extPct,1)+'%' : '—') + '</div></div>' +
     '</div>';
+
+    // ── Trade Summary ──
+    var leapsCost     = bestPremium ? bestPremium * 100 : null;
+    var stockCost     = pd.price ? pd.price * 100 : null;
+    var leapsMaxLoss  = leapsCost;
+    var leapsLeverage = (stockCost && leapsCost && leapsCost > 0) ? (stockCost / leapsCost) : null;
+    var intrVal100    = bestIntrinsic !== null ? bestIntrinsic * 100 : null;
+    var extrVal100    = bestExtrinsic !== null ? bestExtrinsic * 100 : null;
+    function tsItem(label, val, cls, note) {
+      return '<div class="ts-item"><div class="ts-label">' + label + '</div>' +
+        '<div class="ts-val ' + cls + '">' + val + '</div>' +
+        (note ? '<div class="ts-note">' + note + '</div>' : '') + '</div>';
+    }
+    html += '<div class="trade-summary"><h4>Trade Summary — 1 Contract (100 shares equivalent)</h4><div class="trade-summary-grid">' +
+      tsItem('Cost',            leapsCost   ? '$' + fmt(leapsCost,2)  : '—', 'ts-neutral', 'Total premium paid') +
+      tsItem('Max Loss',        leapsMaxLoss ? '$' + fmt(leapsMaxLoss,2) : '—', 'ts-loss', 'Entire premium at risk') +
+      tsItem('Breakeven',       breakeven   ? fmtDollar(breakeven)     : '—', 'ts-neutral', 'Strike + premium at expiry') +
+      tsItem('Intrinsic',       intrVal100 !== null  ? '$' + fmt(intrVal100,2)  : '—', 'ts-gain', 'Built-in value (price − strike)') +
+      tsItem('Extrinsic',       extrVal100 !== null  ? '$' + fmt(extrVal100,2)  : '—', 'ts-neutral', 'Time value paid') +
+      tsItem('Leverage',        leapsLeverage ? fmt(leapsLeverage,1) + 'x' : '—', 'ts-neutral', 'vs buying 100 shares at $' + (pd.price ? fmt(pd.price,2) : '—')) +
+      tsItem('Breakeven CAGR',  breakevenCAGR !== null ? fmt(breakevenCAGR,1) + '%' : '—', 'ts-neutral', 'Annual growth needed to break even') +
+    '</div></div>';
+
     html += '<div class="scorecard"><h3>LEAPS Deep ITM Call — Score</h3><div class="criteria-list">';
     html += critRow(1,'IV < 55% (Buy Low IV)', c1, currentIV !== null ? fmt(currentIV,1)+'%' : 'N/A');
     html += critRow(2, ieMode === '50' ? 'Intrinsic/Extrinsic ~50/50 (40–60%)' : 'Intrinsic/Extrinsic ~75/25 (Ext ≤ 30%)', c2, extPct !== null ? fmt(extPct,1)+'% ext' : 'N/A');
