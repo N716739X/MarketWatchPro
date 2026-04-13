@@ -2388,7 +2388,7 @@ function buildSkeletonRow(ticker) {
 
 // Build a full rich card for a dashboard column
 function buildColCard(ticker, d, strategy, rank) {
-  var isTop3 = (typeof rank === 'number' && rank < 3);
+  var isTop3 = (typeof rank === 'number' && rank === 0);
   var isScored = (strategy === 'put');
   var score;
   if (strategy === 'put')        score = d.putScore || 0;
