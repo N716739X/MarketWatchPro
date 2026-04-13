@@ -422,6 +422,20 @@ function dteFromStr(dateStr) {
   return Math.round((exp - todayUTC) / 86400000);
 }
 
+// Normalize: shift Thursday expiry dates to Friday to match broker displays
+function normalizeExpiry(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00Z');
+  if (d.getUTCDay() === 4) { // Thursday
+    d.setUTCDate(d.getUTCDate() + 1);
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(d.getUTCDate()).padStart(2, '0');
+    return y + '-' + m + '-' + dd;
+  }
+  return dateStr;
+}
+function normalizeExpirations(arr) { return arr.map(normalizeExpiry); }
+
 function isThirdFriday(dateStr) {
   const d = new Date(dateStr + 'T00:00:00Z');
   if (d.getUTCDay() !== 5) return false;
@@ -501,7 +515,7 @@ async function scoreTicker(ticker, env) {
     cachedFetch('https://api.twelvedata.com/atr?symbol=' + ticker + '&interval=1day&time_period=14&outputsize=30&apikey=' + TD_KEY).catch(() => ({ values: [] })),
   ]);
 
-  const expirations = expData.expirations || [];
+  const expirations = normalizeExpirations(expData.expirations || []);
   const atrSeries = (atrData.values || []).map(v => parseFloat(v.atr)).reverse();
 
   let bestExpiry = findBestExpiry(expirations, 30, 50);

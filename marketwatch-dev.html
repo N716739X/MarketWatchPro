@@ -2296,7 +2296,20 @@ async function fetchATRSeries(ticker) {
 
 async function fetchExpirations(ticker) {
   var data = await fetchMD('options/expirations/' + ticker + '/');
-  return data.expirations || [];
+  var raw = data.expirations || [];
+  // Normalize: some APIs report monthly expiry as Thursday instead of Friday.
+  // Shift Thu→Fri so dates match broker displays.
+  return raw.map(function(d) {
+    var dt = new Date(d + 'T12:00:00');
+    if (dt.getDay() === 4) { // Thursday
+      dt.setDate(dt.getDate() + 1);
+      var y = dt.getFullYear();
+      var m = ('0' + (dt.getMonth() + 1)).slice(-2);
+      var dd = ('0' + dt.getDate()).slice(-2);
+      return y + '-' + m + '-' + dd;
+    }
+    return d;
+  });
 }
 
 async function fetchChain(ticker, expiration, side) {
