@@ -3667,7 +3667,9 @@ async function runLeaps(forceTicker) {
       '<div class="sc-row"><span class="sc-key">Intrinsic</span><span class="sc-val">' + (bestIntrinsic !== null ? fmtDollar(bestIntrinsic) : '—') + '</span></div>' +
       '<div class="sc-row"><span class="sc-key">Extrinsic</span><span class="sc-val">' + (bestExtrinsic !== null ? fmtDollar(bestExtrinsic) : '—') + '</span></div>' +
       '<div class="sc-row"><span class="sc-key">Ext %</span><span class="sc-val ' + (extPct !== null && extPct <= 30 ? 'up' : 'down') + '">' + (extPct !== null ? fmt(extPct,1)+'%' : '—') + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">Cost (1 ct)</span><span class="sc-val">' + (cost75 ? '$'+fmt(cost75,2) : '—') + '</span></div>' +
+      '<div class="sc-row" style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px"><span class="sc-key">Cost (1 ct)</span><span class="sc-val">' + (cost75 ? '$'+fmt(cost75,2) : '—') + '</span></div>' +
+      '<div class="sc-row"><span class="sc-key">Max Loss</span><span class="sc-val down">' + (cost75 ? '$'+fmt(cost75,2) : '—') + '</span></div>' +
+      '<div class="sc-row"><span class="sc-key">Max Gain</span><span class="sc-val up">∞</span></div>' +
       '<div class="sc-row"><span class="sc-key">Breakeven</span><span class="sc-val">' + (breakeven ? fmtDollar(breakeven) : '—') + '</span></div>' +
       '<div class="sc-row"><span class="sc-key">BE CAGR</span><span class="sc-val ' + (breakevenCAGR !== null && breakevenCAGR <= 15 ? 'up' : '') + '">' + (breakevenCAGR !== null ? fmt(breakevenCAGR,1)+'%' : '—') + '</span></div>' +
       '<div class="sc-row"><span class="sc-key">Leverage</span><span class="sc-val">' + (lev75 ? fmt(lev75,1)+'x' : '—') + '</span></div>' +
@@ -3681,7 +3683,9 @@ async function runLeaps(forceTicker) {
       '<div class="sc-row"><span class="sc-key">Intrinsic</span><span class="sc-val">' + (pick50.intrinsic !== null ? fmtDollar(pick50.intrinsic) : '—') + '</span></div>' +
       '<div class="sc-row"><span class="sc-key">Extrinsic</span><span class="sc-val">' + (pick50.extrinsic !== null ? fmtDollar(pick50.extrinsic) : '—') + '</span></div>' +
       '<div class="sc-row"><span class="sc-key">Ext %</span><span class="sc-val ' + (ext5050 !== null && ext5050 >= 40 && ext5050 <= 60 ? 'up' : 'down') + '">' + (ext5050 !== null ? fmt(ext5050,1)+'%' : '—') + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">Cost (1 ct)</span><span class="sc-val">' + (cost50 ? '$'+fmt(cost50,2) : '—') + '</span></div>' +
+      '<div class="sc-row" style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px"><span class="sc-key">Cost (1 ct)</span><span class="sc-val">' + (cost50 ? '$'+fmt(cost50,2) : '—') + '</span></div>' +
+      '<div class="sc-row"><span class="sc-key">Max Loss</span><span class="sc-val down">' + (cost50 ? '$'+fmt(cost50,2) : '—') + '</span></div>' +
+      '<div class="sc-row"><span class="sc-key">Max Gain</span><span class="sc-val up">∞</span></div>' +
       '<div class="sc-row"><span class="sc-key">Breakeven</span><span class="sc-val">' + (be5050 ? fmtDollar(be5050) : '—') + '</span></div>' +
       '<div class="sc-row"><span class="sc-key">BE CAGR</span><span class="sc-val ' + (cagr5050 !== null && cagr5050 <= 15 ? 'up' : '') + '">' + (cagr5050 !== null ? fmt(cagr5050,1)+'%' : '—') + '</span></div>' +
       '<div class="sc-row"><span class="sc-key">Leverage</span><span class="sc-val">' + (lev50 ? fmt(lev50,1)+'x' : '—') + '</span></div>' +
