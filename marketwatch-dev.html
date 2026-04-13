@@ -2739,7 +2739,7 @@ async function fetchTickerData(ticker) {
     // Synth 7: RSI<30 Wkly, IV>50%, Duration≥540d, Net Debit≤5%, Call OI≥300, Put OI≥300, Spreads≤10%
     var hasSynthExp = expirations.some(function(e) { return dteFromStr(e) >= 540; });
     var synth_c1 = pd.rsiWeekly !== undefined ? pd.rsiWeekly < 30 : (pd.rsi < 30); // RSI < 30 Weekly
-    var synth_c2 = pd.iv !== undefined ? pd.iv > 50 : null;          // IV > 50%
+    var synth_c2 = ivRank !== null ? ivRank > 50 : null;              // IV > 50% (uses ivRank from chain)
     var synth_c3 = hasSynthExp;                                      // Duration ≥ 540 days
     var synth_c4 = null;                                             // Net Debit ≤ 5% (need chain)
     var synth_c5 = null;                                             // Call OI ≥ 300 (need chain)
@@ -2873,7 +2873,7 @@ async function runSynthPhase3(ticker) {
   try {
     var d = cardData[ticker];
     if (!d) return;
-    var pd = { price: d.price, rsi: d.rsi, iv: d.iv };
+    var pd = { price: d.price, rsi: d.rsi, ivRank: d.ivRank };
 
     // Reuse cached expirations from phase 2 — no extra API call
     var expirations = d.expirations || await fetchExpirations(ticker);
@@ -2939,7 +2939,7 @@ async function runSynthPhase3(ticker) {
 
     // James-aligned 7 criteria
     d.synth_c1 = d.rsiWeekly !== undefined ? d.rsiWeekly < 30 : (pd.rsi < 30); // RSI < 30 Weekly
-    d.synth_c2 = pd.iv !== undefined && pd.iv !== null ? pd.iv > 50 : null;      // IV > 50%
+    d.synth_c2 = pd.ivRank !== undefined && pd.ivRank !== null ? pd.ivRank > 50 : null; // IV > 50%
     d.synth_c3 = dte >= 540;                                                     // Duration ≥ 540 DTE
     d.synth_c4 = netCostPct !== null ? Math.abs(netCostPct) <= 5 : null;         // Net Debit ≤ 5%
     d.synth_c5 = slCall.oi !== null ? slCall.oi >= 300 : null;                   // Call OI ≥ 300
@@ -3810,9 +3810,12 @@ async function runSynth(forceTicker) {
     var breakeven  = netCost !== null ? atmStrike + Math.max(netCost, 0) : null;
     var beAboveCur = (breakeven !== null && pd.price) ? ((breakeven / pd.price - 1) * 100) : null;
 
+    // Fetch IV rank for this expiration
+    var ivRank = await fetchIVRank(ticker, bestExpiry).catch(function(){ return null; });
+
     // James-aligned 7 criteria
     var c1 = pd.rsiWeekly !== undefined ? pd.rsiWeekly < 30 : (pd.rsi < 30); // RSI < 30 Weekly
-    var c2 = pd.iv !== undefined && pd.iv !== null ? pd.iv > 50 : null;       // IV > 50%
+    var c2 = ivRank !== null ? ivRank > 50 : null;                             // IV > 50%
     var c3 = dte >= 540;                                                       // Duration ≥ 540 DTE
     var c4 = netCostPct !== null ? Math.abs(netCostPct) <= 5 : null;           // Net Debit ≤ 5%
     var c5 = slCall.oi !== null ? slCall.oi >= 300 : null;                     // Call OI ≥ 300
@@ -3829,7 +3832,7 @@ async function runSynth(forceTicker) {
       '<div class="info-item"><div class="info-label">Strike</div><div class="info-val">' + fmtDollar(atmStrike) + ' (same for both legs)</div></div>' +
       '<div class="info-item"><div class="info-label">Net Cost</div><div class="info-val">' + (netCost !== null ? (netCost >= 0 ? fmtDollar(netCost) + ' debit' : fmtDollar(Math.abs(netCost)) + ' credit') : '—') + ' (' + (netCostPct !== null ? fmt(Math.abs(netCostPct),2)+'%' : '—') + ')</div></div>' +
       '<div class="info-item"><div class="info-label">Breakeven</div><div class="info-val">' + (breakeven !== null ? fmtDollar(breakeven) : '—') + (beAboveCur !== null ? ' ('+fmt(beAboveCur,1)+'% away)' : '') + '</div></div>' +
-      (pd.iv !== undefined && pd.iv !== null ? '<div class="info-item"><div class="info-label">IV</div><div class="info-val">' + fmt(pd.iv,1) + '%</div></div>' : '') +
+      (ivRank !== undefined && ivRank !== null ? '<div class="info-item"><div class="info-label">IV Rank</div><div class="info-val">' + fmt(ivRank,1) + '%</div></div>' : '') +
     '</div>';
 
     // ── Trade Summary ──
@@ -3912,7 +3915,7 @@ async function runSynth(forceTicker) {
 
     html += '<div class="scorecard"><h3>Synthetic Long — Score</h3><div class="criteria-list">';
     html += critRow(1,'RSI < 30 · Weekly (Oversold — Buy the Dip)', c1, pd.rsiWeekly !== undefined ? fmt(pd.rsiWeekly,1) : fmt(pd.rsi,1));
-    html += critRow(2,'IV > 50% (High Vol — Fat Put Premiums)', c2, pd.iv !== undefined && pd.iv !== null ? fmt(pd.iv,1) + '%' : 'N/A');
+    html += critRow(2,'IV > 50% (High Vol — Fat Put Premiums)', c2, ivRank !== null ? fmt(ivRank,1) + '%' : 'N/A');
     html += critRow(3,'Duration ≥ 540 DTE (LEAPS-Length)', c3, dte + ' days');
     html += critRow(4,'Net Debit ≤ 5% (Put Funds the Call)', c4, netCostPct !== null ? fmt(Math.abs(netCostPct),2) + '%' : 'N/A');
     html += critRow(5,'Call OI ≥ 300 (Liquidity)', c5, fmtK(slCall.oi));
@@ -3930,8 +3933,8 @@ async function runSynth(forceTicker) {
         suggWarn.push('💡 <strong>Not oversold:</strong> Weekly RSI is ' + fmt(rsiVal,1) + ' — synthetics work best entered at market lows when put premiums are fattest.');
       }
     }
-    if (!c2 && pd.iv !== undefined && pd.iv !== null) {
-      suggWarn.push('💡 <strong>Low IV:</strong> IV is ' + fmt(pd.iv,1) + '% — below 50%. In low-vol environments the put credit won\'t adequately fund the call. Wait for a volatility spike.');
+    if (!c2 && ivRank !== null) {
+      suggWarn.push('💡 <strong>Low IV:</strong> IV is ' + fmt(ivRank,1) + '% — below 50%. In low-vol environments the put credit won\'t adequately fund the call. Wait for a volatility spike.');
     }
     if (!c3) {
       suggWarn.push('💡 <strong>Short duration:</strong> ' + dte + ' DTE is below the 540-day target. Longer expirations give the thesis time to play out and reduce time decay pressure.');
