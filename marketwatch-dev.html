@@ -1406,7 +1406,7 @@ input, textarea, select { -webkit-user-select: text; user-select: text; }
   <div class="tab" data-tab="put">Cash-Secured Put</div>
   <div class="tab" data-tab="cc">Covered Call</div>
   <div class="tab" data-tab="leaps">LEAPS</div>
-  <div class="tab" data-tab="synth">Bull Synthetic</div>
+  <div class="tab" data-tab="synth">Synthetic Long</div>
 </div>
 
 <!-- ═══ TICKER STRIP ═══ -->
@@ -1442,10 +1442,10 @@ input, textarea, select { -webkit-user-select: text; user-select: text; }
       </div>
       <div class="dash-col-body" id="col-leaps"></div>
     </div>
-    <!-- Bull Synthetic Column -->
+    <!-- Synthetic Long Column -->
     <div class="dash-col">
       <div class="dash-col-header">
-        <span class="dash-col-title">Bull Synthetic</span>
+        <span class="dash-col-title">Synthetic Long</span>
         <span class="dash-col-sub">Ranked by RSI ↑</span>
       </div>
       <div class="dash-col-body" id="col-synth"></div>
@@ -1497,7 +1497,7 @@ input, textarea, select { -webkit-user-select: text; user-select: text; }
   <div id="mini-rankings-synth" class="mini-rankings"></div>
   <div class="analyzer-container">
     <div class="analyzer-status-row">
-      <span class="analyzer-label">Bull Synthetic</span>
+      <span class="analyzer-label">Synthetic Long</span>
       <span class="status-msg" id="synth-status"></span>
       <input type="hidden" id="synth-ticker" />
     </div>
@@ -2308,7 +2308,7 @@ function earningsBeforeExpiry(ticker, expiryStr) {
 // ═══════════════════════════════════════════════════════
 // DASHBOARD — 4-COLUMN LAYOUT
 // Columns: CSP (live scored) | CC (live scored) |
-//          LEAPS (RSI proxy) | Bull Synth (RSI proxy)
+//          LEAPS (RSI proxy) | Synthetic Long (RSI proxy)
 // ═══════════════════════════════════════════════════════
 
 function scoreToGrade(score, phase) {
@@ -2480,7 +2480,7 @@ function buildColCard(ticker, d, strategy, rank, isBestTrade) {
       mb('OI',    d.leaps_c6, d.leaps_c6 === null ? '—' : (d.leaps_c6 ? '✓' : '✗')) +
       mb('BID/A', d.leaps_c7, d.leaps_c7 === null ? '—' : (d.leaps_c7 ? '✓' : '✗'));
   } else {
-    // Bull Synthetic: 7 criteria — RSI<30 Wkly, IV>50%, DTE≥540, Debit≤5%, Call OI, Put OI, Spreads
+    // Synthetic Long: 7 criteria — RSI<30 Wkly, IV>50%, DTE≥540, Debit≤5%, Call OI, Put OI, Spreads
     criteriaHtml =
       mb('RSI',   d.synth_c1, rsiDisp) +
       mb('IV',    d.synth_c2, d.synth_c2 === null ? '—' : (d.synth_c2 ? '✓' : '✗')) +
@@ -2562,7 +2562,7 @@ function renderColumns() {
     return (cardData[a].rsi || 999) - (cardData[b].rsi || 999);
   });
 
-  // Bull Synth: sort by synthScore desc, ties broken by RSI asc
+  // Synthetic Long: sort by synthScore desc, ties broken by RSI asc
   synthSorted.sort(function(a, b) {
     var sa = cardData[a].synthScore !== null ? cardData[a].synthScore : -1;
     var sb = cardData[b].synthScore !== null ? cardData[b].synthScore : -1;
@@ -2735,7 +2735,7 @@ async function fetchTickerData(ticker) {
     var leaps_c7 = null;                                             // Bid/Ask ≤ 10% (need chain)
     var leapsScore = [leaps_c1,leaps_c2,leaps_c3,leaps_c4,leaps_c5,leaps_c6,leaps_c7].filter(function(x){return x===true;}).length;
 
-    // Score Bull Synthetic criteria (proxy) — James-aligned same-strike synthetic long
+    // Score Synthetic Long criteria (proxy) — same-strike call+put
     // Synth 7: RSI<30 Wkly, IV>50%, Duration≥540d, Net Debit≤5%, Call OI≥300, Put OI≥300, Spreads≤10%
     var hasSynthExp = expirations.some(function(e) { return dteFromStr(e) >= 540; });
     var synth_c1 = pd.rsiWeekly !== undefined ? pd.rsiWeekly < 30 : (pd.rsi < 30); // RSI < 30 Weekly
@@ -3729,7 +3729,7 @@ async function runLeaps(forceTicker) {
 }
 
 // ═══════════════════════════════════════════════════════
-// BULL SYNTHETIC ANALYZER — James-aligned same-strike synthetic long
+// SYNTHETIC LONG ANALYZER — same-strike call+put
 // ═══════════════════════════════════════════════════════
 async function runSynth(forceTicker) {
   var ticker = forceTicker || document.getElementById('synth-ticker').value.trim().toUpperCase();
@@ -4172,7 +4172,7 @@ function buildMiniRankings(strategy, activeTicker) {
     return cardHtml;
   }).join('');
 
-  var stratLabel = { put: 'Cash-Secured Put', cc: 'Covered Call', leaps: 'LEAPS', synth: 'Bull Synthetic' }[strategy];
+  var stratLabel = { put: 'Cash-Secured Put', cc: 'Covered Call', leaps: 'LEAPS', synth: 'Synthetic Long' }[strategy];
 
   return '<div class="mini-rankings-header">' +
     '<span class="mini-rankings-title">Top 3 · ' + stratLabel + '</span>' +
