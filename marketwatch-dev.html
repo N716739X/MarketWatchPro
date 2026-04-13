@@ -3617,11 +3617,11 @@ async function runLeaps(forceTicker) {
     '</div></div>';
 
     html += '<div class="scorecard"><h3>LEAPS Deep ITM Call — Score</h3><div class="criteria-list">';
-    html += critRow(1,'Delta ≥ 0.80 (Deep ITM, ~stock exposure)', c1, bestDelta !== null ? fmt(bestDelta,2) + (shareEquiv ? ' (~' + shareEquiv + ' sh)' : '') : 'N/A');
-    html += critRow(2,'BE CAGR ≤ 15% (Achievable breakeven)', c2, breakevenCAGR !== null ? fmt(breakevenCAGR,1)+'%' : 'N/A');
+    html += critRow(1,'RSI(10) < 30 · Weekly (Buy the dip)', c4, fmt(pd.rsi,1));
+    html += critRow(2,'IV < 55% (Don\'t overpay time value)', c5, currentIV !== null ? fmt(currentIV,1)+'%' : 'N/A');
     html += critRow(3,'Duration 18+ months (540+ DTE)', c3, repDTE + ' days');
-    html += critRow(4,'RSI(10) < 30 · Weekly (Buy the dip)', c4, fmt(pd.rsi,1));
-    html += critRow(5,'IV < 55% (Don\'t overpay time value)', c5, currentIV !== null ? fmt(currentIV,1)+'%' : 'N/A');
+    html += critRow(4,'Delta ≥ 0.80 (Deep ITM, ~stock exposure)', c1, bestDelta !== null ? fmt(bestDelta,2) + (shareEquiv ? ' (~' + shareEquiv + ' sh)' : '') : 'N/A');
+    html += critRow(5,'BE CAGR ≤ 15% (Achievable breakeven)', c2, breakevenCAGR !== null ? fmt(breakevenCAGR,1)+'%' : 'N/A');
     html += critRow(6,'Liquidity OI ≥ 300', c6, bestOI !== null ? fmtK(bestOI) : 'N/A');
     html += critRow(7,'Bid/Ask Spread ≤ 10%', c7, bestSpread !== null ? fmt(bestSpread,1)+'%' : 'N/A');
     html += '</div>' + scoreSummaryHtml(score,7) + '</div>';
