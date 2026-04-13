@@ -2412,15 +2412,8 @@ function buildColCard(ticker, d, strategy, rank) {
         // Phase 3: full real score out of 7
         grade = score >= 6 ? 'A' : score >= 5 ? 'B' : score >= 4 ? 'C' : score >= 3 ? 'D' : 'F';
       } else {
-        // Phase 2 proxy: grade on checked criteria ratio only
-        var checked = 0, passed = 0;
-        var cxArr = strategy === 'leaps'
-          ? [d.leaps_c1,d.leaps_c2,d.leaps_c3,d.leaps_c4,d.leaps_c5,d.leaps_c6,d.leaps_c7]
-          : [d.synth_c1,d.synth_c2,d.synth_c3,d.synth_c4,d.synth_c5,d.synth_c6,d.synth_c7];
-        for (var gi = 0; gi < cxArr.length; gi++) {
-          if (cxArr[gi] !== null && cxArr[gi] !== undefined) { checked++; if (cxArr[gi]) passed++; }
-        }
-        grade = checked > 0 ? (passed / checked >= 0.85 ? 'A' : passed / checked >= 0.70 ? 'B' : passed / checked >= 0.50 ? 'C' : passed / checked >= 0.30 ? 'D' : 'F') : '';
+        // Phase 2 proxy: use absolute score (same scale as phase 3) to avoid inflated grades
+        grade = score >= 6 ? 'A' : score >= 5 ? 'B' : score >= 4 ? 'C' : score >= 3 ? 'D' : score > 0 ? 'F' : '';
       }
     }
   }
