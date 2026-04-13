@@ -2387,8 +2387,7 @@ function buildSkeletonRow(ticker) {
 }
 
 // Build a full rich card for a dashboard column
-function buildColCard(ticker, d, strategy, rank) {
-  var isTop1 = (typeof rank === 'number' && rank === 0);
+function buildColCard(ticker, d, strategy, rank, isBestTrade) {
   var isScored = (strategy === 'put');
   var score;
   if (strategy === 'put')        score = d.putScore || 0;
@@ -2534,7 +2533,7 @@ function buildColCard(ticker, d, strategy, rank) {
   return '<div class="col-card' + cardGlowCls + '" id="colrow-' + ticker + '-' + strategy + '" onclick="navigateToAnalyzer(\'' + ticker + '\',\'' + strategy + '\')">' +
     '<div class="card-header">' +
       '<div>' +
-        '<div class="card-ticker">' + (isTop1 && score >= 6 ? '<span class="top3-star">★</span>' : '') + ticker + '</div>' +
+        '<div class="card-ticker">' + (isBestTrade ? '<span class="top3-star">★</span>' : '') + ticker + '</div>' +
         '<div class="card-name" style="font-size:9px;color:var(--text-muted)">' + (strategy.toUpperCase()) + (d.expiry ? ' · ' + d.expiry : '') + '</div>' +
       '</div>' +
       '<div class="grade-box grade-' + grade + '">' + (grade || '—') + '</div>' +
@@ -2609,10 +2608,30 @@ function renderColumns() {
   var colLeaps = document.getElementById('col-leaps');
   var colSynth = document.getElementById('col-synth');
 
-  colPut.innerHTML   = putSorted.slice(0,4).map(function(t,i)   { return buildColCard(t, cardData[t], 'put',   i); }).join('');
-  colCC.innerHTML    = ccSorted.slice(0,4).map(function(t,i)     { return buildColCard(t, cardData[t], 'cc',    i); }).join('');
-  colLeaps.innerHTML = leapsSorted.slice(0,4).map(function(t,i)  { return buildColCard(t, cardData[t], 'leaps', i); }).join('');
-  colSynth.innerHTML = synthSorted.slice(0,4).map(function(t,i)  { return buildColCard(t, cardData[t], 'synth', i); }).join('');
+  // Find the single best trade across all columns (highest score, min 6/7)
+  var bestTrade = { ticker: null, strategy: null, score: 0 };
+  var candidates = [
+    { list: putSorted,   strat: 'put',   key: 'putScore' },
+    { list: ccSorted,    strat: 'cc',    key: 'ccScore' },
+    { list: leapsSorted, strat: 'leaps', key: 'leapsScore' },
+    { list: synthSorted, strat: 'synth', key: 'synthScore' }
+  ];
+  for (var ci = 0; ci < candidates.length; ci++) {
+    var c = candidates[ci];
+    if (c.list.length > 0) {
+      var topT = c.list[0];
+      var topS = cardData[topT][c.key] || 0;
+      if (topS > bestTrade.score) {
+        bestTrade = { ticker: topT, strategy: c.strat, score: topS };
+      }
+    }
+  }
+  var starMin = 6; // minimum score to earn the star
+
+  colPut.innerHTML   = putSorted.slice(0,4).map(function(t,i)   { return buildColCard(t, cardData[t], 'put',   i, bestTrade.score >= starMin && bestTrade.ticker === t && bestTrade.strategy === 'put'); }).join('');
+  colCC.innerHTML    = ccSorted.slice(0,4).map(function(t,i)     { return buildColCard(t, cardData[t], 'cc',    i, bestTrade.score >= starMin && bestTrade.ticker === t && bestTrade.strategy === 'cc'); }).join('');
+  colLeaps.innerHTML = leapsSorted.slice(0,4).map(function(t,i)  { return buildColCard(t, cardData[t], 'leaps', i, bestTrade.score >= starMin && bestTrade.ticker === t && bestTrade.strategy === 'leaps'); }).join('');
+  colSynth.innerHTML = synthSorted.slice(0,4).map(function(t,i)  { return buildColCard(t, cardData[t], 'synth', i, bestTrade.score >= starMin && bestTrade.ticker === t && bestTrade.strategy === 'synth'); }).join('');
 
   // Trigger full phase 3 analysis once all tickers are loaded
   triggerPhase3();
