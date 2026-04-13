@@ -1962,13 +1962,34 @@ updateClock();
 // ═══════════════════════════════════════════════════════
 // AUTO REFRESH
 // ═══════════════════════════════════════════════════════
+var _refreshCountdown = 300; // seconds (5 min)
+var _countdownTimer = null;
+
+function updateRefreshInfo() {
+  var el = document.getElementById('refresh-info');
+  if (!el) return;
+  if (!isMarketOpen()) {
+    el.textContent = 'Market closed — no auto-refresh';
+    return;
+  }
+  var m = Math.floor(_refreshCountdown / 60);
+  var s = _refreshCountdown % 60;
+  el.textContent = 'Refresh in ' + m + ':' + (s < 10 ? '0' : '') + s;
+}
+
 function scheduleAutoRefresh() {
   if (refreshTimer) clearInterval(refreshTimer);
-  refreshTimer = setInterval(function() {
-    if (isMarketOpen()) {
-      refreshDashboard();
+  if (_countdownTimer) clearInterval(_countdownTimer);
+  _refreshCountdown = 300;
+  updateRefreshInfo();
+  _countdownTimer = setInterval(function() {
+    _refreshCountdown--;
+    if (_refreshCountdown <= 0) {
+      _refreshCountdown = 300;
+      if (isMarketOpen()) refreshDashboard();
     }
-  }, 5 * 60 * 1000); // every 5 min
+    updateRefreshInfo();
+  }, 1000);
 }
 scheduleAutoRefresh();
 
