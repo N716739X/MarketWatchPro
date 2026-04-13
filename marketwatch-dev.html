@@ -3915,6 +3915,27 @@ async function runSynth(forceTicker) {
       '<div class="info-item"><div class="info-label">Breakeven</div><div class="info-val">' + (breakeven !== null ? fmtDollar(breakeven) : '—') + (beAboveCur !== null ? ' ('+fmt(beAboveCur,1)+'% away)' : '') + '</div></div>' +
     '</div>';
 
+    // ── Trade Summary ──
+    var synthDebit100  = netCost !== null ? netCost * 100 : null;
+    var synthMaxLoss   = (slPut.strike && netCost !== null) ? (slPut.strike + netCost - slCall.strike) * 100 : null;
+    var putAssignCost  = slPut.strike ? slPut.strike * 100 : null;
+    var callCost100    = slCall.mid ? slCall.mid * 100 : null;
+    var putCredit100   = slPut.mid ? slPut.mid * 100 : null;
+    function tsItem(label, val, cls, note) {
+      return '<div class="ts-item"><div class="ts-label">' + label + '</div>' +
+        '<div class="ts-val ' + cls + '">' + val + '</div>' +
+        (note ? '<div class="ts-note">' + note + '</div>' : '') + '</div>';
+    }
+    html += '<div class="trade-summary"><h4>Trade Summary — 1 Contract per Leg</h4><div class="trade-summary-grid">' +
+      tsItem('Net Debit',       synthDebit100 !== null ? (synthDebit100 >= 0 ? '$' + fmt(synthDebit100,2) : '-$' + fmt(Math.abs(synthDebit100),2) + ' (credit)') : '—', 'ts-neutral', 'Call cost minus put credit') +
+      tsItem('Call Cost',       callCost100   ? '$' + fmt(callCost100,2)   : '—', 'ts-loss',    'Paid for ITM call') +
+      tsItem('Put Credit',      putCredit100  ? '$' + fmt(putCredit100,2)  : '—', 'ts-gain',    'Received from sold put') +
+      tsItem('Max Gain',        '∞', 'ts-gain', 'Unlimited upside above breakeven') +
+      tsItem('Max Loss',        synthMaxLoss  ? '$' + fmt(Math.abs(synthMaxLoss),2)  : '—', 'ts-loss', 'If assigned on put at expiry') +
+      tsItem('Breakeven',       breakeven     ? fmtDollar(breakeven) + (beAboveCur !== null ? ' (' + fmt(beAboveCur,1) + '% away)' : '') : '—', 'ts-neutral', 'Stock price needed at expiry') +
+      tsItem('Put Assignment',  putAssignCost ? '$' + fmt(putAssignCost,2) : '—', 'ts-neutral', 'Cash needed if put assigned') +
+    '</div></div>';
+
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">';
     html += '<div class="scenario-card"><h4>BUY — Call Leg (ITM)</h4>' +
       '<div class="sc-row"><span class="sc-key">Strike</span><span class="sc-val">' + fmtDollar(slCall.strike) + '</span></div>' +
