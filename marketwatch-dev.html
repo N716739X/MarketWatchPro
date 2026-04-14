@@ -3231,20 +3231,20 @@ async function runGutPhase3(ticker) {
       if (atmCallIdx >= 0) {
         var atmStrike = callChain.strike[atmCallIdx];
         var callMid = callChain.mid ? callChain.mid[atmCallIdx] : null;
-        // Scan puts at strikes ABOVE the ATM call strike
-        var bestPutIdx = -1, bestDebitPct = Infinity;
+        // Scan puts at strikes ABOVE the ATM call strike — pick closest to 5% but still under
+        var bestPutIdx = -1, bestDebitPct = -1;
         for (var pi = 0; pi < putChain.strike.length; pi++) {
           if (putChain.strike[pi] <= atmStrike) continue; // must be higher strike (ITM put)
           var putMid = putChain.mid ? putChain.mid[pi] : null;
           if (callMid === null || putMid === null) continue;
-          var netDebit = callMid - putMid; // call cost - put credit (put ITM so put premium > call premium usually)
+          var netDebit = callMid - putMid;
           var debitPct = Math.abs(netDebit / pd.price * 100);
-          if (debitPct <= 5 && debitPct < bestDebitPct) {
+          if (debitPct <= 5 && debitPct > bestDebitPct) {
             bestDebitPct = debitPct;
             bestPutIdx = pi;
           }
         }
-        // If no put yields ≤5%, pick closest to 5%
+        // If no put yields ≤5%, pick closest to 5% from above
         if (bestPutIdx < 0) {
           var closestTo5 = Infinity;
           for (var pi2 = 0; pi2 < putChain.strike.length; pi2++) {
@@ -4643,20 +4643,20 @@ async function runGut(forceTicker) {
     var atmStrike = callChain.strike[atmCallIdx];
     var callMid   = callChain.mid ? callChain.mid[atmCallIdx] : null;
 
-    // Step 2: Scan puts at strikes ABOVE ATM for best net debit ≤5%
-    var gsCall = null, gsPut = null, bestPutIdx = -1, bestDebitPct = Infinity;
+    // Step 2: Scan puts at strikes ABOVE ATM — pick closest to 5% but still under
+    var gsCall = null, gsPut = null, bestPutIdx = -1, bestDebitPct = -1;
     for (var pi = 0; pi < putChain.strike.length; pi++) {
       if (putChain.strike[pi] <= atmStrike) continue;
       var putMid = putChain.mid ? putChain.mid[pi] : null;
       if (callMid === null || putMid === null) continue;
       var netDebit = callMid - putMid;
       var debitPct = Math.abs(netDebit / pd.price * 100);
-      if (debitPct <= 5 && debitPct < bestDebitPct) {
+      if (debitPct <= 5 && debitPct > bestDebitPct) {
         bestDebitPct = debitPct;
         bestPutIdx = pi;
       }
     }
-    // Fallback: closest to 5%
+    // Fallback: closest to 5% from above
     if (bestPutIdx < 0) {
       var closestTo5 = Infinity;
       for (var pi2 = 0; pi2 < putChain.strike.length; pi2++) {
