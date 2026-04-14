@@ -2136,10 +2136,10 @@ function fmtK(n) {
 function spinner() {
   return '<span class="spinner"></span>';
 }
-// ── Mean Reversion: Wilder RSI(16) → EMA(12) smooth → (val-50)/16 ──
+// ── Mean Reversion: Wilder RSI(16) → EMA(12) smooth → (val-50)/8 ──
 function calcMeanRev(closes) {
   if (!closes || closes.length < 30) return NaN;
-  var period = 16, emaP = 12, scale = 16;
+  var period = 16, emaP = 12, scale = 8;
   // Wilder RSI series
   var gains = [], losses = [];
   for (var i = 1; i < closes.length; i++) {
