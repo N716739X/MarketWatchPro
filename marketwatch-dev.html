@@ -2939,12 +2939,17 @@ async function runLeapsPhase3(ticker) {
     var currentIV = d.ivRank !== null && d.ivRank !== undefined ? d.ivRank : null;
     var bestStrike = null, bestDelta = null, bestPremium = null, bestOI = null, bestSpread = null;
 
-    // Find strike closest to delta 0.90 (James target)
+    // Find strike near ATM with delta closest to 0.90 (James: slightly ITM, not deep ITM)
+    // Constrain to strikes within 20% below price to 5% above (near-the-money zone)
     if (repChain && repChain.strike) {
       var bd = Infinity;
+      var floorPrice = pd.price * 0.80; // max 20% ITM
+      var ceilPrice  = pd.price * 1.05; // up to 5% OTM
       for (var i = 0; i < repChain.strike.length; i++) {
+        var sk = repChain.strike[i];
+        if (sk < floorPrice || sk > ceilPrice) continue;
         var dv = repChain.delta ? repChain.delta[i] : null;
-        if (dv === null) continue;
+        if (dv === null || dv < 0.60 || dv > 0.98) continue;
         var dif = Math.abs(dv - 0.90);
         if (dif < bd) {
           bd = dif;
@@ -3695,7 +3700,11 @@ async function runLeaps(forceTicker) {
       if (!ch || !ch.strike) return;
       var yr  = dte / 365;
       var bD  = Infinity, bStrike = null, bCAGR = null, bDelta = null, bMid = null;
+      var flr = pd.price * 0.80; // near-ATM constraint: 20% below to 5% above
+      var cel = pd.price * 1.05;
       for (var i = 0; i < ch.strike.length; i++) {
+        var sk = ch.strike[i];
+        if (sk < flr || sk > cel) continue;
         var d = ch.delta ? ch.delta[i] : null;
         if (d === null || d < 0.60 || d > 0.98) continue;
         var dif = Math.abs(d - 0.90);
@@ -3716,11 +3725,16 @@ async function runLeaps(forceTicker) {
     var repDTE   = dteFromStr(leapsExpiries[bestExpIdx]);
     var bestStrike = null, bestDelta = null, bestPremium = null, bestOI = null, bestSpread = null;
 
+    // James picks strikes near ATM (slightly ITM) — constrain to 20% below to 5% above price
     if (repChain && repChain.strike) {
       var bd3 = Infinity;
+      var floor3 = pd.price * 0.80;
+      var ceil3  = pd.price * 1.05;
       for (var i = 0; i < repChain.strike.length; i++) {
+        var sk3 = repChain.strike[i];
+        if (sk3 < floor3 || sk3 > ceil3) continue;
         var d3 = repChain.delta ? repChain.delta[i] : null;
-        if (d3 === null) continue;
+        if (d3 === null || d3 < 0.60 || d3 > 0.98) continue;
         var dif3 = Math.abs(d3 - 0.90);
         if (dif3 < bd3) {
           bd3 = dif3;
@@ -3782,7 +3796,7 @@ async function runLeaps(forceTicker) {
         '<div class="ts-val ' + cls + '">' + val + '</div>' +
         (note ? '<div class="ts-note">' + note + '</div>' : '') + '</div>';
     }
-    html += '<div class="trade-summary"><h4>★ Δ0.90 Deep ITM Pick — 1 Contract (100 shares)</h4><div class="trade-summary-grid">' +
+    html += '<div class="trade-summary"><h4>★ Near-ATM LEAPS Pick — 1 Contract (100 shares)</h4><div class="trade-summary-grid">' +
       tsItem('Strike',      bestStrike ? fmtDollar(bestStrike) : '—', 'ts-neutral', 'Δ' + (bestDelta !== null ? fmt(bestDelta,2) : '') + ' ~' + (shareEquiv || '?') + ' shares/ct') +
       tsItem('Cost (1 ct)', cost1ct ? '$' + fmt(cost1ct,2) : '—', 'ts-loss', 'Premium paid for LEAPS call') +
       tsItem('Max Loss',    cost1ct ? '$' + fmt(cost1ct,2) : '—', 'ts-loss', 'Total premium at risk') +
@@ -3838,7 +3852,7 @@ async function runLeaps(forceTicker) {
     // ── CAGR across expiries mini-table ──
     if (cagrRows.length > 0) {
       html += '<div class="scorecard" style="margin-top:10px">' +
-        '<h3>CAGR by Expiry <span style="color:var(--text-muted);font-weight:400;font-size:11px">— Δ0.90 strike, farthest = preferred</span></h3>' +
+        '<h3>CAGR by Expiry <span style="color:var(--text-muted);font-weight:400;font-size:11px">— near-ATM strike, farthest = preferred</span></h3>' +
         '<div class="leaps-table-wrap"><table><thead><tr>' +
         '<th>Expiry</th><th>DTE</th><th>Strike</th><th>Mid</th><th>Delta</th><th>CAGR%</th>' +
         '</tr></thead><tbody>';
@@ -3880,12 +3894,22 @@ async function runLeaps(forceTicker) {
         }
       }
       rows.sort(function(a, b) { return a.strike - b.strike; });
-      // Find Δ0.90 strike (James target)
+      // Find near-ATM Δ0.90 strike (James target: slightly ITM)
       var best90 = -1, best90D = Infinity;
+      var flr90 = pd.price * 0.80;
+      var cel90 = pd.price * 1.05;
       rows.forEach(function(r, ri) {
+        if (r.strike < flr90 || r.strike > cel90) return;
         var dif = Math.abs(r.delta - 0.90);
         if (dif < best90D) { best90D = dif; best90 = ri; }
       });
+      // Fallback: if no strike in range, pick closest delta 0.90 from all rows
+      if (best90 === -1) {
+        rows.forEach(function(r, ri) {
+          var dif = Math.abs(r.delta - 0.90);
+          if (dif < best90D) { best90D = dif; best90 = ri; }
+        });
+      }
       var sliceStart = Math.max(0, best90 - 4);
       var sliceEnd   = Math.min(rows.length, best90 + 5);
       var visRows    = rows.slice(sliceStart, sliceEnd);
@@ -3897,7 +3921,7 @@ async function runLeaps(forceTicker) {
         var isRec = ri === vis90;
         var intrL = Math.max(0, pd.price - row.strike);
         var extrL = row.mid !== null ? Math.max(0, row.mid - intrL) : 0;
-        var starLabel = isRec ? '<span class="star" style="color:var(--accent)">★ Δ0.90</span>' : '';
+        var starLabel = isRec ? '<span class="star" style="color:var(--accent)">★ Pick</span>' : '';
         html += '<tr class="' + (isRec ? 'recommended' : '') + '">' +
           '<td class="strike-cell">' + starLabel + fmtDollar(row.strike) + '</td>' +
           '<td>' + fmtDollar(row.bid) + '</td>' +
