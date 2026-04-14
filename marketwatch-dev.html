@@ -2207,12 +2207,12 @@ function spinner() {
 }
 // ── Mean Reversion Zone Labels ──
 function mrZone(val) {
-  if (isNaN(val)) return { label: '—', cls: '' };
-  if (val <= -2)  return { label: 'Deeply Oversold',  cls: 'down' };
-  if (val <= -1)  return { label: 'Oversold',         cls: 'down' };
-  if (val >= 2)   return { label: 'Deeply Overbought', cls: 'up' };
-  if (val >= 1)   return { label: 'Overbought',        cls: 'up' };
-  return { label: 'Neutral', cls: '' };
+  if (isNaN(val)) return { label: '—', short: '—', cls: '' };
+  if (val <= -2)  return { label: 'Deeply Oversold',  short: 'D.OS', cls: 'down' };
+  if (val <= -1)  return { label: 'Oversold',         short: 'OS',   cls: 'down' };
+  if (val >= 2)   return { label: 'Deeply Overbought', short: 'D.OB', cls: 'up' };
+  if (val >= 1)   return { label: 'Overbought',        short: 'OB',   cls: 'up' };
+  return { label: 'Neutral', short: 'Ntrl', cls: '' };
 }
 // ── Mean Reversion: Wilder RSI(16) → EMA(12) smooth → (val-50)/8 ──
 function calcMeanRev(closes) {
@@ -2557,7 +2557,7 @@ function buildColCard(ticker, d, strategy, rank, isBestTrade) {
                 (strategy === 'leaps' || strategy === 'synth' || strategy === 'gut') ? (d.weeklyMeanRev != null ? d.weeklyMeanRev : d.meanRev) : d.meanRev;
   var mrZ     = mrZone(mr);
   var mrColor = mrZ.cls;
-  var mrDisp  = mrZ.label;
+  var mrDisp  = mrZ.short;
 
   // Badge
   var badgeCls, badgeTxt;
