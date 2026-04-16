@@ -3180,7 +3180,7 @@ async function runSynthPhase3(ticker) {
     d.synthMR  = weeklyMR; // store for card rendering
     d.synth_c2 = synthIVRank !== null ? synthIVRank > 50 : null; // IV > 50% (from LEAPS-length chain)
     d.synth_c3 = dte >= 540;                                                     // Duration ≥ 540 DTE
-    d.synth_c4 = netCostPct !== null ? Math.abs(netCostPct) <= 5 : null;         // Net Debit ≤ 5%
+    d.synth_c4 = netCostPct !== null ? netCostPct <= 5 : null;                   // Net Debit ≤ 5% (credit always passes)
     d.synth_c5 = slCall.oi !== null ? slCall.oi >= 300 : null;                   // Call OI ≥ 300
     d.synth_c6 = slPut.oi  !== null ? slPut.oi  >= 300 : null;                   // Put OI ≥ 300
     d.synth_c7 = (callSpreadPct !== null && putSpreadPct !== null) ? (callSpreadPct <= 10 && putSpreadPct <= 10) : null; // Spreads ≤ 10%
@@ -3293,7 +3293,7 @@ async function runGutPhase3(ticker) {
     d.gutMR  = weeklyMR;
     d.gut_c2 = gutIVRank !== null ? gutIVRank > 50 : null;
     d.gut_c3 = dte >= 540;
-    d.gut_c4 = netCostPct !== null ? Math.abs(netCostPct) <= 5 : null;
+    d.gut_c4 = netCostPct !== null ? netCostPct <= 5 : null;
     d.gut_c5 = gsCall.oi !== null ? gsCall.oi >= 300 : null;
     d.gut_c6 = gsPut.oi  !== null ? gsPut.oi  >= 300 : null;
     d.gut_c7 = (callSpreadPct !== null && putSpreadPct !== null) ? (callSpreadPct <= 10 && putSpreadPct <= 10) : null;
@@ -4408,7 +4408,7 @@ async function runSynth(forceTicker) {
     var c1 = !isNaN(pd.meanRev) ? pd.meanRev <= -2 : null; // MR ≤ -2σ Weekly
     var c2 = ivRank !== null ? ivRank > 50 : null;                             // IV > 50%
     var c3 = dte >= 540;                                                       // Duration ≥ 540 DTE
-    var c4 = netCostPct !== null ? Math.abs(netCostPct) <= 5 : null;           // Net Debit ≤ 5%
+    var c4 = netCostPct !== null ? netCostPct <= 5 : null;                     // Net Debit ≤ 5% (credit always passes)
     var c5 = slCall.oi !== null ? slCall.oi >= 300 : null;                     // Call OI ≥ 300
     var c6 = slPut.oi  !== null ? slPut.oi  >= 300 : null;                     // Put OI ≥ 300
     var c7 = (callSpreadPct !== null && putSpreadPct !== null) ? (callSpreadPct <= 10 && putSpreadPct <= 10) : null; // Spreads ≤ 10%
