@@ -780,12 +780,12 @@ header {
 }
 .trade-summary-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 10px 16px;
+  grid-template-columns: repeat(auto-fit, minmax(95px, 1fr));
+  gap: 10px 10px;
 }
-.ts-item .ts-label { font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px; }
-.ts-item .ts-val   { font-size:16px;font-weight:800; }
-.ts-item .ts-note  { font-size:9px;color:var(--text-muted);margin-top:2px; }
+.ts-item .ts-label { font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.ts-item .ts-val   { font-size:14px;font-weight:800;white-space:nowrap; }
+.ts-item .ts-note  { font-size:9px;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
 .ts-gain  { color: var(--green); }
 .ts-loss  { color: var(--red); }
 .ts-neutral { color: var(--accent); }
@@ -5036,14 +5036,14 @@ async function runMsl(forceTicker) {
         (note ? '<div class="ts-note">' + note + '</div>' : '') + '</div>';
     }
     html += '<div class="trade-summary"><h4>Trade Summary — 1 Contract per Leg</h4><div class="trade-summary-grid">' +
-      tsItem('Net Debit', netDebit100 !== null ? '$' + fmt(netDebit100,2) : '—', 'ts-neutral', 'Call cost minus put spread credit') +
-      tsItem('Buy Call (Deep ITM)', callCost100 ? '$' + fmt(callCost100,2) : '—', 'ts-loss', fmtDollar(callStrike) + ' strike — ' + fmt(callRatio*100,0) + '/' + fmt((1-callRatio)*100,0) + ' I/E') +
+      tsItem('Net Debit', netDebit100 !== null ? '$' + fmt(netDebit100,2) : '—', 'ts-neutral', 'Call cost − put credit') +
+      tsItem('Buy Call (Deep ITM)', callCost100 ? '$' + fmt(callCost100,2) : '—', 'ts-loss', fmtDollar(callStrike) + ' — ' + fmt(callRatio*100,0) + '/' + fmt((1-callRatio)*100,0) + ' I/E') +
       tsItem('Sell Put (ATM)', soldPutMid ? '$' + fmt(soldPutMid*100,2) : '—', 'ts-gain', fmtDollar(soldPutStrike) + ' strike') +
-      tsItem('Buy Put (Lower)', boughtPutMid ? '$' + fmt(boughtPutMid*100,2) : '—', 'ts-loss', fmtDollar(boughtPutStrike) + ' strike (protection)') +
-      tsItem('Put Spread Credit', putCredit100 !== null ? '$' + fmt(putCredit100,2) : '—', 'ts-gain', fmt(putCreditPct,1) + '% of $' + fmt(spreadWidth,0) + ' width') +
+      tsItem('Buy Put (Lower)', boughtPutMid ? '$' + fmt(boughtPutMid*100,2) : '—', 'ts-loss', fmtDollar(boughtPutStrike) + ' (protection)') +
+      tsItem('Put Spread Credit', putCredit100 !== null ? '$' + fmt(putCredit100,2) : '—', 'ts-gain', fmt(putCreditPct,1) + '% of width') +
       tsItem('Max Gain', '∞', 'ts-gain', 'Unlimited above breakeven') +
-      tsItem('Max Loss', maxLoss ? '$' + fmt(maxLoss,2) : '—', 'ts-loss', 'If stock below bought put at expiry') +
-      tsItem('Breakeven', breakeven ? fmtDollar(breakeven) + (beAboveCur !== null ? ' (' + fmt(beAboveCur,1) + '% away)' : '') : '—', 'ts-neutral', 'Call strike + net debit') +
+      tsItem('Max Loss', maxLoss ? '$' + fmt(maxLoss,2) : '—', 'ts-loss', 'Below bought put at expiry') +
+      tsItem('Breakeven', breakeven ? fmtDollar(breakeven) : '—', 'ts-neutral', beAboveCur !== null ? fmt(beAboveCur,1) + '% away' : 'Call strike + net debit') +
     '</div></div>';
 
     // Leg detail cards (3 legs) — Call first, then ATM put, then lower put
