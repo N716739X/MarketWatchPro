@@ -5018,9 +5018,8 @@ async function runMsl(forceTicker) {
       '<div class="info-item"><div class="info-label">DTE</div><div class="info-val">' + dte + '</div></div>' +
       '<div class="info-item"><div class="info-label">Sold Put (ATM)</div><div class="info-val">' + fmtDollar(soldPutStrike) + '</div></div>' +
       '<div class="info-item"><div class="info-label">Bought Put (Lower)</div><div class="info-val">' + fmtDollar(boughtPutStrike) + '</div></div>' +
-      '<div class="info-item"><div class="info-label">Call (Deep ITM)</div><div class="info-val">' + fmtDollar(callStrike) + '</div></div>' +
       '<div class="info-item"><div class="info-label">Put Spread Credit</div><div class="info-val">' + (putSpreadCredit !== null ? fmtDollar(putSpreadCredit) + (putCreditPct !== null ? ' (' + fmt(putCreditPct,1) + '% of width)' : '') : '—') + '</div></div>' +
-      '<div class="info-item"><div class="info-label">Call 50/50 Ratio</div><div class="info-val">' + fmt(callRatio*100,1) + '% intrinsic / ' + fmt((1-callRatio)*100,1) + '% extrinsic</div></div>' +
+      '<div class="info-item"><div class="info-label">50/50 I/E Ratio</div><div class="info-val">' + fmtDollar(callStrike) + ' <span style="color:var(--text-muted);font-size:11px">(' + fmt(callRatio*100,1) + '% / ' + fmt((1-callRatio)*100,1) + '%)</span></div></div>' +
       '<div class="info-item"><div class="info-label">Net Debit</div><div class="info-val">' + (netDebit !== null ? fmtDollar(netDebit) + ' (' + fmt(netDebitPct,1) + '% of price)' : '—') + '</div></div>' +
       '<div class="info-item"><div class="info-label">Breakeven</div><div class="info-val">' + (breakeven !== null ? fmtDollar(breakeven) : '—') + (beAboveCur !== null ? ' (' + fmt(beAboveCur,1) + '% away)' : '') + '</div></div>' +
     '</div>';
