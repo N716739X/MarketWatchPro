@@ -2356,10 +2356,22 @@ async function fetchMD(path, params) {
   if (checkSessionKicked(r)) throw new Error('session-kicked');
   if (!r.ok) {
     var errText = await r.text();
+    // 404 with no_data = ticker has no options chain (e.g. NPPTF, ADRs, low-volume OTC)
+    // Treat as empty chain rather than surfacing an error banner
+    if (r.status === 404 && errText.indexOf('no_data') !== -1) {
+      var emptyChain = { s: 'no_data', optionSymbol: [], strike: [], bid: [], ask: [], mid: [], delta: [], openInterest: [], expiration: [] };
+      mdCacheSet(cacheKey, emptyChain);
+      return emptyChain;
+    }
     throw new Error('MarketData HTTP ' + r.status + ': ' + errText);
   }
   var data = await r.json();
-  if (data.s === 'no_data') throw new Error('No options data available.');
+  if (data.s === 'no_data') {
+    // Same treatment for 200 OK with no_data payload
+    var empty = { s: 'no_data', optionSymbol: [], strike: [], bid: [], ask: [], mid: [], delta: [], openInterest: [], expiration: [] };
+    mdCacheSet(cacheKey, empty);
+    return empty;
+  }
 
   // Store in cache
   mdCacheSet(cacheKey, data);
