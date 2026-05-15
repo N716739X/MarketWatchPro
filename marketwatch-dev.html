@@ -5046,8 +5046,18 @@ async function runMsl(forceTicker) {
       tsItem('Breakeven', breakeven ? fmtDollar(breakeven) + (beAboveCur !== null ? ' (' + fmt(beAboveCur,1) + '% away)' : '') : '—', 'ts-neutral', 'Call strike + net debit') +
     '</div></div>';
 
-    // Leg detail cards (3 legs)
+    // Leg detail cards (3 legs) — Call first, then ATM put, then lower put
     html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">';
+    html += '<div class="scenario-card"><h4>BUY — Call (Deep ITM)</h4>' +
+      '<div class="sc-row"><span class="sc-key">Strike</span><span class="sc-val">' + fmtDollar(callStrike) + '</span></div>' +
+      '<div class="sc-row"><span class="sc-key">Bid/Ask</span><span class="sc-val">' + fmtDollar(callBid) + ' / ' + fmtDollar(callAsk) + '</span></div>' +
+      '<div class="sc-row"><span class="sc-key">Mid</span><span class="sc-val">' + fmtDollar(callMid) + '</span></div>' +
+      '<div class="sc-row"><span class="sc-key">Delta</span><span class="sc-val">' + (callDelta !== null ? fmt(Math.abs(callDelta),2) : '—') + '</span></div>' +
+      '<div class="sc-row"><span class="sc-key">OI</span><span class="sc-val">' + fmtK(callOI) + '</span></div>' +
+      '<div class="sc-row"><span class="sc-key">Intrinsic</span><span class="sc-val">' + fmtDollar(callIntrinsic) + ' (' + fmt(callRatio*100,1) + '%)</span></div>' +
+      '<div class="sc-row"><span class="sc-key">Extrinsic</span><span class="sc-val">' + fmtDollar(callExtrinsic) + ' (' + fmt((1-callRatio)*100,1) + '%)</span></div>' +
+      (callSpreadPct !== null ? '<div class="sc-row"><span class="sc-key">Spread</span><span class="sc-val ' + (callSpreadPct > 10 ? 'down' : 'up') + '">' + fmtDollar(callSpread) + ' (' + fmt(callSpreadPct,1) + '%)</span></div>' : '') +
+    '</div>';
     html += '<div class="scenario-card"><h4>SELL — Put (ATM)</h4>' +
       '<div class="sc-row"><span class="sc-key">Strike</span><span class="sc-val">' + fmtDollar(soldPutStrike) + '</span></div>' +
       '<div class="sc-row"><span class="sc-key">Bid/Ask</span><span class="sc-val">' + fmtDollar(soldPutBid) + ' / ' + fmtDollar(soldPutAsk) + '</span></div>' +
@@ -5061,16 +5071,6 @@ async function runMsl(forceTicker) {
       '<div class="sc-row"><span class="sc-key">Mid</span><span class="sc-val">' + fmtDollar(boughtPutMid) + '</span></div>' +
       '<div class="sc-row"><span class="sc-key">Delta</span><span class="sc-val">' + (boughtPutDelta !== null ? fmt(Math.abs(boughtPutDelta),2) : '—') + '</span></div>' +
       '<div class="sc-row"><span class="sc-key">OI</span><span class="sc-val">' + fmtK(boughtPutOI) + '</span></div>' +
-    '</div>';
-    html += '<div class="scenario-card"><h4>BUY — Call (Deep ITM)</h4>' +
-      '<div class="sc-row"><span class="sc-key">Strike</span><span class="sc-val">' + fmtDollar(callStrike) + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">Bid/Ask</span><span class="sc-val">' + fmtDollar(callBid) + ' / ' + fmtDollar(callAsk) + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">Mid</span><span class="sc-val">' + fmtDollar(callMid) + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">Delta</span><span class="sc-val">' + (callDelta !== null ? fmt(Math.abs(callDelta),2) : '—') + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">OI</span><span class="sc-val">' + fmtK(callOI) + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">Intrinsic</span><span class="sc-val">' + fmtDollar(callIntrinsic) + ' (' + fmt(callRatio*100,1) + '%)</span></div>' +
-      '<div class="sc-row"><span class="sc-key">Extrinsic</span><span class="sc-val">' + fmtDollar(callExtrinsic) + ' (' + fmt((1-callRatio)*100,1) + '%)</span></div>' +
-      (callSpreadPct !== null ? '<div class="sc-row"><span class="sc-key">Spread</span><span class="sc-val ' + (callSpreadPct > 10 ? 'down' : 'up') + '">' + fmtDollar(callSpread) + ' (' + fmt(callSpreadPct,1) + '%)</span></div>' : '') +
     '</div></div>';
 
     // Chain table: show ITM calls with intrinsic/extrinsic ratio
