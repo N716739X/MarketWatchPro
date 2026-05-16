@@ -5264,7 +5264,7 @@ async function runMsl(forceTicker) {
         '<div class="ts-section-grid">';
     };
     var sectionClose = function() { return '</div></div>'; };
-    var tradeSummaryHtml = '<div class="trade-summary"><h4>Trade Summary · 1 Contract per Leg</h4>' +
+    html += '<div class="trade-summary"><h4>Trade Summary · 1 Contract per Leg</h4>' +
       // HERO: 3 numbers that matter most
       '<div class="ts-hero">' +
         heroCell('Net Debit',  netDebit100 !== null ? '$' + fmt(netDebit100,2) : '—', 'neutral', 'You pay (call − put credit)') +
@@ -5294,7 +5294,6 @@ async function runMsl(forceTicker) {
       sectionClose() +
     '</div>';
 
-    // MSL vs SL comparison renders ABOVE the Trade Summary (per Laura's classmate-teaching flow)
     // MSL vs SL — Laura's classmate comparison: Debit, Breakeven, Total Risk side-by-side
     // SL = BUY ATM call + SELL ATM put at the same strike (slCallStrike == soldPutStrike, both ATM)
     if (slCapital && mslTotalOutlay && slMaxRisk && mslMaxRisk) {
@@ -5358,8 +5357,6 @@ async function runMsl(forceTicker) {
         '</div>' +
       '</div>';
     }
-    // Append Trade Summary AFTER the comparison table
-    html += tradeSummaryHtml;
 
     // Compact 3-leg detail strip — just the essentials (full bid/ask available in chain tables below)
     html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">' +
