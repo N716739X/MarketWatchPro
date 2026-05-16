@@ -908,7 +908,8 @@ header {
 .slc-metric-sub { font-size: 9px; color: var(--text-muted); font-weight: 500; display: block; margin-top: 2px; letter-spacing: 0.2px; }
 .slc-sl-val  { font-size: 16px; font-weight: 800; color: var(--text-muted); letter-spacing: -0.2px; }
 .slc-msl-val { font-size: 17px; font-weight: 800; color: var(--green); letter-spacing: -0.3px; }
-.slc-msl-val.msl-loss { color: var(--red); }
+.slc-msl-val.msl-gain { color: var(--green); }
+    .slc-msl-val.msl-loss { color: var(--red); }
 .slc-msl-val.msl-neutral { color: var(--accent); }
 .slc-delta { font-size: 12px; font-weight: 800; text-align: right; justify-content: flex-end; letter-spacing: 0.2px; }
 .slc-delta.delta-better { color: var(--green); }
@@ -5320,53 +5321,53 @@ async function runMsl(forceTicker) {
           '<div class="slc-th slc-th-sl">Synthetic Long</div>' +
           '<div class="slc-th slc-th-msl">MSL</div>' +
           '<div class="slc-th slc-th-delta">Edge</div>' +
-          // Row 1: Net Debit (lower = better)
+          // Row 1: Net Debit — lower = better. MSL almost always pays more (cost of structure).
           slcRow(
             'Net Debit',
             'What you pay upfront',
             slNetDebit100 !== null ? '$' + fmt(slNetDebit100,0) : '—',
             netDebit100 !== null ? '$' + fmt(netDebit100,0) : '—',
-            'msl-neutral',
+            netDebit100 < slNetDebit100 ? 'msl-gain' : 'msl-loss',
             (debitDeltaPct !== null) ? (netDebit100 < slNetDebit100 ? '−' : '+') + '$' + fmt(Math.abs(netDebit100 - slNetDebit100),0) : '—',
             netDebit100 < slNetDebit100 ? 'delta-better' : 'delta-worse'
           ) +
-          // Row 2: Breakeven (lower = better for upside trade)
+          // Row 2: Breakeven — within 10% drift goal = green, beyond = red
           slcRow(
             'Breakeven',
             'Stock price at expiry',
             beSL !== null ? fmtDollar(beSL) : '—',
             beMSL !== null ? fmtDollar(beMSL) : '—',
-            beWithin10 ? '' : 'msl-loss',
+            beWithin10 ? 'msl-gain' : 'msl-loss',
             (beDeltaDollars !== null) ? (beDeltaDollars >= 0 ? '+' : '−') + fmt(Math.abs(beDeltaPct),1) + '%' : '—',
             beWithin10 ? 'delta-better' : 'delta-worse'
           ) +
-          // Row 3: Margin Requirement (Reg T 50% for SL vs put spread width for MSL)
+          // Row 3: Margin Requirement — MSL almost always lower (spread width vs 50% Reg T) = green
           slcRow(
             'Margin Req.',
             'Broker hold',
             slMarginOnly ? '$' + fmt(slMarginOnly,0) : '—',
             mslMarginOnly ? '$' + fmt(mslMarginOnly,0) : '—',
-            '',
-            (marginSavingsPct !== null) ? '−' + fmt(marginSavingsPct,0) + '%' : '—',
+            (marginSavingsPct !== null && marginSavingsPct > 0) ? 'msl-gain' : 'msl-loss',
+            (marginSavingsPct !== null) ? (marginSavingsPct > 0 ? '−' : '+') + fmt(Math.abs(marginSavingsPct),0) + '%' : '—',
             marginSavingsPct > 0 ? 'delta-better' : 'delta-worse'
           ) +
-          // Row 4: Total Outlay (margin + net debit — total cash + margin tied up)
+          // Row 4: Total Outlay (margin + net debit) — green if MSL ties up less capital
           slcRow(
             'Total Outlay',
             'Margin + net debit',
             slCapital ? '$' + fmt(slCapital,0) : '—',
             mslTotalOutlay ? '$' + fmt(mslTotalOutlay,0) : '—',
-            '',
+            (savingsPct !== null && savingsPct > 0) ? 'msl-gain' : 'msl-loss',
             (savingsPct !== null) ? (savingsPct > 0 ? '−' : '+') + fmt(Math.abs(savingsPct),0) + '%' : '—',
             savingsPct > 0 ? 'delta-better' : 'delta-worse'
           ) +
-          // Row 5: Max Risk (lower = better — the MSL's main edge)
+          // Row 5: Max Risk — the MSL's main edge. MSL almost always much lower = green
           slcRow(
             'Max Risk',
             'Worst-case loss',
             slMaxRisk ? '$' + fmt(slMaxRisk,0) : '—',
             mslMaxRisk ? '$' + fmt(mslMaxRisk,0) : '—',
-            'msl-loss',
+            (riskReductionPct !== null && riskReductionPct > 0) ? 'msl-gain' : 'msl-loss',
             (riskReductionPct !== null) ? '−' + fmt(riskReductionPct,0) + '%' + (riskHalfGoal ? ' ✨' : '') : '—',
             riskHalfGoal ? 'delta-better' : (riskReductionPct > 0 ? 'delta-better' : 'delta-worse')
           ) +
