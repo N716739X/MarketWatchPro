@@ -5117,6 +5117,18 @@ async function runMsl(forceTicker) {
     var slCapital  = (soldPutStrike && slNetCost !== null) ? (soldPutStrike * 0.50 + slNetCost) * 100 : null;
     var savingsPct = (slCapital && mslTotalOutlay) ? (1 - mslTotalOutlay / slCapital) * 100 : null;
     var savingsDollars = (slCapital && mslTotalOutlay) ? slCapital - mslTotalOutlay : null;
+    // SL Max Risk = sold put strike + net debit (Laura: AMD $200 + $28 = $228)
+    var slMaxRisk = (soldPutStrike && slNetCost !== null) ? (soldPutStrike + slNetCost) * 100 : null;
+    // Risk reduction: Laura's goal is for MSL risk to be ~half of SL risk (AMD: 125/228 = 45% reduction)
+    var riskReductionPct = (slMaxRisk && mslMaxRisk) ? (1 - mslMaxRisk / slMaxRisk) * 100 : null;
+    var riskReductionDollars = (slMaxRisk && mslMaxRisk) ? slMaxRisk - mslMaxRisk : null;
+    var riskHalfGoal = riskReductionPct !== null && riskReductionPct >= 45; // Laura's "half" goal
+    // Breakeven proximity: Laura wants MSL & SL breakevens within ~10% (AMD: $235 vs $228 = $7 / 3%)
+    var beMSL  = breakeven; // call strike + net debit
+    var beSL   = (soldPutStrike && slNetCost !== null) ? soldPutStrike + slNetCost : null;
+    var beDiffDollars = (beMSL !== null && beSL !== null) ? beMSL - beSL : null;
+    var beDiffPct = (beDiffDollars !== null && beSL) ? Math.abs(beDiffDollars / beSL) * 100 : null;
+    var beWithin10 = beDiffPct !== null && beDiffPct <= 10;
     html += '<div class="trade-summary"><h4>Trade Summary — 1 Contract per Leg</h4><div class="trade-summary-grid">' +
       tsItem('Net Debit', netDebit100 !== null ? '$' + fmt(netDebit100,2) : '—', 'ts-neutral', 'Call cost − put credit') +
       tsItem('Buy Call (Deep ITM)', callCost100 ? '$' + fmt(callCost100,2) : '—', 'ts-loss', fmtDollar(callStrike) + ' — ' + fmt(callRatio*100,0) + '/' + fmt((1-callRatio)*100,0) + ' I/E') +
@@ -5127,17 +5139,24 @@ async function runMsl(forceTicker) {
       tsItem('Margin Req.', mslSpreadMargin ? '$' + fmt(mslSpreadMargin,0) : '—', 'ts-gain', 'Spread width only') +
       tsItem('Total Outlay', mslTotalOutlay ? '$' + fmt(mslTotalOutlay,0) : '—', 'ts-neutral', 'Margin + call debit') +
       tsItem('Max Risk', mslMaxRisk ? '$' + fmt(mslMaxRisk,2) : '—', 'ts-loss', 'Worst-case loss') +
+      tsItem('Risk Reduction vs SL', riskReductionPct !== null ? fmt(riskReductionPct,0) + '%' + (riskHalfGoal ? ' ✨' : '') : '—', riskHalfGoal ? 'ts-gain' : 'ts-neutral', riskReductionDollars !== null ? '$' + fmt(riskReductionDollars,0) + ' less than SL' : 'Laura\'s goal: ~50%') +
       tsItem('Breakeven', breakeven ? fmtDollar(breakeven) : '—', 'ts-neutral', beAboveCur !== null ? fmt(beAboveCur,1) + '% away' : 'Call strike + net debit') +
+      tsItem('BE vs SL Breakeven', beDiffPct !== null ? '±' + fmt(beDiffPct,1) + '%' + (beWithin10 ? ' ✓' : '') : '—', beWithin10 ? 'ts-gain' : 'ts-loss', beSL !== null ? 'SL BE: ' + fmtDollar(beSL) + ' (within 10% = ideal)' : 'BE proximity to SL') +
     '</div></div>';
 
-    // MSL vs SL capital efficiency comparison (uses total outlay for fair comparison)
-    if (slCapital && mslTotalOutlay && savingsPct !== null && savingsPct > 0) {
+    // MSL vs SL capital efficiency comparison — Laura's whiteboard: both outlay AND risk side-by-side
+    if (slCapital && mslTotalOutlay && slMaxRisk && mslMaxRisk) {
       html += '<div class="sl-comparison">' +
-        '<div class="slc-title">💰 Capital Efficiency vs. Synthetic Long</div>' +
+        '<div class="slc-title">💰 MSL vs Synthetic Long — Capital &amp; Risk</div>' +
         '<div class="slc-row">' +
           '<div class="slc-cell"><div class="slc-label">MSL Total Outlay</div><div class="slc-val ts-gain">$' + fmt(mslTotalOutlay,0) + '</div></div>' +
-          '<div class="slc-cell"><div class="slc-label">SL Total (50% strike + debit)</div><div class="slc-val ts-loss">$' + fmt(slCapital,0) + '</div></div>' +
-          '<div class="slc-cell"><div class="slc-label">You Save</div><div class="slc-val ts-gain">$' + fmt(savingsDollars,0) + ' (' + fmt(savingsPct,0) + '%)</div></div>' +
+          '<div class="slc-cell"><div class="slc-label">SL Total Capital</div><div class="slc-val ts-loss">$' + fmt(slCapital,0) + '</div></div>' +
+          '<div class="slc-cell"><div class="slc-label">Outlay Savings</div><div class="slc-val ' + (savingsPct > 0 ? 'ts-gain' : 'ts-neutral') + '">' + (savingsDollars > 0 ? '$' + fmt(savingsDollars,0) + ' (' + fmt(savingsPct,0) + '%)' : '≈ same') + '</div></div>' +
+        '</div>' +
+        '<div class="slc-row" style="margin-top:8px">' +
+          '<div class="slc-cell"><div class="slc-label">MSL Max Risk</div><div class="slc-val ts-gain">$' + fmt(mslMaxRisk,0) + '</div></div>' +
+          '<div class="slc-cell"><div class="slc-label">SL Max Risk</div><div class="slc-val ts-loss">$' + fmt(slMaxRisk,0) + '</div></div>' +
+          '<div class="slc-cell"><div class="slc-label">Risk Reduction</div><div class="slc-val ' + (riskHalfGoal ? 'ts-gain' : 'ts-neutral') + '">$' + fmt(riskReductionDollars,0) + ' (' + fmt(riskReductionPct,0) + '%)' + (riskHalfGoal ? ' ✨' : '') + '</div></div>' +
         '</div>' +
       '</div>';
     }
@@ -5297,6 +5316,18 @@ async function runMsl(forceTicker) {
     }
     if (score >= 6) {
       suggGood.push('✅ <strong>' + (score === 7 ? 'All criteria met' : score + '/7 criteria met') + '</strong> — strong MSL setup. Enter as a multi-leg order to avoid leg risk.');
+    }
+    // Laura's MSL goal #1: risk should be ~half of SL
+    if (riskReductionPct !== null && riskReductionPct >= 45) {
+      suggGood.push('✅ <strong>Risk cut by ' + fmt(riskReductionPct,0) + '%:</strong> MSL risks $' + fmt(mslMaxRisk,0) + ' vs SL\'s $' + fmt(slMaxRisk,0) + '. Same upside, half the risk — Laura\'s exact goal.');
+    } else if (riskReductionPct !== null && riskReductionPct > 0 && riskReductionPct < 45) {
+      suggWarn.push('💡 <strong>Risk reduction only ' + fmt(riskReductionPct,0) + '%:</strong> Laura targets ~50% less risk than SL. Look for a wider bull put spread or tighter call to deepen the discount.');
+    }
+    // Laura's MSL goal #2: breakeven should be within ~10% of SL breakeven
+    if (beDiffPct !== null && beDiffPct <= 10) {
+      suggGood.push('✅ <strong>Breakevens align:</strong> MSL ' + fmtDollar(beMSL) + ' vs SL ' + fmtDollar(beSL) + ' — only ' + fmt(beDiffPct,1) + '% apart. Same recovery threshold, lower risk.');
+    } else if (beDiffPct !== null && beDiffPct > 10) {
+      suggWarn.push('💡 <strong>Breakeven drift:</strong> MSL BE ' + fmtDollar(beMSL) + ' is ' + fmt(beDiffPct,1) + '% from SL BE ' + fmtDollar(beSL) + ' — wider than Laura\'s 10% guideline. The structure may be less comparable to a true SL.');
     }
     var suggestions = suggWarn.concat(suggGood);
     if (suggestions.length > 0) {
