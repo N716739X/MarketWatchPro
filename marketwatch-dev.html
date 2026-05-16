@@ -790,6 +790,21 @@ header {
 .ts-loss  { color: var(--red); }
 .ts-neutral { color: var(--accent); }
 
+/* MSL vs SL Capital Efficiency Comparison */
+.sl-comparison {
+  background: linear-gradient(135deg, rgba(0,255,170,0.05), rgba(255,0,170,0.05));
+  border: 1px solid var(--green);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 0 16px rgba(0,255,170,0.12);
+}
+.slc-title { font-size: 11px; font-weight: 800; color: var(--green); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+.slc-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.slc-cell { text-align: left; }
+.slc-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.slc-val { font-size: 16px; font-weight: 800; white-space: nowrap; }
+
 /* Chain Table */
 .chain-section h3 { font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px; }
 .chain-table-wrap { overflow-x:auto;border-radius:8px;border:1px solid var(--border);margin-bottom:16px; }
@@ -3781,10 +3796,13 @@ async function runPut(forceTicker) {
         '<div class="ts-val ' + cls + '">' + val + '</div>' +
         (note ? '<div class="ts-note">' + note + '</div>' : '') + '</div>';
     }
+    // CSP margin = full strike × 100 (cash secured)
+    var cspMargin = (bestStrike != null) ? bestStrike * 100 : null;
     html += '<div class="trade-summary"><h4>Trade Summary — 1 Contract (100 shares)</h4><div class="trade-summary-grid">' +
       tsItem('Max Gain',        maxGain  ? '$' + fmt(maxGain,2)  : '—', 'ts-gain',    'Premium collected') +
       tsItem('Max Loss',        maxLoss  ? '$' + fmt(maxLoss,2)  : '—', 'ts-loss',    'If stock goes to $0') +
       tsItem('Breakeven',       breakeven ? fmtDollar(breakeven) : '—', 'ts-neutral', 'Price at expiry') +
+      tsItem('Margin Req.',     cspMargin ? '$' + fmt(cspMargin,0) : '—', 'ts-neutral', 'Cash secured: strike × 100') +
       tsItem('Return on Capital', roc    ? fmt(roc,2) + '%'      : '—', 'ts-neutral', 'Per contract') +
       tsItem('Annualized Return', annReturn ? fmt(annReturn,1) + '%' : '—', 'ts-neutral', 'Projected annual') +
     '</div></div>';
@@ -3944,10 +3962,13 @@ async function runCC(forceTicker) {
         '<div class="ts-val ' + cls + '">' + val + '</div>' +
         (note ? '<div class="ts-note">' + note + '</div>' : '') + '</div>';
     }
+    // CC margin = 100 shares cost basis (you must already own them)
+    var ccMargin = (pd.price) ? pd.price * 100 : null;
     html += '<div class="trade-summary"><h4>Trade Summary — 1 Contract (100 shares)</h4><div class="trade-summary-grid">' +
       tsItem('Max Gain',        ccMaxGain  ? '$' + fmt(ccMaxGain,2)  : '—', 'ts-gain',    'If assigned at strike + premium') +
       tsItem('Max Loss',        ccMaxLoss  ? '$' + fmt(ccMaxLoss,2)  : '—', 'ts-loss',    'If stock goes to $0') +
       tsItem('Breakeven',       ccBreakeven ? fmtDollar(ccBreakeven) : '—', 'ts-neutral', 'Stock price at expiry') +
+      tsItem('Margin Req.',     ccMargin ? '$' + fmt(ccMargin,0) : '—', 'ts-neutral', '100 shares already owned') +
       tsItem('Return on Capital', ccROC    ? fmt(ccROC,2) + '%'      : '—', 'ts-neutral', 'Per contract') +
       tsItem('Annualized Return', ccAnnReturn ? fmt(ccAnnReturn,1) + '%' : '—', 'ts-neutral', 'Projected annual') +
     '</div></div>';
@@ -4173,12 +4194,15 @@ async function runLeaps(forceTicker) {
         '<div class="ts-val ' + cls + '">' + val + '</div>' +
         (note ? '<div class="ts-note">' + note + '</div>' : '') + '</div>';
     }
+    // LEAPS margin = premium paid (debit only, defined risk)
+    var leapsMargin = cost1ct;
     html += '<div class="trade-summary"><h4>★ Near-ATM LEAPS Pick — 1 Contract (100 shares)</h4><div class="trade-summary-grid">' +
       tsItem('Strike',      bestStrike ? fmtDollar(bestStrike) : '—', 'ts-neutral', 'Δ' + (bestDelta !== null ? fmt(bestDelta,2) : '') + ' ~' + (shareEquiv || '?') + ' shares/ct') +
       tsItem('Cost (1 ct)', cost1ct ? '$' + fmt(cost1ct,2) : '—', 'ts-loss', 'Premium paid for LEAPS call') +
       tsItem('Max Loss',    cost1ct ? '$' + fmt(cost1ct,2) : '—', 'ts-loss', 'Total premium at risk') +
       tsItem('Max Gain',    '∞', 'ts-gain', 'Unlimited upside above breakeven') +
       tsItem('Breakeven',   breakeven ? fmtDollar(breakeven) + (beAwayPct !== null ? ' (' + (beAwayPct >= 0 ? '+' : '') + fmt(beAwayPct,1) + '%)' : '') : '—', 'ts-neutral', 'Stock price needed at expiry') +
+      tsItem('Margin Req.', leapsMargin ? '$' + fmt(leapsMargin,0) : '—', 'ts-neutral', 'Debit only — fully defined') +
       tsItem('BE CAGR',     breakevenCAGR !== null ? fmt(breakevenCAGR,1) + '%' : '—', breakevenCAGR !== null && breakevenCAGR <= 15 ? 'ts-gain' : 'ts-loss', 'Annual growth to break even') +
       tsItem('Leverage',    leverage ? fmt(leverage,1) + 'x' : '—', 'ts-neutral', 'Stock exposure per dollar') +
     '</div></div>';
@@ -4468,6 +4492,8 @@ async function runSynth(forceTicker) {
         '<div class="ts-val ' + cls + '">' + val + '</div>' +
         (note ? '<div class="ts-note">' + note + '</div>' : '') + '</div>';
     }
+    // Synthetic Long margin (Reg T): 50% of put strike + net debit (treated as stock-equivalent)
+    var synthMargin = (atmStrike && netCost !== null) ? (atmStrike * 0.50 + netCost) * 100 : null;
     html += '<div class="trade-summary"><h4>Trade Summary — 1 Contract per Leg</h4><div class="trade-summary-grid">' +
       tsItem('Net Cost',        synthDebit100 !== null ? (synthDebit100 >= 0 ? '$' + fmt(synthDebit100,2) + ' debit' : '$' + fmt(Math.abs(synthDebit100),2) + ' credit') : '—', 'ts-neutral', 'Call cost minus put credit') +
       tsItem('Buy Call',        callCost100   ? '$' + fmt(callCost100,2)   : '—', 'ts-loss',    'ATM call premium paid') +
@@ -4475,6 +4501,7 @@ async function runSynth(forceTicker) {
       tsItem('Max Gain',        '∞', 'ts-gain', 'Unlimited above breakeven') +
       tsItem('Max Loss',        synthMaxLoss  ? '$' + fmt(synthMaxLoss,2)  : '—', 'ts-loss', 'Strike + net debit (if stock → $0)') +
       tsItem('Breakeven',       breakeven     ? fmtDollar(breakeven) + (beAboveCur !== null ? ' (' + fmt(beAboveCur,1) + '% away)' : '') : '—', 'ts-neutral', 'Strike + net debit') +
+      tsItem('Margin Req.',     synthMargin ? '$' + fmt(synthMargin,0) : '—', 'ts-loss', '50% strike + net debit') +
       tsItem('Assignment Risk', atmStrike ? '$' + fmt(atmStrike * 100,2) : '—', 'ts-neutral', 'Cash if put assigned at strike') +
     '</div></div>';
 
@@ -4740,6 +4767,8 @@ async function runGut(forceTicker) {
         '<div class="ts-val ' + cls + '">' + val + '</div>' +
         (note ? '<div class="ts-note">' + note + '</div>' : '') + '</div>';
     }
+    // Gut Spread margin (Reg T): 50% of put strike + net debit (sold ITM put dominates margin)
+    var gutMargin = (gsPut.strike && netCost !== null) ? (gsPut.strike * 0.50 + netCost) * 100 : null;
     html += '<div class="trade-summary"><h4>Trade Summary — 1 Contract per Leg</h4><div class="trade-summary-grid">' +
       tsItem('Net Cost',        gutDebit100 !== null ? (gutDebit100 >= 0 ? '$' + fmt(gutDebit100,2) + ' debit' : '$' + fmt(Math.abs(gutDebit100),2) + ' credit') : '—', 'ts-neutral', 'Call cost minus put credit') +
       tsItem('Buy Call (ATM)',  callCost100   ? '$' + fmt(callCost100,2)   : '—', 'ts-loss',    fmtDollar(atmStrike) + ' strike') +
@@ -4747,6 +4776,7 @@ async function runGut(forceTicker) {
       tsItem('Max Gain',        '∞', 'ts-gain', 'Unlimited above breakeven') +
       tsItem('Max Loss',        gutMaxLoss  ? '$' + fmt(gutMaxLoss,2)  : '—', 'ts-loss', 'Put strike + net debit (if stock → $0)') +
       tsItem('Breakeven',       breakeven     ? fmtDollar(breakeven) + (beAboveCur !== null ? ' (' + fmt(beAboveCur,1) + '% away)' : '') : '—', 'ts-neutral', 'Put strike + net debit') +
+      tsItem('Margin Req.',     gutMargin ? '$' + fmt(gutMargin,0) : '—', 'ts-loss', '50% put strike + net debit') +
       tsItem('Assignment Risk', gsPut.strike ? '$' + fmt(gsPut.strike * 100,2) : '—', 'ts-neutral', 'Cash if put assigned at ' + fmtDollar(gsPut.strike)) +
     '</div></div>';
 
@@ -5072,6 +5102,14 @@ async function runMsl(forceTicker) {
         '<div class="ts-val ' + cls + '">' + val + '</div>' +
         (note ? '<div class="ts-note">' + note + '</div>' : '') + '</div>';
     }
+    // MSL margin = Max Risk (fully defined: spread width + net debit)
+    var mslMargin = maxRisk;
+    // Equivalent SL margin for comparison: 50% of sold put strike + net cost of (call - sold put)
+    // Note: SL net cost = callMid - soldPutMid (no protective put leg)
+    var slNetCost = (callMid !== null && soldPutMid !== null) ? callMid - soldPutMid : null;
+    var slMargin  = (soldPutStrike && slNetCost !== null) ? (soldPutStrike * 0.50 + slNetCost) * 100 : null;
+    var savingsPct = (slMargin && mslMargin) ? (1 - mslMargin / slMargin) * 100 : null;
+    var savingsDollars = (slMargin && mslMargin) ? slMargin - mslMargin : null;
     html += '<div class="trade-summary"><h4>Trade Summary — 1 Contract per Leg</h4><div class="trade-summary-grid">' +
       tsItem('Net Debit', netDebit100 !== null ? '$' + fmt(netDebit100,2) : '—', 'ts-neutral', 'Call cost − put credit') +
       tsItem('Buy Call (Deep ITM)', callCost100 ? '$' + fmt(callCost100,2) : '—', 'ts-loss', fmtDollar(callStrike) + ' — ' + fmt(callRatio*100,0) + '/' + fmt((1-callRatio)*100,0) + ' I/E') +
@@ -5080,8 +5118,21 @@ async function runMsl(forceTicker) {
       tsItem('Put Spread Credit', putCredit100 !== null ? '$' + fmt(putCredit100,2) : '—', 'ts-gain', fmt(putCreditPct,1) + '% of width') +
       tsItem('Max Gain', '∞', 'ts-gain', 'Unlimited above breakeven') +
       tsItem('Max Risk', maxRisk ? '$' + fmt(maxRisk,2) : '—', 'ts-loss', 'Spread width + net debit') +
+      tsItem('Margin Req.', mslMargin ? '$' + fmt(mslMargin,0) : '—', 'ts-gain', '= Max Risk (fully defined)') +
       tsItem('Breakeven', breakeven ? fmtDollar(breakeven) : '—', 'ts-neutral', beAboveCur !== null ? fmt(beAboveCur,1) + '% away' : 'Call strike + net debit') +
     '</div></div>';
+
+    // MSL vs SL comparison chip
+    if (slMargin && mslMargin && savingsPct !== null && savingsPct > 0) {
+      html += '<div class="sl-comparison">' +
+        '<div class="slc-title">💰 Capital Efficiency vs. Synthetic Long</div>' +
+        '<div class="slc-row">' +
+          '<div class="slc-cell"><div class="slc-label">MSL Margin</div><div class="slc-val ts-gain">$' + fmt(mslMargin,0) + '</div></div>' +
+          '<div class="slc-cell"><div class="slc-label">SL Margin (50% strike + debit)</div><div class="slc-val ts-loss">$' + fmt(slMargin,0) + '</div></div>' +
+          '<div class="slc-cell"><div class="slc-label">You Save</div><div class="slc-val ts-gain">$' + fmt(savingsDollars,0) + ' (' + fmt(savingsPct,0) + '%)</div></div>' +
+        '</div>' +
+      '</div>';
+    }
 
     // Leg detail cards (3 legs) — Call first, then ATM put, then lower put
     html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">';
