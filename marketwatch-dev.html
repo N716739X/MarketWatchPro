@@ -5264,9 +5264,6 @@ async function runMsl(forceTicker) {
         '<div class="ts-section-grid">';
     };
     var sectionClose = function() { return '</div></div>'; };
-    var rrBadge = riskReductionPct !== null ? (riskHalfGoal ? '<span class="ts-badge bdg-gain">✨ Goal</span>' : '') : '';
-    var beBadge = beDiffPct !== null ? (beWithin10 ? '<span class="ts-badge bdg-gain">✓ ≤10%</span>' : '<span class="ts-badge bdg-miss">> 10%</span>') : '';
-
     html += '<div class="trade-summary"><h4>Trade Summary · 1 Contract per Leg</h4>' +
       // HERO: 3 numbers that matter most
       '<div class="ts-hero">' +
@@ -5289,17 +5286,11 @@ async function runMsl(forceTicker) {
         tsItem('Breakeven', breakeven ? fmtDollar(breakeven) : '—', 'ts-gain', beAboveCur !== null ? fmt(beAboveCur,1) + '% above price' : 'Call strike + debit') +
       sectionClose() +
 
-      // SECTION 3: Capital required
+      // SECTION 3: Capital required (Risk Reduction + BE Drift shown in the comparison table below)
       sectionOpen('Capital Required') +
         tsItem('Margin Req.',  mslSpreadMargin ? '$' + fmt(mslSpreadMargin,0) : '—', 'ts-neutral', 'Broker hold (spread width)') +
         tsItem('Total Outlay', mslTotalOutlay ? '$' + fmt(mslTotalOutlay,0) : '—', 'ts-neutral', 'Margin + call premium') +
         tsItem('Max Risk',     mslMaxRisk ? '$' + fmt(mslMaxRisk,0) : '—', 'ts-loss', 'Worst-case loss') +
-      sectionClose() +
-
-      // SECTION 4: vs Synthetic Long (the edge)
-      sectionOpen('vs Synthetic Long · The Edge', 'section-vs') +
-        tsItem('Risk Reduction', (riskReductionPct !== null ? fmt(riskReductionPct,0) + '%' : '—') + rrBadge, riskHalfGoal ? 'ts-gain' : 'ts-neutral', riskReductionDollars !== null ? '$' + fmt(riskReductionDollars,0) + ' less risk' : 'Goal: ≈50%') +
-        tsItem('BE Drift',       (beDiffPct !== null ? '±' + fmt(beDiffPct,1) + '%' : '—') + beBadge, beWithin10 ? 'ts-gain' : 'ts-loss', beSL !== null ? 'SL BE: ' + fmtDollar(beSL) : 'Goal: ≤10%') +
       sectionClose() +
     '</div>';
 
