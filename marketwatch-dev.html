@@ -5117,22 +5117,37 @@ async function runMsl(forceTicker) {
     var mslTotalOutlay  = (mslSpreadMargin !== null && callMid !== null) ? mslSpreadMargin + (callMid * 100) : null;
     var mslMaxRisk      = maxRisk;
 
-    // Equivalent SL capital comparison: use Laura's Reg T formula
-    // SL = sell ATM put + buy ATM call (same strike), net debit = callMid - soldPutMid
-    // SL margin = 50% of put strike + net debit (Reg T short-put margin + call cash debit)
-    var slNetCost  = (callMid !== null && soldPutMid !== null) ? callMid - soldPutMid : null;
+    // ====================================================================
+    // Equivalent SYNTHETIC LONG (apples-to-apples comparison)
+    // Laura's SL: BUY ATM call + SELL ATM put at the SAME strike, same expiry.
+    // To make the comparison fair, we use the ATM strike (same as the MSL sold put)
+    // for BOTH the SL call and SL put — not the MSL deep-ITM call.
+    // ====================================================================
+    // Find the ATM call (call strike closest to the sold ATM put strike)
+    var slCallIdx = -1, slCallBestDist = Infinity;
+    for (var sci = 0; sci < callChain.strike.length; sci++) {
+      var sd = Math.abs(callChain.strike[sci] - soldPutStrike);
+      if (sd < slCallBestDist) { slCallBestDist = sd; slCallIdx = sci; }
+    }
+    var slCallStrike = slCallIdx >= 0 ? callChain.strike[slCallIdx] : null;
+    var slCallMid    = (slCallIdx >= 0 && callChain.mid) ? callChain.mid[slCallIdx] : null;
+    var slCallBid    = (slCallIdx >= 0 && callChain.bid) ? callChain.bid[slCallIdx] : null;
+    var slCallAsk    = (slCallIdx >= 0 && callChain.ask) ? callChain.ask[slCallIdx] : null;
+    // SL net debit = ATM call mid − ATM put mid (same strike, both at the money)
+    var slNetCost  = (slCallMid !== null && soldPutMid !== null) ? slCallMid - soldPutMid : null;
+    // SL margin (Reg T): 50% of short put strike + net debit (call premium)
     var slCapital  = (soldPutStrike && slNetCost !== null) ? (soldPutStrike * 0.50 + slNetCost) * 100 : null;
     var savingsPct = (slCapital && mslTotalOutlay) ? (1 - mslTotalOutlay / slCapital) * 100 : null;
     var savingsDollars = (slCapital && mslTotalOutlay) ? slCapital - mslTotalOutlay : null;
-    // SL Max Risk = sold put strike + net debit (Laura: AMD $200 + $28 = $228)
+    // SL Max Risk = short put strike + net debit (AMD: $200 + $28 = $228)
     var slMaxRisk = (soldPutStrike && slNetCost !== null) ? (soldPutStrike + slNetCost) * 100 : null;
-    // Risk reduction: Laura's goal is for MSL risk to be ~half of SL risk (AMD: 125/228 = 45% reduction)
+    // Risk reduction: Laura's goal is for MSL risk to be ~half of SL risk
     var riskReductionPct = (slMaxRisk && mslMaxRisk) ? (1 - mslMaxRisk / slMaxRisk) * 100 : null;
     var riskReductionDollars = (slMaxRisk && mslMaxRisk) ? slMaxRisk - mslMaxRisk : null;
-    var riskHalfGoal = riskReductionPct !== null && riskReductionPct >= 45; // Laura's "half" goal
-    // Breakeven proximity: Laura wants MSL & SL breakevens within ~10% (AMD: $235 vs $228 = $7 / 3%)
-    var beMSL  = breakeven; // call strike + net debit
-    var beSL   = (soldPutStrike && slNetCost !== null) ? soldPutStrike + slNetCost : null;
+    var riskHalfGoal = riskReductionPct !== null && riskReductionPct >= 45;
+    // SL breakeven = ATM call strike + net debit (call strike == put strike for true SL)
+    var beMSL  = breakeven; // call strike + net debit (MSL deep-ITM call)
+    var beSL   = (slCallStrike !== null && slNetCost !== null) ? slCallStrike + slNetCost : null;
     var beDiffDollars = (beMSL !== null && beSL !== null) ? beMSL - beSL : null;
     var beDiffPct = (beDiffDollars !== null && beSL) ? Math.abs(beDiffDollars / beSL) * 100 : null;
     var beWithin10 = beDiffPct !== null && beDiffPct <= 10;
@@ -5162,9 +5177,15 @@ async function runMsl(forceTicker) {
     '</div></div>';
 
     // MSL vs SL capital efficiency comparison — Laura's whiteboard: both outlay AND risk side-by-side
+    // SL = BUY ATM call + SELL ATM put at the same strike (slCallStrike == soldPutStrike, both ATM)
     if (slCapital && mslTotalOutlay && slMaxRisk && mslMaxRisk) {
+      var slStrikeDisp = slCallStrike !== null ? fmtDollar(slCallStrike) : fmtDollar(soldPutStrike);
+      var slCallDebit = slCallMid !== null ? slCallMid * 100 : null;
+      var slPutCredit = soldPutMid !== null ? soldPutMid * 100 : null;
+      var slNetDebit100 = slNetCost !== null ? slNetCost * 100 : null;
       html += '<div class="sl-comparison">' +
         '<div class="slc-title">💰 MSL vs Synthetic Long — Capital &amp; Risk</div>' +
+        '<div style="font-size:10px;color:var(--text-muted);margin-bottom:10px">Comparable SL @ ' + slStrikeDisp + ' ATM · Buy call $' + fmt(slCallDebit,2) + ' / Sell put $' + fmt(slPutCredit,2) + ' · Net debit $' + fmt(slNetDebit100,2) + '</div>' +
         '<div class="slc-row">' +
           '<div class="slc-cell"><div class="slc-label">MSL Total Outlay</div><div class="slc-val ts-gain">$' + fmt(mslTotalOutlay,0) + '</div></div>' +
           '<div class="slc-cell"><div class="slc-label">SL Total Capital</div><div class="slc-val ts-loss">$' + fmt(slCapital,0) + '</div></div>' +
