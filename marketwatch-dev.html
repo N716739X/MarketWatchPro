@@ -5304,6 +5304,13 @@ async function runMsl(forceTicker) {
       // BE comparison: positive = MSL BE higher (needs more upside), negative = MSL BE lower (better)
       var beDeltaDollars = (beMSL !== null && beSL !== null) ? beMSL - beSL : null;
       var beDeltaPct = (beDeltaDollars !== null && beSL) ? (beDeltaDollars / beSL) * 100 : null;
+      // Margin comparison (Laura's framework):
+      //   SL margin  = 50% of short put strike × 100 (Reg T)
+      //   MSL margin = put spread width × 100 (only the spread is held, credit reduces call cost)
+      var slMarginOnly = soldPutStrike ? soldPutStrike * 0.50 * 100 : null;
+      var mslMarginOnly = mslSpreadMargin; // already = (soldPutStrike - boughtPutStrike) * 100
+      var marginSavings = (slMarginOnly && mslMarginOnly) ? slMarginOnly - mslMarginOnly : null;
+      var marginSavingsPct = (slMarginOnly && mslMarginOnly) ? (1 - mslMarginOnly / slMarginOnly) * 100 : null;
       // Risk comparison already computed: riskReductionPct, riskReductionDollars
 
       // Helper to render a comparison row (4 cells per row in the grid)
@@ -5344,7 +5351,17 @@ async function runMsl(forceTicker) {
             (beDeltaDollars !== null) ? (beDeltaDollars >= 0 ? '+' : '−') + fmt(Math.abs(beDeltaPct),1) + '%' : '—',
             beWithin10 ? 'delta-better' : 'delta-worse'
           ) +
-          // Row 3: Max Risk (lower = better — the MSL's main edge)
+          // Row 3: Margin Requirement (Reg T 50% for SL vs put spread width for MSL)
+          slcRow(
+            'Margin Req.',
+            'Broker hold',
+            slMarginOnly ? '$' + fmt(slMarginOnly,0) : '—',
+            mslMarginOnly ? '$' + fmt(mslMarginOnly,0) : '—',
+            '',
+            (marginSavingsPct !== null) ? '−' + fmt(marginSavingsPct,0) + '%' : '—',
+            marginSavingsPct > 0 ? 'delta-better' : 'delta-worse'
+          ) +
+          // Row 4: Max Risk (lower = better — the MSL's main edge)
           slcRow(
             'Max Risk',
             'Worst-case loss',
