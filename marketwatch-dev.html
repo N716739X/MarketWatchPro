@@ -503,18 +503,10 @@ header {
   gap: 4px;
   margin-bottom: 8px;
 }
-/* Fixed pill width so fewer pills don't stretch; pills stay a consistent size regardless of card width */
-.criteria-row.criteria-5,
-.criteria-row.criteria-6,
-.criteria-row.criteria-7 {
-  grid-template-columns: repeat(auto-fit, 64px);
-  justify-content: start;
-}
-.mini-rankings-cards .criteria-row.criteria-5,
-.mini-rankings-cards .criteria-row.criteria-6,
-.mini-rankings-cards .criteria-row.criteria-7 {
-  grid-template-columns: repeat(auto-fit, 80px);
-}
+/* Pill columns evenly fill the row regardless of pill count */
+.criteria-row.criteria-5 { grid-template-columns: repeat(5, 1fr); }
+.criteria-row.criteria-6 { grid-template-columns: repeat(6, 1fr); }
+.criteria-row.criteria-7 { grid-template-columns: repeat(7, 1fr); }
 .mini-box {
   text-align: center;
   padding: 3px 2px;
@@ -5528,7 +5520,7 @@ async function runMsl(forceTicker) {
     }
     if (!c5 && netDebitPct !== null) {
       suggWarn.push('💡 <strong>Net debit too high:</strong> ' + fmt(netDebitPct,1) + '% of price — above 40% ceiling. The put spread credit isn\'t offsetting enough of the call cost.');
-    } else if (c5 && !c5Ideal && netDebitPct !== null) {
+    } else if (c5 && netDebitPct !== null && netDebitPct > 33) {
       suggWarn.push('⚠️ <strong>Net debit elevated:</strong> ' + fmt(netDebitPct,1) + '% of price — acceptable but above Laura\'s ~1/3 rule (33%) ideal zone.');
     }
     if (c2 && putCreditPct !== null && putCreditPct >= 50) {
