@@ -789,6 +789,13 @@ header {
 .ts-gain  { color: var(--green); }
 .ts-loss  { color: var(--red); }
 .ts-neutral { color: var(--accent); }
+/* MSL Trade Summary section grouping */
+.ts-section-label { grid-column: 1/-1; font-size: 9px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 1.5px; margin: 10px 0 -4px 0; padding-bottom: 4px; border-bottom: 1px solid rgba(0,255,255,0.15); display: flex; align-items: center; gap: 8px; }
+.ts-section-label:first-child { margin-top: 0; }
+.ts-section-label .ts-section-icon { font-size: 11px; color: var(--accent); }
+.ts-item.ts-highlight { background: rgba(0,255,255,0.04); border-radius: 6px; padding: 6px 8px; margin: -6px -8px; }
+.ts-item.ts-highlight-loss { background: rgba(255,80,80,0.06); border-radius: 6px; padding: 6px 8px; margin: -6px -8px; }
+.ts-item.ts-highlight-gain { background: rgba(0,255,150,0.06); border-radius: 6px; padding: 6px 8px; margin: -6px -8px; }
 
 /* MSL vs SL Capital Efficiency Comparison */
 .sl-comparison {
@@ -5129,19 +5136,29 @@ async function runMsl(forceTicker) {
     var beDiffDollars = (beMSL !== null && beSL !== null) ? beMSL - beSL : null;
     var beDiffPct = (beDiffDollars !== null && beSL) ? Math.abs(beDiffDollars / beSL) * 100 : null;
     var beWithin10 = beDiffPct !== null && beDiffPct <= 10;
+    // Section-grouped Trade Summary: Legs → Net P&L → Capital → Comparison
+    var sectionLabel = function(title) { return '<div class="ts-section-label">' + title + '</div>'; };
     html += '<div class="trade-summary"><h4>Trade Summary — 1 Contract per Leg</h4><div class="trade-summary-grid">' +
-      tsItem('Net Debit', netDebit100 !== null ? '$' + fmt(netDebit100,2) : '—', 'ts-neutral', 'Call cost − put credit') +
-      tsItem('Buy Call (Deep ITM)', callCost100 ? '$' + fmt(callCost100,2) : '—', 'ts-loss', fmtDollar(callStrike) + ' — ' + fmt(callRatio*100,0) + '/' + fmt((1-callRatio)*100,0) + ' I/E') +
+      // --- THE LEGS (what you place) ---
+      sectionLabel('① The Trade — 3 Legs') +
+      tsItem('Buy Call (Deep ITM)', callCost100 ? '$' + fmt(callCost100,2) : '—', 'ts-loss', fmtDollar(callStrike) + ' strike · ' + fmt(callRatio*100,0) + '/' + fmt((1-callRatio)*100,0) + ' I/E') +
       tsItem('Sell Put (ATM)', soldPutMid ? '$' + fmt(soldPutMid*100,2) : '—', 'ts-gain', fmtDollar(soldPutStrike) + ' strike') +
-      tsItem('Buy Put (Lower)', boughtPutMid ? '$' + fmt(boughtPutMid*100,2) : '—', 'ts-loss', fmtDollar(boughtPutStrike) + ' (protection)') +
-      tsItem('Put Spread Credit', putCredit100 !== null ? '$' + fmt(putCredit100,2) : '—', 'ts-gain', fmt(putCreditPct,1) + '% of width') +
-      tsItem('Max Gain', '∞', 'ts-gain', 'Unlimited above breakeven') +
-      tsItem('Margin Req.', mslSpreadMargin ? '$' + fmt(mslSpreadMargin,0) : '—', 'ts-gain', 'Spread width only') +
-      tsItem('Total Outlay', mslTotalOutlay ? '$' + fmt(mslTotalOutlay,0) : '—', 'ts-neutral', 'Margin + call debit') +
-      tsItem('Max Risk', mslMaxRisk ? '$' + fmt(mslMaxRisk,2) : '—', 'ts-loss', 'Worst-case loss') +
-      tsItem('Risk Reduction vs SL', riskReductionPct !== null ? fmt(riskReductionPct,0) + '%' + (riskHalfGoal ? ' ✨' : '') : '—', riskHalfGoal ? 'ts-gain' : 'ts-neutral', riskReductionDollars !== null ? '$' + fmt(riskReductionDollars,0) + ' less than SL' : 'Laura\'s goal: ~50%') +
-      tsItem('Breakeven', breakeven ? fmtDollar(breakeven) : '—', 'ts-neutral', beAboveCur !== null ? fmt(beAboveCur,1) + '% away' : 'Call strike + net debit') +
-      tsItem('BE vs SL Breakeven', beDiffPct !== null ? '±' + fmt(beDiffPct,1) + '%' + (beWithin10 ? ' ✓' : '') : '—', beWithin10 ? 'ts-gain' : 'ts-loss', beSL !== null ? 'SL BE: ' + fmtDollar(beSL) + ' (within 10% = ideal)' : 'BE proximity to SL') +
+      tsItem('Buy Put (Lower)', boughtPutMid ? '$' + fmt(boughtPutMid*100,2) : '—', 'ts-loss', fmtDollar(boughtPutStrike) + ' protection') +
+      tsItem('Put Spread Credit', putCredit100 !== null ? '+$' + fmt(putCredit100,2) : '—', 'ts-gain', fmt(putCreditPct,1) + '% of width') +
+      // --- NET COST ---
+      sectionLabel('② Net Position') +
+      tsItem('Net Debit', netDebit100 !== null ? '$' + fmt(netDebit100,2) : '—', 'ts-neutral', 'Call − put credit') +
+      tsItem('Breakeven', breakeven ? fmtDollar(breakeven) : '—', 'ts-neutral', beAboveCur !== null ? fmt(beAboveCur,1) + '% above price' : 'Call strike + net debit') +
+      tsItem('Max Gain', '∞', 'ts-gain', 'Above breakeven') +
+      // --- CAPITAL REQUIREMENTS ---
+      sectionLabel('③ Capital Required') +
+      tsItem('Margin Req.', mslSpreadMargin ? '$' + fmt(mslSpreadMargin,0) : '—', 'ts-gain', 'Broker hold (spread width)') +
+      tsItem('Total Outlay', mslTotalOutlay ? '$' + fmt(mslTotalOutlay,0) : '—', 'ts-neutral', 'Margin + call premium') +
+      tsItem('Max Risk', mslMaxRisk ? '$' + fmt(mslMaxRisk,0) : '—', 'ts-loss', 'Worst-case loss') +
+      // --- COMPARISON vs SL ---
+      sectionLabel('④ vs Synthetic Long') +
+      tsItem('Risk Reduction', riskReductionPct !== null ? fmt(riskReductionPct,0) + '%' + (riskHalfGoal ? ' ✨' : '') : '—', riskHalfGoal ? 'ts-gain' : 'ts-neutral', riskReductionDollars !== null ? '$' + fmt(riskReductionDollars,0) + ' less risk' : 'Goal: ≈50%') +
+      tsItem('BE Drift', beDiffPct !== null ? '±' + fmt(beDiffPct,1) + '%' + (beWithin10 ? ' ✓' : '') : '—', beWithin10 ? 'ts-gain' : 'ts-loss', beSL !== null ? 'SL BE: ' + fmtDollar(beSL) : 'Goal: ≤10%') +
     '</div></div>';
 
     // MSL vs SL capital efficiency comparison — Laura's whiteboard: both outlay AND risk side-by-side
