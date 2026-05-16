@@ -764,32 +764,119 @@ header {
 .info-item .info-val   { font-size:14px;font-weight:700;color:var(--accent); }
 .info-item .info-sub   { font-size:10px;color:var(--text-muted);font-weight:500;margin-top:2px;letter-spacing:0.3px; }
 
-/* Trade Summary Box */
+/* ============================================================
+   Trade Summary — Premium Redesign
+   ============================================================ */
 .trade-summary {
-  background: var(--surface2);
-  border: 1px solid var(--accent);
-  border-radius: 8px;
-  padding: 14px 16px;
+  background: linear-gradient(180deg, rgba(0,255,255,0.025), rgba(0,255,255,0.008) 40%, transparent);
+  border: 1px solid rgba(0,255,255,0.35);
+  border-radius: 12px;
+  padding: 16px 18px 14px;
   margin-bottom: 16px;
-  box-shadow: 0 0 12px rgba(0,255,255,0.08);
+  box-shadow: 0 0 18px rgba(0,255,255,0.06), inset 0 1px 0 rgba(255,255,255,0.02);
 }
 .trade-summary h4 {
   font-size: 10px; font-weight: 800; color: var(--accent);
-  text-transform: uppercase; letter-spacing: 1px;
-  margin: 0 0 10px 0;
+  text-transform: uppercase; letter-spacing: 1.4px;
+  margin: 0 0 14px 0;
+  display: flex; align-items: center; gap: 8px;
 }
+.trade-summary h4::before {
+  content: ''; display: inline-block; width: 3px; height: 12px;
+  background: var(--accent); border-radius: 2px;
+  box-shadow: 0 0 6px var(--accent);
+}
+.trade-summary h4::after {
+  content: ''; flex: 1; height: 1px;
+  background: linear-gradient(90deg, rgba(0,255,255,0.20), transparent);
+  margin-left: 4px;
+}
+
+/* HERO STRIP — the 3 numbers traders look at first */
+.ts-hero {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+  margin-bottom: 14px;
+}
+.ts-hero-cell {
+  background: rgba(255,255,255,0.018);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  padding: 12px 14px;
+  position: relative; overflow: hidden;
+  transition: transform .15s ease, border-color .15s ease;
+}
+.ts-hero-cell::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: var(--accent); opacity: 0.7;
+}
+.ts-hero-cell.hero-gain::before  { background: var(--green); }
+.ts-hero-cell.hero-loss::before  { background: var(--red); }
+.ts-hero-cell.hero-neutral::before { background: var(--accent); }
+.ts-hero-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 700; margin-bottom: 4px; }
+.ts-hero-val   { font-size: 22px; font-weight: 800; line-height: 1.1; letter-spacing: -0.5px; }
+.ts-hero-val.hero-gain  { color: var(--green); }
+.ts-hero-val.hero-loss  { color: var(--red); }
+.ts-hero-val.hero-neutral { color: var(--accent); }
+.ts-hero-note  { font-size: 10px; color: var(--text-muted); margin-top: 3px; }
+
+/* SECTION PANELS — each group is its own micro-card */
+.ts-section {
+  background: rgba(255,255,255,0.012);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--accent);
+  border-radius: 8px;
+  padding: 10px 14px 12px;
+  margin-bottom: 10px;
+}
+.ts-section:last-child { margin-bottom: 0; }
+.ts-section.section-gain  { border-left-color: var(--green); background: rgba(0,255,170,0.018); }
+.ts-section.section-loss  { border-left-color: var(--red);   background: rgba(255,80,80,0.018); }
+.ts-section.section-vs    { border-left-color: var(--green); background: linear-gradient(135deg, rgba(0,255,170,0.025), rgba(0,255,255,0.012)); }
+
+.ts-section-title {
+  font-size: 9px; font-weight: 800; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 1.4px;
+  margin: 0 0 10px 0;
+  display: flex; align-items: center; gap: 8px;
+}
+.ts-section.section-gain  .ts-section-title { color: var(--green); }
+.ts-section.section-loss  .ts-section-title { color: var(--red); }
+.ts-section.section-vs    .ts-section-title { color: var(--green); }
+.ts-section-title-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: currentColor; box-shadow: 0 0 6px currentColor;
+}
+
+.ts-section-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px 14px;
+}
+
+.ts-item .ts-label { font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:3px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.ts-item .ts-val   { font-size:15px;font-weight:800;white-space:nowrap;letter-spacing:-0.2px; }
+.ts-item .ts-note  { font-size:9.5px;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.ts-gain  { color: var(--green); }
+.ts-loss  { color: var(--red); }
+.ts-neutral { color: var(--accent); }
+
+/* Goal badges (✨ ✓) — proper pills, not floating glyphs */
+.ts-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 9px; font-weight: 700;
+  padding: 1px 6px; border-radius: 10px;
+  margin-left: 4px; vertical-align: 2px;
+  text-transform: uppercase; letter-spacing: 0.4px;
+}
+.ts-badge.bdg-gain { background: rgba(0,255,170,0.12); color: var(--green); border: 1px solid rgba(0,255,170,0.3); }
+.ts-badge.bdg-miss { background: rgba(255,80,80,0.10); color: var(--red);   border: 1px solid rgba(255,80,80,0.25); }
+
+/* Legacy classes kept for non-MSL trade summaries */
 .trade-summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(95px, 1fr));
   gap: 10px 10px;
 }
-.ts-item .ts-label { font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
-.ts-item .ts-val   { font-size:14px;font-weight:800;white-space:nowrap; }
-.ts-item .ts-note  { font-size:9px;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
-.ts-gain  { color: var(--green); }
-.ts-loss  { color: var(--red); }
-.ts-neutral { color: var(--accent); }
-/* MSL Trade Summary section grouping */
 .ts-section-label { grid-column: 1/-1; font-size: 9px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 1.5px; margin: 10px 0 -4px 0; padding-bottom: 4px; border-bottom: 1px solid rgba(0,255,255,0.15); display: flex; align-items: center; gap: 8px; }
 .ts-section-label:first-child { margin-top: 0; }
 .ts-section-label .ts-section-icon { font-size: 11px; color: var(--accent); }
@@ -5087,15 +5174,11 @@ async function runMsl(forceTicker) {
     setStatus('msl-status', 'Done', 'ok');
 
     var html = priceBarHtml(ticker, pd, '4H');
-    html += '<div class="info-box">' +
-      '<div class="info-item"><div class="info-label">Expiry</div><div class="info-val">' + bestExpiry + '</div></div>' +
-      '<div class="info-item"><div class="info-label">DTE</div><div class="info-val">' + dte + '</div></div>' +
-      '<div class="info-item"><div class="info-label">Sold Put (ATM)</div><div class="info-val">' + fmtDollar(soldPutStrike) + '</div></div>' +
-      '<div class="info-item"><div class="info-label">Bought Put (Lower)</div><div class="info-val">' + fmtDollar(boughtPutStrike) + '</div></div>' +
-      '<div class="info-item"><div class="info-label">Put Spread Credit</div><div class="info-val">' + (putSpreadCredit !== null ? fmtDollar(putSpreadCredit) : '—') + '</div>' + (putCreditPct !== null ? '<div class="info-sub">' + fmt(putCreditPct,1) + '% of width</div>' : '') + '</div>' +
-      '<div class="info-item"><div class="info-label">50/50 I/E Ratio</div><div class="info-val">' + fmtDollar(callStrike) + '</div><div class="info-sub">' + fmt(callRatio*100,1) + '% / ' + fmt((1-callRatio)*100,1) + '%</div></div>' +
-      '<div class="info-item"><div class="info-label">Net Debit</div><div class="info-val">' + (netDebit !== null ? fmtDollar(netDebit) : '—') + '</div>' + (netDebit !== null ? '<div class="info-sub">' + fmt(netDebitPct,1) + '% of price</div>' : '') + '</div>' +
-      '<div class="info-item"><div class="info-label">Breakeven</div><div class="info-val">' + (breakeven !== null ? fmtDollar(breakeven) : '—') + '</div>' + (beAboveCur !== null ? '<div class="info-sub">' + fmt(beAboveCur,1) + '% away</div>' : '') + '</div>' +
+    // Compact expiry/DTE chip (everything else moved into Trade Summary to avoid duplication)
+    html += '<div style="display:flex;gap:14px;align-items:center;padding:8px 14px;margin-bottom:10px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);font-size:11px">' +
+      '<span style="color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;font-weight:700">Expiry</span><span style="color:var(--accent);font-weight:800">' + bestExpiry + '</span>' +
+      '<span style="color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-left:8px">DTE</span><span style="color:var(--accent);font-weight:800">' + dte + ' days</span>' +
+      '<span style="color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-left:8px">Net Debit % of Price</span><span style="color:' + (netDebitPct !== null && netDebitPct <= 33 ? 'var(--green)' : 'var(--accent)') + ';font-weight:800">' + (netDebitPct !== null ? fmt(netDebitPct,1) + '%' : '—') + '</span>' +
     '</div>';
 
     // Trade Summary
@@ -5151,30 +5234,58 @@ async function runMsl(forceTicker) {
     var beDiffDollars = (beMSL !== null && beSL !== null) ? beMSL - beSL : null;
     var beDiffPct = (beDiffDollars !== null && beSL) ? Math.abs(beDiffDollars / beSL) * 100 : null;
     var beWithin10 = beDiffPct !== null && beDiffPct <= 10;
-    // Section-grouped Trade Summary: Legs → Net P&L → Capital → Comparison
-    var sectionLabel = function(title) { return '<div class="ts-section-label">' + title + '</div>'; };
-    html += '<div class="trade-summary"><h4>Trade Summary — 1 Contract per Leg</h4><div class="trade-summary-grid">' +
-      // --- THE LEGS (what you place) ---
-      sectionLabel('① The Trade — 3 Legs') +
-      tsItem('Buy Call (Deep ITM)', callCost100 ? '$' + fmt(callCost100,2) : '—', 'ts-loss', fmtDollar(callStrike) + ' strike · ' + fmt(callRatio*100,0) + '/' + fmt((1-callRatio)*100,0) + ' I/E') +
-      tsItem('Sell Put (ATM)', soldPutMid ? '$' + fmt(soldPutMid*100,2) : '—', 'ts-gain', fmtDollar(soldPutStrike) + ' strike') +
-      tsItem('Buy Put (Lower)', boughtPutMid ? '$' + fmt(boughtPutMid*100,2) : '—', 'ts-loss', fmtDollar(boughtPutStrike) + ' protection') +
-      tsItem('Put Spread Credit', putCredit100 !== null ? '+$' + fmt(putCredit100,2) : '—', 'ts-gain', fmt(putCreditPct,1) + '% of width') +
-      // --- NET COST ---
-      sectionLabel('② Net Position') +
-      tsItem('Net Debit', netDebit100 !== null ? '$' + fmt(netDebit100,2) : '—', 'ts-neutral', 'Call − put credit') +
-      tsItem('Breakeven', breakeven ? fmtDollar(breakeven) : '—', 'ts-neutral', beAboveCur !== null ? fmt(beAboveCur,1) + '% above price' : 'Call strike + net debit') +
-      tsItem('Max Gain', '∞', 'ts-gain', 'Above breakeven') +
-      // --- CAPITAL REQUIREMENTS ---
-      sectionLabel('③ Capital Required') +
-      tsItem('Margin Req.', mslSpreadMargin ? '$' + fmt(mslSpreadMargin,0) : '—', 'ts-gain', 'Broker hold (spread width)') +
-      tsItem('Total Outlay', mslTotalOutlay ? '$' + fmt(mslTotalOutlay,0) : '—', 'ts-neutral', 'Margin + call premium') +
-      tsItem('Max Risk', mslMaxRisk ? '$' + fmt(mslMaxRisk,0) : '—', 'ts-loss', 'Worst-case loss') +
-      // --- COMPARISON vs SL ---
-      sectionLabel('④ vs Synthetic Long') +
-      tsItem('Risk Reduction', riskReductionPct !== null ? fmt(riskReductionPct,0) + '%' + (riskHalfGoal ? ' ✨' : '') : '—', riskHalfGoal ? 'ts-gain' : 'ts-neutral', riskReductionDollars !== null ? '$' + fmt(riskReductionDollars,0) + ' less risk' : 'Goal: ≈50%') +
-      tsItem('BE Drift', beDiffPct !== null ? '±' + fmt(beDiffPct,1) + '%' + (beWithin10 ? ' ✓' : '') : '—', beWithin10 ? 'ts-gain' : 'ts-loss', beSL !== null ? 'SL BE: ' + fmtDollar(beSL) : 'Goal: ≤10%') +
-    '</div></div>';
+    // ===== Premium Trade Summary: Hero strip + 4 sectioned panels =====
+    var heroCell = function(label, val, cls, note) {
+      return '<div class="ts-hero-cell hero-' + cls + '">' +
+        '<div class="ts-hero-label">' + label + '</div>' +
+        '<div class="ts-hero-val hero-' + cls + '">' + val + '</div>' +
+        (note ? '<div class="ts-hero-note">' + note + '</div>' : '') +
+      '</div>';
+    };
+    var sectionOpen = function(title, modCls) {
+      return '<div class="ts-section ' + (modCls || '') + '">' +
+        '<div class="ts-section-title"><span class="ts-section-title-dot"></span>' + title + '</div>' +
+        '<div class="ts-section-grid">';
+    };
+    var sectionClose = function() { return '</div></div>'; };
+    var rrBadge = riskReductionPct !== null ? (riskHalfGoal ? '<span class="ts-badge bdg-gain">✨ Goal</span>' : '') : '';
+    var beBadge = beDiffPct !== null ? (beWithin10 ? '<span class="ts-badge bdg-gain">✓ ≤10%</span>' : '<span class="ts-badge bdg-miss">> 10%</span>') : '';
+
+    html += '<div class="trade-summary"><h4>Trade Summary · 1 Contract per Leg</h4>' +
+      // HERO: 3 numbers that matter most
+      '<div class="ts-hero">' +
+        heroCell('Net Debit',  netDebit100 !== null ? '$' + fmt(netDebit100,2) : '—', 'neutral', 'You pay (call − put credit)') +
+        heroCell('Breakeven',  breakeven ? fmtDollar(breakeven) : '—', 'neutral', beAboveCur !== null ? fmt(beAboveCur,1) + '% above price' : 'Call strike + net debit') +
+        heroCell('Max Risk',   mslMaxRisk ? '$' + fmt(mslMaxRisk,0) : '—', 'loss', 'Worst-case loss') +
+      '</div>' +
+
+      // SECTION 1: The 3 legs
+      sectionOpen('The Trade · 3 Legs') +
+        tsItem('Buy Call (Deep ITM)', callCost100 ? '$' + fmt(callCost100,2) : '—', 'ts-loss', fmtDollar(callStrike) + ' · ' + fmt(callRatio*100,0) + '/' + fmt((1-callRatio)*100,0) + ' I/E') +
+        tsItem('Sell Put (ATM)',      soldPutMid ? '$' + fmt(soldPutMid*100,2) : '—', 'ts-gain', fmtDollar(soldPutStrike) + ' strike') +
+        tsItem('Buy Put (Lower)',     boughtPutMid ? '$' + fmt(boughtPutMid*100,2) : '—', 'ts-loss', fmtDollar(boughtPutStrike) + ' protection') +
+        tsItem('Put Spread Credit',   putCredit100 !== null ? '+$' + fmt(putCredit100,2) : '—', 'ts-gain', fmt(putCreditPct,1) + '% of width') +
+      sectionClose() +
+
+      // SECTION 2: Profit potential
+      sectionOpen('Profit Potential', 'section-gain') +
+        tsItem('Max Gain', '∞', 'ts-gain', 'Uncapped above BE') +
+        tsItem('Breakeven', breakeven ? fmtDollar(breakeven) : '—', 'ts-gain', beAboveCur !== null ? fmt(beAboveCur,1) + '% above price' : 'Call strike + debit') +
+      sectionClose() +
+
+      // SECTION 3: Capital required
+      sectionOpen('Capital Required') +
+        tsItem('Margin Req.',  mslSpreadMargin ? '$' + fmt(mslSpreadMargin,0) : '—', 'ts-neutral', 'Broker hold (spread width)') +
+        tsItem('Total Outlay', mslTotalOutlay ? '$' + fmt(mslTotalOutlay,0) : '—', 'ts-neutral', 'Margin + call premium') +
+        tsItem('Max Risk',     mslMaxRisk ? '$' + fmt(mslMaxRisk,0) : '—', 'ts-loss', 'Worst-case loss') +
+      sectionClose() +
+
+      // SECTION 4: vs Synthetic Long (the edge)
+      sectionOpen('vs Synthetic Long · The Edge', 'section-vs') +
+        tsItem('Risk Reduction', (riskReductionPct !== null ? fmt(riskReductionPct,0) + '%' : '—') + rrBadge, riskHalfGoal ? 'ts-gain' : 'ts-neutral', riskReductionDollars !== null ? '$' + fmt(riskReductionDollars,0) + ' less risk' : 'Goal: ≈50%') +
+        tsItem('BE Drift',       (beDiffPct !== null ? '±' + fmt(beDiffPct,1) + '%' : '—') + beBadge, beWithin10 ? 'ts-gain' : 'ts-loss', beSL !== null ? 'SL BE: ' + fmtDollar(beSL) : 'Goal: ≤10%') +
+      sectionClose() +
+    '</div>';
 
     // MSL vs SL capital efficiency comparison — Laura's whiteboard: both outlay AND risk side-by-side
     // SL = BUY ATM call + SELL ATM put at the same strike (slCallStrike == soldPutStrike, both ATM)
@@ -5199,32 +5310,22 @@ async function runMsl(forceTicker) {
       '</div>';
     }
 
-    // Leg detail cards (3 legs) — Call first, then ATM put, then lower put
-    html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">';
-    html += '<div class="scenario-card"><h4>BUY — Call (Deep ITM)</h4>' +
-      '<div class="sc-row"><span class="sc-key">Strike</span><span class="sc-val">' + fmtDollar(callStrike) + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">Bid/Ask</span><span class="sc-val">' + fmtDollar(callBid) + ' / ' + fmtDollar(callAsk) + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">Mid</span><span class="sc-val">' + fmtDollar(callMid) + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">Delta</span><span class="sc-val">' + (callDelta !== null ? fmt(Math.abs(callDelta),2) : '—') + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">OI</span><span class="sc-val">' + fmtK(callOI) + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">Intrinsic</span><span class="sc-val">' + fmtDollar(callIntrinsic) + ' (' + fmt(callRatio*100,1) + '%)</span></div>' +
-      '<div class="sc-row"><span class="sc-key">Extrinsic</span><span class="sc-val">' + fmtDollar(callExtrinsic) + ' (' + fmt((1-callRatio)*100,1) + '%)</span></div>' +
-      (callSpreadPct !== null ? '<div class="sc-row"><span class="sc-key">Spread</span><span class="sc-val ' + (callSpreadPct > 10 ? 'down' : 'up') + '">' + fmtDollar(callSpread) + ' (' + fmt(callSpreadPct,1) + '%)</span></div>' : '') +
+    // Compact 3-leg detail strip — just the essentials (full bid/ask available in chain tables below)
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">' +
+      '<div class="scenario-card" style="padding:10px 12px"><h4 style="margin-bottom:6px">BUY — Call (Deep ITM)</h4>' +
+        '<div class="sc-row"><span class="sc-key">Strike / Mid</span><span class="sc-val">' + fmtDollar(callStrike) + ' / ' + fmtDollar(callMid) + '</span></div>' +
+        '<div class="sc-row"><span class="sc-key">Δ / OI</span><span class="sc-val">' + (callDelta !== null ? fmt(Math.abs(callDelta),2) : '—') + ' / ' + fmtK(callOI) + '</span></div>' +
+        '<div class="sc-row"><span class="sc-key">I/E</span><span class="sc-val">' + fmt(callRatio*100,0) + '% / ' + fmt((1-callRatio)*100,0) + '%</span></div>' +
+      '</div>' +
+      '<div class="scenario-card" style="padding:10px 12px"><h4 style="margin-bottom:6px">SELL — Put (ATM)</h4>' +
+        '<div class="sc-row"><span class="sc-key">Strike / Mid</span><span class="sc-val">' + fmtDollar(soldPutStrike) + ' / ' + fmtDollar(soldPutMid) + '</span></div>' +
+        '<div class="sc-row"><span class="sc-key">Δ / OI</span><span class="sc-val">' + (soldPutDelta !== null ? fmt(Math.abs(soldPutDelta),2) : '—') + ' / ' + fmtK(soldPutOI) + '</span></div>' +
+      '</div>' +
+      '<div class="scenario-card" style="padding:10px 12px"><h4 style="margin-bottom:6px">BUY — Put (Lower)</h4>' +
+        '<div class="sc-row"><span class="sc-key">Strike / Mid</span><span class="sc-val">' + fmtDollar(boughtPutStrike) + ' / ' + fmtDollar(boughtPutMid) + '</span></div>' +
+        '<div class="sc-row"><span class="sc-key">Δ / OI</span><span class="sc-val">' + (boughtPutDelta !== null ? fmt(Math.abs(boughtPutDelta),2) : '—') + ' / ' + fmtK(boughtPutOI) + '</span></div>' +
+      '</div>' +
     '</div>';
-    html += '<div class="scenario-card"><h4>SELL — Put (ATM)</h4>' +
-      '<div class="sc-row"><span class="sc-key">Strike</span><span class="sc-val">' + fmtDollar(soldPutStrike) + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">Bid/Ask</span><span class="sc-val">' + fmtDollar(soldPutBid) + ' / ' + fmtDollar(soldPutAsk) + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">Mid</span><span class="sc-val">' + fmtDollar(soldPutMid) + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">Delta</span><span class="sc-val">' + (soldPutDelta !== null ? fmt(Math.abs(soldPutDelta),2) : '—') + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">OI</span><span class="sc-val">' + fmtK(soldPutOI) + '</span></div>' +
-    '</div>';
-    html += '<div class="scenario-card"><h4>BUY — Put (Lower)</h4>' +
-      '<div class="sc-row"><span class="sc-key">Strike</span><span class="sc-val">' + fmtDollar(boughtPutStrike) + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">Bid/Ask</span><span class="sc-val">' + fmtDollar(boughtPutBid) + ' / ' + fmtDollar(boughtPutAsk) + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">Mid</span><span class="sc-val">' + fmtDollar(boughtPutMid) + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">Delta</span><span class="sc-val">' + (boughtPutDelta !== null ? fmt(Math.abs(boughtPutDelta),2) : '—') + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">OI</span><span class="sc-val">' + fmtK(boughtPutOI) + '</span></div>' +
-    '</div></div>';
 
     // Chain table: show ITM calls with intrinsic/extrinsic ratio
     if (callChain && callChain.strike) {
