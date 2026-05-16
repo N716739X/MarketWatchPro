@@ -5280,13 +5280,7 @@ async function runMsl(forceTicker) {
         tsItem('Put Spread Credit',   putCredit100 !== null ? '+$' + fmt(putCredit100,2) : '—', 'ts-gain', fmt(putCreditPct,1) + '% of width') +
       sectionClose() +
 
-      // SECTION 2: Profit potential
-      sectionOpen('Profit Potential', 'section-gain') +
-        tsItem('Max Gain', '∞', 'ts-gain', 'Uncapped above BE') +
-        tsItem('Breakeven', breakeven ? fmtDollar(breakeven) : '—', 'ts-gain', beAboveCur !== null ? fmt(beAboveCur,1) + '% above price' : 'Call strike + debit') +
-      sectionClose() +
-
-      // SECTION 3: Capital required (Risk Reduction + BE Drift shown in the comparison table below)
+      // SECTION 2: Capital required (Profit Potential removed — Max Gain + Breakeven already in hero strip and comparison table)
       sectionOpen('Capital Required') +
         tsItem('Margin Req.',  mslSpreadMargin ? '$' + fmt(mslSpreadMargin,0) : '—', 'ts-neutral', 'Broker hold (spread width)') +
         tsItem('Total Outlay', mslTotalOutlay ? '$' + fmt(mslTotalOutlay,0) : '—', 'ts-neutral', 'Margin + call premium') +
