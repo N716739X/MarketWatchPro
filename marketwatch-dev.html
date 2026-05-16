@@ -1655,7 +1655,7 @@ var _authUser  = null;
 var _selectedTier = 'ia';
 var _selectedPlan = 'monthly';
 var _userTier = 'trial'; // current user's active tier from server
-var IA11 = ['TSLA','NVDA','AMD','MRVL','PLTR','ALAB','AVGO','MU','GOOG','SATS','NPPTF'];
+var IA11 = ['TSLA','NVDA','AMD','MRVL','PLTR','ALAB','AVGO','MU','GOOG','SATS'];
 
 function authSwitchTab(tab) {
   document.getElementById('form-login').style.display  = tab === 'login'  ? '' : 'none';
@@ -1887,7 +1887,7 @@ document.addEventListener('DOMContentLoaded', function() {
   initAuth();
 });
 
-const DEFAULT_TICKERS = ['TSLA','NVDA','AMD','MRVL','PLTR','ALAB','AVGO','MU','GOOG','SATS','NPPTF']; // IA11
+const DEFAULT_TICKERS = ['TSLA','NVDA','AMD','MRVL','PLTR','ALAB','AVGO','MU','GOOG','SATS']; // IA11 (NPPTF removed)
 
 // Hardcoded earnings dates (YYYY-MM-DD)
 const EARNINGS = {
@@ -2357,7 +2357,7 @@ async function fetchMD(path, params) {
   if (checkSessionKicked(r)) throw new Error('session-kicked');
   if (!r.ok) {
     var errText = await r.text();
-    // 404 with no_data = ticker has no options chain (e.g. NPPTF, ADRs, low-volume OTC)
+    // 404 with no_data = ticker has no options chain (e.g. ADRs, low-volume OTC)
     // Treat as empty chain rather than surfacing an error banner
     if (r.status === 404 && errText.indexOf('no_data') !== -1) {
       var emptyChain = { s: 'no_data', optionSymbol: [], strike: [], bid: [], ask: [], mid: [], delta: [], openInterest: [], expiration: [] };

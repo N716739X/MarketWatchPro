@@ -2,7 +2,7 @@
 // Handles: Auth (signup/login), Stripe checkout, JWT validation, API proxy, scoring engine
 
 // ── Tier & ticker configuration ─────────────────────────────────────────────────
-const IA11_TICKERS = ['TSLA','NVDA','AMD','MRVL','PLTR','ALAB','AVGO','MU','GOOG','SATS','NPPTF'];
+const IA11_TICKERS = ['TSLA','NVDA','AMD','MRVL','PLTR','ALAB','AVGO','MU','GOOG','SATS'];
 const TIER_LIMITS = {
   ia:     { tickers: IA11_TICKERS, maxCustom: 0,  maxTotal: 11 },
   trader: { tickers: IA11_TICKERS, maxCustom: 14, maxTotal: 25 },
@@ -401,11 +401,11 @@ const EARNINGS = {
   TSLA: '2026-04-22', NVDA: '2026-05-28', PLTR: '2026-05-05',
   AAPL: '2026-04-30', MSFT: '2026-04-29', AMZN: '2026-04-30',
   GOOG: '2026-04-29', META: '2026-04-23', AMD: '2026-04-29',
-  COIN: '2026-05-08', MSTR: '2026-04-29', SQ: '2026-05-01',
+  COIN: '2026-05-08', MSTR: '2026-07-30', SQ: '2026-05-01',
   SNOW: '2026-05-28', SHOP: '2026-05-01', NET: '2026-05-01',
   CRWD: '2026-06-03', DDOG: '2026-05-06', SOFI: '2026-04-28',
   MRVL: '2026-05-28', ALAB: '2026-05-05', AVGO: '2026-06-04',
-  MU: '2026-06-24', SATS: '2026-05-08', NPPTF: '2026-05-08',
+  MU: '2026-06-24', SATS: '2026-05-08',
 };
 
 async function fetchJSON(url, headers = {}) {
@@ -683,7 +683,7 @@ async function scoreTicker(ticker, env) {
   const gutScore = [gut_c1, gut_c2, gut_c3, gut_c4, gut_c5, gut_c6, gut_c7].filter(x => x === true).length;
 
   // MSL (Option Goddess SL — Laura's 3-leg strategy)
-  // Criteria: MR≤-2σ 4H, Put Credit≥45%, Call 50/50 I/E, Duration≥540, Net Debit≤33%, Call OI≥300, Put OI≥300
+  // Criteria: MR≤-2σ 4H, Put Credit≥45%, IV Rank>50%, Duration≥540, Net Debit≤33%, Call OI≥300, Put OI≥300
   // c1 uses 4H MR; c4 uses DTE; rest need option chain data (Phase 3 on frontend)
   let fourHourMR = meanRev; // fallback to daily
   try {
@@ -694,7 +694,7 @@ async function scoreTicker(ticker, env) {
   } catch(e) { /* use daily as fallback */ }
   const msl_c1 = !isNaN(fourHourMR) ? fourHourMR <= -2 : null; // MR ≤ -2σ 4H
   const msl_c2 = null;     // Put Credit ≥ 45% of width (need chain)
-  const msl_c3 = null;     // Call ~50/50 intrinsic/extrinsic (need chain)
+  const msl_c3 = null;     // IV Rank > 50% (computed client-side in phase 3 from put chain)
   const msl_c4 = synth_c3; // Duration >= 540 DTE
   const msl_c5 = null;     // Net Debit ≤ 33% of price (need chain)
   const msl_c6 = null;     // Call OI ≥ 300 (need chain)
