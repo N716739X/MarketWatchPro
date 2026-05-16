@@ -884,20 +884,36 @@ header {
 .ts-item.ts-highlight-loss { background: rgba(255,80,80,0.06); border-radius: 6px; padding: 6px 8px; margin: -6px -8px; }
 .ts-item.ts-highlight-gain { background: rgba(0,255,150,0.06); border-radius: 6px; padding: 6px 8px; margin: -6px -8px; }
 
-/* MSL vs SL Capital Efficiency Comparison */
+/* MSL vs SL — Laura's Classmate Comparison Table */
 .sl-comparison {
-  background: linear-gradient(135deg, rgba(0,255,170,0.05), rgba(255,0,170,0.05));
-  border: 1px solid var(--green);
-  border-radius: 8px;
-  padding: 12px 16px;
+  background: linear-gradient(135deg, rgba(0,255,170,0.04), rgba(0,255,255,0.025));
+  border: 1px solid rgba(0,255,170,0.45);
+  border-radius: 12px;
+  padding: 14px 18px 16px;
   margin-bottom: 16px;
-  box-shadow: 0 0 16px rgba(0,255,170,0.12);
+  box-shadow: 0 0 18px rgba(0,255,170,0.10), inset 0 1px 0 rgba(255,255,255,0.02);
 }
-.slc-title { font-size: 11px; font-weight: 800; color: var(--green); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
-.slc-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-.slc-cell { text-align: left; }
-.slc-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-.slc-val { font-size: 16px; font-weight: 800; white-space: nowrap; }
+.slc-title { font-size: 11px; font-weight: 800; color: var(--green); text-transform: uppercase; letter-spacing: 1.4px; margin: 0 0 4px 0; display:flex; align-items:center; gap:8px; }
+.slc-title::before { content:''; display:inline-block; width:3px; height:12px; background:var(--green); border-radius:2px; box-shadow:0 0 6px var(--green); }
+.slc-subtitle { font-size: 10px; color: var(--text-muted); margin-bottom: 14px; padding-left: 11px; letter-spacing: 0.2px; }
+
+.slc-table { display: grid; grid-template-columns: 1.2fr 1fr 1fr 0.9fr; gap: 0; border: 1px solid rgba(0,255,170,0.18); border-radius: 8px; overflow: hidden; background: rgba(0,0,0,0.18); }
+.slc-th { font-size: 9px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.2px; padding: 10px 14px; background: rgba(0,255,170,0.06); border-bottom: 1px solid rgba(0,255,170,0.20); }
+.slc-th.slc-th-sl  { color: var(--text-muted); }
+.slc-th.slc-th-msl { color: var(--green); }
+.slc-th.slc-th-delta { color: var(--accent); text-align:right; }
+.slc-tr-cell { padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); display:flex; align-items:center; }
+.slc-table > .slc-tr-cell:nth-last-child(-n+4) { border-bottom: none; }
+.slc-metric { font-size: 11px; font-weight: 700; color: var(--text); letter-spacing: 0.3px; }
+.slc-metric-sub { font-size: 9px; color: var(--text-muted); font-weight: 500; display: block; margin-top: 2px; letter-spacing: 0.2px; }
+.slc-sl-val  { font-size: 16px; font-weight: 800; color: var(--text-muted); letter-spacing: -0.2px; }
+.slc-msl-val { font-size: 17px; font-weight: 800; color: var(--green); letter-spacing: -0.3px; }
+.slc-msl-val.msl-loss { color: var(--red); }
+.slc-msl-val.msl-neutral { color: var(--accent); }
+.slc-delta { font-size: 12px; font-weight: 800; text-align: right; justify-content: flex-end; letter-spacing: 0.2px; }
+.slc-delta.delta-better { color: var(--green); }
+.slc-delta.delta-worse  { color: var(--red); }
+.slc-delta.delta-neutral { color: var(--text-muted); }
 
 /* Chain Table */
 .chain-section h3 { font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px; }
@@ -5287,25 +5303,66 @@ async function runMsl(forceTicker) {
       sectionClose() +
     '</div>';
 
-    // MSL vs SL capital efficiency comparison — Laura's whiteboard: both outlay AND risk side-by-side
+    // MSL vs SL — Laura's classmate comparison: Debit, Breakeven, Total Risk side-by-side
     // SL = BUY ATM call + SELL ATM put at the same strike (slCallStrike == soldPutStrike, both ATM)
     if (slCapital && mslTotalOutlay && slMaxRisk && mslMaxRisk) {
       var slStrikeDisp = slCallStrike !== null ? fmtDollar(slCallStrike) : fmtDollar(soldPutStrike);
-      var slCallDebit = slCallMid !== null ? slCallMid * 100 : null;
-      var slPutCredit = soldPutMid !== null ? soldPutMid * 100 : null;
       var slNetDebit100 = slNetCost !== null ? slNetCost * 100 : null;
+      // Debit comparison: MSL pays much more upfront than SL (deep ITM call premium)
+      var debitDeltaPct = (slNetDebit100 && netDebit100) ? ((netDebit100 - slNetDebit100) / Math.abs(slNetDebit100)) * 100 : null;
+      // BE comparison: positive = MSL BE higher (needs more upside), negative = MSL BE lower (better)
+      var beDeltaDollars = (beMSL !== null && beSL !== null) ? beMSL - beSL : null;
+      var beDeltaPct = (beDeltaDollars !== null && beSL) ? (beDeltaDollars / beSL) * 100 : null;
+      // Risk comparison already computed: riskReductionPct, riskReductionDollars
+
+      // Helper to render a comparison row (4 cells per row in the grid)
+      var slcRow = function(metric, metricSub, slVal, mslVal, mslCls, deltaText, deltaCls) {
+        return '<div class="slc-tr-cell"><div><div class="slc-metric">' + metric + '</div>' +
+               (metricSub ? '<span class="slc-metric-sub">' + metricSub + '</span>' : '') + '</div></div>' +
+               '<div class="slc-tr-cell"><div class="slc-sl-val">' + slVal + '</div></div>' +
+               '<div class="slc-tr-cell"><div class="slc-msl-val ' + (mslCls||'') + '">' + mslVal + '</div></div>' +
+               '<div class="slc-tr-cell slc-delta ' + (deltaCls||'delta-neutral') + '">' + deltaText + '</div>';
+      };
+
       html += '<div class="sl-comparison">' +
-        '<div class="slc-title">💰 MSL vs Synthetic Long — Capital &amp; Risk</div>' +
-        '<div style="font-size:10px;color:var(--text-muted);margin-bottom:10px">Comparable SL @ ' + slStrikeDisp + ' ATM · Buy call $' + fmt(slCallDebit,2) + ' / Sell put $' + fmt(slPutCredit,2) + ' · Net debit $' + fmt(slNetDebit100,2) + '</div>' +
-        '<div class="slc-row">' +
-          '<div class="slc-cell"><div class="slc-label">MSL Total Outlay</div><div class="slc-val ts-gain">$' + fmt(mslTotalOutlay,0) + '</div></div>' +
-          '<div class="slc-cell"><div class="slc-label">SL Total Capital</div><div class="slc-val ts-loss">$' + fmt(slCapital,0) + '</div></div>' +
-          '<div class="slc-cell"><div class="slc-label">Outlay Savings</div><div class="slc-val ' + (savingsPct > 0 ? 'ts-gain' : 'ts-neutral') + '">' + (savingsDollars > 0 ? '$' + fmt(savingsDollars,0) + ' (' + fmt(savingsPct,0) + '%)' : '≈ same') + '</div></div>' +
-        '</div>' +
-        '<div class="slc-row" style="margin-top:8px">' +
-          '<div class="slc-cell"><div class="slc-label">MSL Max Risk</div><div class="slc-val ts-gain">$' + fmt(mslMaxRisk,0) + '</div></div>' +
-          '<div class="slc-cell"><div class="slc-label">SL Max Risk</div><div class="slc-val ts-loss">$' + fmt(slMaxRisk,0) + '</div></div>' +
-          '<div class="slc-cell"><div class="slc-label">Risk Reduction</div><div class="slc-val ' + (riskHalfGoal ? 'ts-gain' : 'ts-neutral') + '">$' + fmt(riskReductionDollars,0) + ' (' + fmt(riskReductionPct,0) + '%)' + (riskHalfGoal ? ' ✨' : '') + '</div></div>' +
+        '<div class="slc-title">MSL vs Synthetic Long</div>' +
+        '<div class="slc-subtitle">Comparable SL @ ' + slStrikeDisp + ' ATM · Buy call + Sell put at same strike, same expiry</div>' +
+        '<div class="slc-table">' +
+          // Header row
+          '<div class="slc-th">Metric</div>' +
+          '<div class="slc-th slc-th-sl">Synthetic Long</div>' +
+          '<div class="slc-th slc-th-msl">MSL</div>' +
+          '<div class="slc-th slc-th-delta">Edge</div>' +
+          // Row 1: Net Debit (lower = better)
+          slcRow(
+            'Net Debit',
+            'What you pay upfront',
+            slNetDebit100 !== null ? '$' + fmt(slNetDebit100,0) : '—',
+            netDebit100 !== null ? '$' + fmt(netDebit100,0) : '—',
+            'msl-neutral',
+            (debitDeltaPct !== null) ? (netDebit100 < slNetDebit100 ? '−' : '+') + '$' + fmt(Math.abs(netDebit100 - slNetDebit100),0) : '—',
+            netDebit100 < slNetDebit100 ? 'delta-better' : 'delta-worse'
+          ) +
+          // Row 2: Breakeven (lower = better for upside trade)
+          slcRow(
+            'Breakeven',
+            'Stock price at expiry',
+            beSL !== null ? fmtDollar(beSL) : '—',
+            beMSL !== null ? fmtDollar(beMSL) : '—',
+            beWithin10 ? '' : 'msl-loss',
+            (beDeltaDollars !== null) ? (beDeltaDollars >= 0 ? '+' : '−') + fmt(Math.abs(beDeltaPct),1) + '%' : '—',
+            beWithin10 ? 'delta-better' : 'delta-worse'
+          ) +
+          // Row 3: Max Risk (lower = better — the MSL's main edge)
+          slcRow(
+            'Max Risk',
+            'Worst-case loss',
+            slMaxRisk ? '$' + fmt(slMaxRisk,0) : '—',
+            mslMaxRisk ? '$' + fmt(mslMaxRisk,0) : '—',
+            'msl-loss',
+            (riskReductionPct !== null) ? '−' + fmt(riskReductionPct,0) + '%' + (riskHalfGoal ? ' ✨' : '') : '—',
+            riskHalfGoal ? 'delta-better' : (riskReductionPct > 0 ? 'delta-better' : 'delta-worse')
+          ) +
         '</div>' +
       '</div>';
     }
