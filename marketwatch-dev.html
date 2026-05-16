@@ -439,6 +439,10 @@ header {
 .up   { color: var(--green); }
 .down { color: var(--neg); }
 .neutral { color: var(--text-muted); }
+/* OI liquidity tiers: red <500, amber 500-999, green ≥1000 */
+.oi-low  { color: var(--fail); font-weight: 700; }
+.oi-mid  { color: #FFB020; font-weight: 600; }
+.oi-high { color: var(--pass); font-weight: 600; }
 
 /* 52W Range */
 .range-row {
@@ -2329,6 +2333,18 @@ function fmtK(n) {
   if (Math.abs(n) >= 1000) return (n / 1000).toFixed(1) + 'k';
   return String(Math.round(n));
 }
+// OI liquidity tier class: red <500, amber 500-999, green ≥1000
+function oiCls(oi) {
+  if (oi === null || oi === undefined || isNaN(oi)) return '';
+  if (oi < 500)  return 'oi-low';
+  if (oi < 1000) return 'oi-mid';
+  return 'oi-high';
+}
+// Colored OI span (for inline use in <td> or <span>)
+function oiSpan(oi) {
+  var cls = oiCls(oi);
+  return cls ? '<span class="' + cls + '">' + fmtK(oi) + '</span>' : fmtK(oi);
+}
 function spinner() {
   return '<span class="spinner"></span>';
 }
@@ -3821,7 +3837,7 @@ function buildChainTable(chain, targetDeltaOrStrike, price, isPut, matchByStrike
       (showIntrinsic ? '<td>' + fmtDollar(intrinsic) + '</td><td>' + fmtDollar(extrinsic) + '</td>' : '') +
       '<td>' + fmt(row.delta, 2) + '</td>' +
       '<td>' + (row.iv ? fmt(row.iv * 100, 1) + '%' : '—') + '</td>' +
-      '<td>' + fmtK(row.oi) + '</td>' +
+      '<td>' + oiSpan(row.oi) + '</td>' +
       '<td>' + fmtK(row.volume) + '</td>' +
       '<td>' + (premPct !== null ? fmt(premPct, 2) + '%' : '—') + '</td>' +
     '</tr>';
@@ -4352,7 +4368,7 @@ async function runLeaps(forceTicker) {
     }
     // Liquidity warning — chosen strike's OI below the 500 threshold (informational, not scored)
     if (bestOI !== null && bestOI < 500 && bestStrike !== null) {
-      suggestions.push('⚠️ <strong>Low liquidity:</strong> Selected $' + fmt(bestStrike,2) + ' LEAPS has OI of ' + fmtK(bestOI) + ' — below the 500 threshold. Wider bid/ask and slippage are likely. Use a limit order at the mid, and consider checking the next nearest strike if fills are poor.');
+      suggestions.push('⚠️ <strong>Low liquidity:</strong> Selected $' + fmt(bestStrike,2) + ' LEAPS has OI of ' + oiSpan(bestOI) + ' — below the 500 threshold. Wider bid/ask and slippage are likely. Use a limit order at the mid, and consider checking the next nearest strike if fills are poor.');
     }
     if (score === 6) {
       suggestions.push('✅ <strong>All criteria met</strong> — strong LEAPS setup per James\'s method. Consider entering at the ★ strike on the farthest expiry.');
@@ -4442,7 +4458,7 @@ async function runLeaps(forceTicker) {
           '<td>' + fmtDollar(intrL) + '</td>' +
           '<td>' + fmtDollar(extrL) + '</td>' +
           '<td>' + fmt(row.delta,2) + '</td>' +
-          '<td>' + fmtK(row.oi) + '</td>' +
+          '<td>' + oiSpan(row.oi) + '</td>' +
           '<td ' + (row.spread > 10 ? 'style="color:var(--red)"' : '') + '>' + (row.spread !== null ? fmt(row.spread,1)+'%' : '—') + '</td>' +
           '<td ' + (row.cagr !== null ? (row.cagr > 20 ? 'style="color:var(--red)"' : row.cagr <= 15 ? 'style="color:var(--green)"' : '') : '') + '>' + (row.cagr !== null ? fmt(row.cagr,1)+'%' : '—') + '</td>' +
         '</tr>';
@@ -4620,7 +4636,7 @@ async function runSynth(forceTicker) {
       '<div class="sc-row"><span class="sc-key">Bid/Ask</span><span class="sc-val">' + fmtDollar(slCall.bid) + ' / ' + fmtDollar(slCall.ask) + '</span></div>' +
       '<div class="sc-row"><span class="sc-key">Mid</span><span class="sc-val">' + fmtDollar(slCall.mid) + '</span></div>' +
       '<div class="sc-row"><span class="sc-key">Delta</span><span class="sc-val">' + fmt(slCall.delta,2) + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">OI</span><span class="sc-val">' + fmtK(slCall.oi) + '</span></div>' +
+      '<div class="sc-row"><span class="sc-key">OI</span><span class="sc-val">' + oiSpan(slCall.oi) + '</span></div>' +
       '<div class="sc-row"><span class="sc-key">Spread</span><span class="sc-val ' + (callSpreadPct && callSpreadPct > 10 ? 'down' : 'up') + '">' + (callSpread !== null ? fmtDollar(callSpread) + (callSpreadPct !== null ? ' (' + fmt(callSpreadPct,1) + '%)' : '') : '—') + '</span></div>' +
     '</div>';
     html += '<div class="scenario-card"><h4>SELL — Put (ATM)</h4>' +
@@ -4628,7 +4644,7 @@ async function runSynth(forceTicker) {
       '<div class="sc-row"><span class="sc-key">Bid/Ask</span><span class="sc-val">' + fmtDollar(slPut.bid) + ' / ' + fmtDollar(slPut.ask) + '</span></div>' +
       '<div class="sc-row"><span class="sc-key">Mid</span><span class="sc-val">' + fmtDollar(slPut.mid) + '</span></div>' +
       '<div class="sc-row"><span class="sc-key">Delta</span><span class="sc-val">' + fmt(Math.abs(slPut.delta),2) + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">OI</span><span class="sc-val">' + fmtK(slPut.oi) + '</span></div>' +
+      '<div class="sc-row"><span class="sc-key">OI</span><span class="sc-val">' + oiSpan(slPut.oi) + '</span></div>' +
       '<div class="sc-row"><span class="sc-key">Spread</span><span class="sc-val ' + (putSpreadPct && putSpreadPct > 10 ? 'down' : 'up') + '">' + (putSpread !== null ? fmtDollar(putSpread) + (putSpreadPct !== null ? ' (' + fmt(putSpreadPct,1) + '%)' : '') : '—') + '</span></div>' +
     '</div></div>';
 
@@ -4662,11 +4678,11 @@ async function runSynth(forceTicker) {
           '<td>' + fmtDollar(cBid) + '</td><td>' + fmtDollar(cAsk) + '</td>' +
           '<td><strong>' + fmtDollar(cMid) + '</strong></td>' +
           '<td>' + (cDlt !== null ? fmt(Math.abs(cDlt),2) : '—') + '</td>' +
-          '<td>' + fmtK(cOi) + '</td>' +
+          '<td>' + oiSpan(cOi) + '</td>' +
           '<td>' + fmtDollar(pBid) + '</td><td>' + fmtDollar(pAsk) + '</td>' +
           '<td><strong>' + fmtDollar(pMid) + '</strong></td>' +
           '<td>' + (pDlt !== null ? fmt(Math.abs(pDlt),2) : '—') + '</td>' +
-          '<td>' + fmtK(pOi) + '</td>' +
+          '<td>' + oiSpan(pOi) + '</td>' +
           '<td' + (rowNet !== null && rowNet <= 0 ? ' style="color:var(--green)"' : '') + '>' + (rowNet !== null ? (rowNet >= 0 ? fmtDollar(rowNet) : '-' + fmtDollar(Math.abs(rowNet))) : '—') + '</td></tr>';
       }
       html += '</tbody></table></div></div>';
@@ -4703,10 +4719,10 @@ async function runSynth(forceTicker) {
     }
     // Liquidity warning — chosen strike's OI is below the 500 threshold (informational, not scored)
     if (slCall && slCall.oi !== null && slCall.oi < 500) {
-      suggWarn.push('⚠️ <strong>Low call liquidity:</strong> Selected $' + fmt(atmStrike,2) + ' call has OI of ' + fmtK(slCall.oi) + ' — below the 500 threshold. Wider bid/ask and slippage are likely. Use a limit order at the mid, and consider checking the next nearest strike if fills are poor.');
+      suggWarn.push('⚠️ <strong>Low call liquidity:</strong> Selected $' + fmt(atmStrike,2) + ' call has OI of ' + oiSpan(slCall.oi) + ' — below the 500 threshold. Wider bid/ask and slippage are likely. Use a limit order at the mid, and consider checking the next nearest strike if fills are poor.');
     }
     if (slPut && slPut.oi !== null && slPut.oi < 500) {
-      suggWarn.push('⚠️ <strong>Low put liquidity:</strong> Selected $' + fmt(atmStrike,2) + ' put has OI of ' + fmtK(slPut.oi) + ' — below the 500 threshold. Wider bid/ask and slippage are likely. Use a limit order at the mid.');
+      suggWarn.push('⚠️ <strong>Low put liquidity:</strong> Selected $' + fmt(atmStrike,2) + ' put has OI of ' + oiSpan(slPut.oi) + ' — below the 500 threshold. Wider bid/ask and slippage are likely. Use a limit order at the mid.');
     }
     if (c4 || (netCostPct !== null && netCostPct <= 1)) {
       if (netCostPct !== null && netCostPct < 0) {
@@ -4896,7 +4912,7 @@ async function runGut(forceTicker) {
       '<div class="sc-row"><span class="sc-key">Bid/Ask</span><span class="sc-val">' + fmtDollar(gsCall.bid) + ' / ' + fmtDollar(gsCall.ask) + '</span></div>' +
       '<div class="sc-row"><span class="sc-key">Mid</span><span class="sc-val">' + fmtDollar(gsCall.mid) + '</span></div>' +
       '<div class="sc-row"><span class="sc-key">Delta</span><span class="sc-val">' + fmt(gsCall.delta,2) + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">OI</span><span class="sc-val">' + fmtK(gsCall.oi) + '</span></div>' +
+      '<div class="sc-row"><span class="sc-key">OI</span><span class="sc-val">' + oiSpan(gsCall.oi) + '</span></div>' +
       '<div class="sc-row"><span class="sc-key">Spread</span><span class="sc-val ' + (callSpreadPct && callSpreadPct > 10 ? 'down' : 'up') + '">' + (callSpread !== null ? fmtDollar(callSpread) + (callSpreadPct !== null ? ' (' + fmt(callSpreadPct,1) + '%)' : '') : '—') + '</span></div>' +
     '</div>';
     html += '<div class="scenario-card"><h4>SELL — Put (ITM, Higher Strike)</h4>' +
@@ -4904,7 +4920,7 @@ async function runGut(forceTicker) {
       '<div class="sc-row"><span class="sc-key">Bid/Ask</span><span class="sc-val">' + fmtDollar(gsPut.bid) + ' / ' + fmtDollar(gsPut.ask) + '</span></div>' +
       '<div class="sc-row"><span class="sc-key">Mid</span><span class="sc-val">' + fmtDollar(gsPut.mid) + '</span></div>' +
       '<div class="sc-row"><span class="sc-key">Delta</span><span class="sc-val">' + fmt(Math.abs(gsPut.delta),2) + '</span></div>' +
-      '<div class="sc-row"><span class="sc-key">OI</span><span class="sc-val">' + fmtK(gsPut.oi) + '</span></div>' +
+      '<div class="sc-row"><span class="sc-key">OI</span><span class="sc-val">' + oiSpan(gsPut.oi) + '</span></div>' +
       '<div class="sc-row"><span class="sc-key">Spread</span><span class="sc-val ' + (putSpreadPct && putSpreadPct > 10 ? 'down' : 'up') + '">' + (putSpread !== null ? fmtDollar(putSpread) + (putSpreadPct !== null ? ' (' + fmt(putSpreadPct,1) + '%)' : '') : '—') + '</span></div>' +
     '</div></div>';
 
@@ -4944,7 +4960,7 @@ async function runGut(forceTicker) {
           '<td>' + fmtDollar(pBid) + '</td><td>' + fmtDollar(pAsk) + '</td>' +
           '<td><strong>' + fmtDollar(pMid) + '</strong></td>' +
           '<td>' + (pDlt !== null ? fmt(Math.abs(pDlt),2) : '—') + '</td>' +
-          '<td>' + fmtK(pOi) + '</td>' +
+          '<td>' + oiSpan(pOi) + '</td>' +
           '<td' + (rowNet !== null && rowNet <= 0 ? ' style="color:var(--green)"' : '') + '>' + (rowNet !== null ? (rowNet >= 0 ? fmtDollar(rowNet) : '-' + fmtDollar(Math.abs(rowNet))) : '—') + '</td>' +
           '<td' + (rowNetPct !== null && rowNetPct <= 5 ? ' style="color:var(--green)"' : '') + '>' + (rowNetPct !== null ? fmt(rowNetPct,2) + '%' : '—') + '</td></tr>';
       }
@@ -4983,10 +4999,10 @@ async function runGut(forceTicker) {
     }
     // Liquidity warning — chosen strikes' OI below the 500 threshold (informational, not scored)
     if (gsCall && gsCall.oi !== null && gsCall.oi < 500) {
-      suggWarn.push('⚠️ <strong>Low call liquidity:</strong> Selected $' + fmt(gsCall.strike,2) + ' call has OI of ' + fmtK(gsCall.oi) + ' — below the 500 threshold. Wider bid/ask and slippage are likely. Use a limit order at the mid, and consider checking the next nearest strike if fills are poor.');
+      suggWarn.push('⚠️ <strong>Low call liquidity:</strong> Selected $' + fmt(gsCall.strike,2) + ' call has OI of ' + oiSpan(gsCall.oi) + ' — below the 500 threshold. Wider bid/ask and slippage are likely. Use a limit order at the mid, and consider checking the next nearest strike if fills are poor.');
     }
     if (gsPut && gsPut.oi !== null && gsPut.oi < 500) {
-      suggWarn.push('⚠️ <strong>Low put liquidity:</strong> Selected $' + fmt(gsPut.strike,2) + ' put has OI of ' + fmtK(gsPut.oi) + ' — below the 500 threshold. Wider bid/ask and slippage are likely. Use a limit order at the mid.');
+      suggWarn.push('⚠️ <strong>Low put liquidity:</strong> Selected $' + fmt(gsPut.strike,2) + ' put has OI of ' + oiSpan(gsPut.oi) + ' — below the 500 threshold. Wider bid/ask and slippage are likely. Use a limit order at the mid.');
     }
     if (c4 || (netCostPct !== null && netCostPct <= 1)) {
       if (netCostPct !== null && netCostPct < 0) {
@@ -5378,16 +5394,16 @@ async function runMsl(forceTicker) {
     html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">' +
       '<div class="scenario-card" style="padding:10px 12px"><h4 style="margin-bottom:6px">BUY — Call (Deep ITM)</h4>' +
         '<div class="sc-row"><span class="sc-key">Strike / Mid</span><span class="sc-val">' + fmtDollar(callStrike) + ' / ' + fmtDollar(callMid) + '</span></div>' +
-        '<div class="sc-row"><span class="sc-key">Δ / OI</span><span class="sc-val">' + (callDelta !== null ? fmt(Math.abs(callDelta),2) : '—') + ' / ' + fmtK(callOI) + '</span></div>' +
+        '<div class="sc-row"><span class="sc-key">Δ / OI</span><span class="sc-val">' + (callDelta !== null ? fmt(Math.abs(callDelta),2) : '—') + ' / ' + oiSpan(callOI) + '</span></div>' +
         '<div class="sc-row"><span class="sc-key">I/E</span><span class="sc-val">' + fmt(callRatio*100,0) + '% / ' + fmt((1-callRatio)*100,0) + '%</span></div>' +
       '</div>' +
       '<div class="scenario-card" style="padding:10px 12px"><h4 style="margin-bottom:6px">SELL — Put (ATM)</h4>' +
         '<div class="sc-row"><span class="sc-key">Strike / Mid</span><span class="sc-val">' + fmtDollar(soldPutStrike) + ' / ' + fmtDollar(soldPutMid) + '</span></div>' +
-        '<div class="sc-row"><span class="sc-key">Δ / OI</span><span class="sc-val">' + (soldPutDelta !== null ? fmt(Math.abs(soldPutDelta),2) : '—') + ' / ' + fmtK(soldPutOI) + '</span></div>' +
+        '<div class="sc-row"><span class="sc-key">Δ / OI</span><span class="sc-val">' + (soldPutDelta !== null ? fmt(Math.abs(soldPutDelta),2) : '—') + ' / ' + oiSpan(soldPutOI) + '</span></div>' +
       '</div>' +
       '<div class="scenario-card" style="padding:10px 12px"><h4 style="margin-bottom:6px">BUY — Put (Lower)</h4>' +
         '<div class="sc-row"><span class="sc-key">Strike / Mid</span><span class="sc-val">' + fmtDollar(boughtPutStrike) + ' / ' + fmtDollar(boughtPutMid) + '</span></div>' +
-        '<div class="sc-row"><span class="sc-key">Δ / OI</span><span class="sc-val">' + (boughtPutDelta !== null ? fmt(Math.abs(boughtPutDelta),2) : '—') + ' / ' + fmtK(boughtPutOI) + '</span></div>' +
+        '<div class="sc-row"><span class="sc-key">Δ / OI</span><span class="sc-val">' + (boughtPutDelta !== null ? fmt(Math.abs(boughtPutDelta),2) : '—') + ' / ' + oiSpan(boughtPutOI) + '</span></div>' +
       '</div>' +
     '</div>';
 
@@ -5423,7 +5439,7 @@ async function runMsl(forceTicker) {
           '<td>' + fmtDollar(cBid) + '</td><td>' + fmtDollar(cAsk) + '</td>' +
           '<td><strong>' + fmtDollar(cMd) + '</strong></td>' +
           '<td>' + (cDlt !== null ? fmt(Math.abs(cDlt),2) : '—') + '</td>' +
-          '<td>' + fmtK(cOi) + '</td>' +
+          '<td>' + oiSpan(cOi) + '</td>' +
           '<td>' + fmtDollar(cIntr) + '</td>' +
           '<td>' + (cExtr !== null ? fmtDollar(cExtr) : '—') + '</td>' +
           '<td' + (cRat !== null && cRat >= 40 && cRat <= 60 ? ' style="color:var(--green)"' : '') + '>' + (cRat !== null ? fmt(cRat,1) + '% / ' + fmt(100-cRat,1) + '%' : '—') + '</td></tr>';
@@ -5463,7 +5479,7 @@ async function runMsl(forceTicker) {
           '<td>' + fmtDollar(pBid) + '</td><td>' + fmtDollar(pAsk) + '</td>' +
           '<td><strong>' + fmtDollar(pMd) + '</strong></td>' +
           '<td>' + (pDlt !== null ? fmt(Math.abs(pDlt),2) : '—') + '</td>' +
-          '<td>' + fmtK(pOi) + '</td>' +
+          '<td>' + oiSpan(pOi) + '</td>' +
           '<td>$' + fmt(rowWidth,0) + '</td>' +
           '<td>' + (rowCredit !== null ? fmtDollar(rowCredit) : '—') + '</td>' +
           '<td' + (rowCreditPct !== null && rowCreditPct >= 50 ? ' style="color:var(--green);font-weight:600"' : (rowCreditPct !== null && rowCreditPct >= 42 ? ' style="color:var(--green)"' : '')) + '>' + (rowCreditPct !== null ? fmt(rowCreditPct,1) + '%' : '—') + '</td></tr>';
@@ -5514,13 +5530,13 @@ async function runMsl(forceTicker) {
     }
     // Liquidity warnings — chosen strikes' OI below the 500 threshold (informational, not scored)
     if (callOI !== null && callOI < 500) {
-      suggWarn.push('⚠️ <strong>Low call liquidity:</strong> Selected $' + fmt(callStrike,2) + ' deep ITM call has OI of ' + fmtK(callOI) + ' — below the 500 threshold. Wider bid/ask and slippage are likely. Use a limit order at the mid, and consider checking the next nearest 50/50 strike if fills are poor.');
+      suggWarn.push('⚠️ <strong>Low call liquidity:</strong> Selected $' + fmt(callStrike,2) + ' deep ITM call has OI of ' + oiSpan(callOI) + ' — below the 500 threshold. Wider bid/ask and slippage are likely. Use a limit order at the mid, and consider checking the next nearest 50/50 strike if fills are poor.');
     }
     if (soldPutOI !== null && soldPutOI < 500) {
-      suggWarn.push('⚠️ <strong>Low sold-put liquidity:</strong> Selected $' + fmt(soldPutStrike,2) + ' sold put has OI of ' + fmtK(soldPutOI) + ' — below the 500 threshold. Wider bid/ask and slippage are likely on the spread leg. Use a limit order at the mid.');
+      suggWarn.push('⚠️ <strong>Low sold-put liquidity:</strong> Selected $' + fmt(soldPutStrike,2) + ' sold put has OI of ' + oiSpan(soldPutOI) + ' — below the 500 threshold. Wider bid/ask and slippage are likely on the spread leg. Use a limit order at the mid.');
     }
     if (boughtPutOI !== null && boughtPutOI < 500) {
-      suggWarn.push('⚠️ <strong>Low bought-put liquidity:</strong> Selected $' + fmt(boughtPutStrike,2) + ' bought put has OI of ' + fmtK(boughtPutOI) + ' — below the 500 threshold. Use a limit order at the mid for the bull put spread.');
+      suggWarn.push('⚠️ <strong>Low bought-put liquidity:</strong> Selected $' + fmt(boughtPutStrike,2) + ' bought put has OI of ' + oiSpan(boughtPutOI) + ' — below the 500 threshold. Use a limit order at the mid for the bull put spread.');
     }
     if (score >= 4) {
       suggGood.push('✅ <strong>' + (score === 5 ? 'All criteria met' : score + '/5 criteria met') + '</strong> — strong MSL setup. Enter as a multi-leg order to avoid leg risk.');
