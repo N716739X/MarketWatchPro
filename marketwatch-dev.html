@@ -3515,8 +3515,8 @@ async function runMslPhase3(ticker) {
     var putCreditPct = (putSpreadCredit !== null && spreadWidth > 0) ? (putSpreadCredit / spreadWidth * 100) : null;
 
     // Leg 3: Buy deep ITM call with ~50/50 intrinsic/extrinsic.
-    // Pass 1: find best 50/50 ratio diff. Pass 2: among strikes within 5pp of best, prefer highest OI (liquidity tie-break).
-    var bestRatioDiff = Infinity;
+    // Pure best-ratio pick (closest to 50/50). Liquidity is flagged separately as a warning when OI < 500.
+    var bestCallIdx = -1, bestCallDiff = Infinity;
     for (var ci = 0; ci < callChain.strike.length; ci++) {
       if (callChain.strike[ci] >= pd.price) continue;
       var cMid = callChain.mid ? callChain.mid[ci] : null;
@@ -3526,22 +3526,7 @@ async function runMslPhase3(ticker) {
       if (extrinsic <= 0) continue;
       var ratio = intrinsic / cMid;
       var diff = Math.abs(ratio - 0.50);
-      if (diff < bestRatioDiff) bestRatioDiff = diff;
-    }
-    var bestCallIdx = -1, bestCallOI = -1;
-    for (var ci2 = 0; ci2 < callChain.strike.length; ci2++) {
-      if (callChain.strike[ci2] >= pd.price) continue;
-      var cMid2 = callChain.mid ? callChain.mid[ci2] : null;
-      if (cMid2 === null || cMid2 <= 0) continue;
-      var intr2 = pd.price - callChain.strike[ci2];
-      var extr2 = cMid2 - intr2;
-      if (extr2 <= 0) continue;
-      var ratio2 = intr2 / cMid2;
-      var diff2 = Math.abs(ratio2 - 0.50);
-      if (diff2 <= bestRatioDiff + 0.05) {
-        var oi2 = callChain.openInterest ? (callChain.openInterest[ci2] || 0) : 0;
-        if (oi2 > bestCallOI) { bestCallOI = oi2; bestCallIdx = ci2; }
-      }
+      if (diff < bestCallDiff) { bestCallDiff = diff; bestCallIdx = ci; }
     }
     if (bestCallIdx < 0) return;
     var callStrike = callChain.strike[bestCallIdx];
@@ -4365,6 +4350,10 @@ async function runLeaps(forceTicker) {
     if (!c7 && bestSpread !== null) {
       suggestions.push('💡 <strong>Wide spread:</strong> Bid/ask spread is ' + fmt(bestSpread,1) + '% — this eats directly into your return. Use a limit order at the mid price.');
     }
+    // Liquidity warning — chosen strike's OI below the 500 threshold (informational, not scored)
+    if (bestOI !== null && bestOI < 500 && bestStrike !== null) {
+      suggestions.push('⚠️ <strong>Low liquidity:</strong> Selected $' + fmt(bestStrike,2) + ' LEAPS has OI of ' + fmtK(bestOI) + ' — below the 500 threshold. Wider bid/ask and slippage are likely. Use a limit order at the mid, and consider checking the next nearest strike if fills are poor.');
+    }
     if (score === 6) {
       suggestions.push('✅ <strong>All criteria met</strong> — strong LEAPS setup per James\'s method. Consider entering at the ★ strike on the farthest expiry.');
     }
@@ -4712,6 +4701,13 @@ async function runSynth(forceTicker) {
     if (!c7) {
       suggWarn.push('💡 <strong>Wide spreads:</strong> One or both legs have spreads above 10%. Trade during high-liquidity hours (9:45–11am ET) and use limit orders.');
     }
+    // Liquidity warning — chosen strike's OI is below the 500 threshold (informational, not scored)
+    if (slCall && slCall.oi !== null && slCall.oi < 500) {
+      suggWarn.push('⚠️ <strong>Low call liquidity:</strong> Selected $' + fmt(atmStrike,2) + ' call has OI of ' + fmtK(slCall.oi) + ' — below the 500 threshold. Wider bid/ask and slippage are likely. Use a limit order at the mid, and consider checking the next nearest strike if fills are poor.');
+    }
+    if (slPut && slPut.oi !== null && slPut.oi < 500) {
+      suggWarn.push('⚠️ <strong>Low put liquidity:</strong> Selected $' + fmt(atmStrike,2) + ' put has OI of ' + fmtK(slPut.oi) + ' — below the 500 threshold. Wider bid/ask and slippage are likely. Use a limit order at the mid.');
+    }
     if (c4 || (netCostPct !== null && netCostPct <= 1)) {
       if (netCostPct !== null && netCostPct < 0) {
         suggGood.push('✅ <strong>Net credit entry:</strong> You collect a net credit of ' + fmt(Math.abs(netCostPct),2) + '% — the sold put fully funds the call. Ideal structure.');
@@ -4985,6 +4981,13 @@ async function runGut(forceTicker) {
     if (!c7) {
       suggWarn.push('💡 <strong>Wide spreads:</strong> One or both legs have spreads above 10%. Trade during high-liquidity hours (9:45–11am ET).');
     }
+    // Liquidity warning — chosen strikes' OI below the 500 threshold (informational, not scored)
+    if (gsCall && gsCall.oi !== null && gsCall.oi < 500) {
+      suggWarn.push('⚠️ <strong>Low call liquidity:</strong> Selected $' + fmt(gsCall.strike,2) + ' call has OI of ' + fmtK(gsCall.oi) + ' — below the 500 threshold. Wider bid/ask and slippage are likely. Use a limit order at the mid, and consider checking the next nearest strike if fills are poor.');
+    }
+    if (gsPut && gsPut.oi !== null && gsPut.oi < 500) {
+      suggWarn.push('⚠️ <strong>Low put liquidity:</strong> Selected $' + fmt(gsPut.strike,2) + ' put has OI of ' + fmtK(gsPut.oi) + ' — below the 500 threshold. Wider bid/ask and slippage are likely. Use a limit order at the mid.');
+    }
     if (c4 || (netCostPct !== null && netCostPct <= 1)) {
       if (netCostPct !== null && netCostPct < 0) {
         suggGood.push('✅ <strong>Net credit entry:</strong> You collect a net credit of ' + fmt(Math.abs(netCostPct),2) + '% — the ITM put fully funds the call. Ideal gut spread.');
@@ -5125,8 +5128,8 @@ async function runMsl(forceTicker) {
     var putCreditPct = (putSpreadCredit !== null && spreadWidth > 0) ? (putSpreadCredit / spreadWidth * 100) : null;
 
     // === Leg 3: Buy Deep ITM Call (~50/50 intrinsic/extrinsic) ===
-    // Pass 1: find best 50/50 ratio diff. Pass 2: among strikes within 5pp of best, prefer highest OI.
-    var bestRatioDiff = Infinity;
+    // Pure best-ratio pick (closest to 50/50). Liquidity is flagged separately as a warning when OI < 500.
+    var bestCallIdx = -1, bestCallDiff = Infinity;
     for (var ci = 0; ci < callChain.strike.length; ci++) {
       if (callChain.strike[ci] >= pd.price) continue;
       var cMid = callChain.mid ? callChain.mid[ci] : null;
@@ -5136,22 +5139,7 @@ async function runMsl(forceTicker) {
       if (extrinsic <= 0) continue;
       var ratio = intrinsic / cMid;
       var diff = Math.abs(ratio - 0.50);
-      if (diff < bestRatioDiff) bestRatioDiff = diff;
-    }
-    var bestCallIdx = -1, bestCallOI = -1;
-    for (var ci2 = 0; ci2 < callChain.strike.length; ci2++) {
-      if (callChain.strike[ci2] >= pd.price) continue;
-      var cMid2 = callChain.mid ? callChain.mid[ci2] : null;
-      if (cMid2 === null || cMid2 <= 0) continue;
-      var intr2 = pd.price - callChain.strike[ci2];
-      var extr2 = cMid2 - intr2;
-      if (extr2 <= 0) continue;
-      var ratio2 = intr2 / cMid2;
-      var diff2 = Math.abs(ratio2 - 0.50);
-      if (diff2 <= bestRatioDiff + 0.05) {
-        var oi2 = callChain.openInterest ? (callChain.openInterest[ci2] || 0) : 0;
-        if (oi2 > bestCallOI) { bestCallOI = oi2; bestCallIdx = ci2; }
-      }
+      if (diff < bestCallDiff) { bestCallDiff = diff; bestCallIdx = ci; }
     }
     if (bestCallIdx < 0) throw new Error('No suitable deep ITM call found with ~50/50 intrinsic/extrinsic.');
     var callStrike = callChain.strike[bestCallIdx];
@@ -5523,6 +5511,16 @@ async function runMsl(forceTicker) {
     }
     if (c5 && netDebitPct !== null && netDebitPct <= 20) {
       suggGood.push('✅ <strong>Low net debit:</strong> Only ' + fmt(netDebitPct,1) + '% of price — well under Laura\'s 1/3 threshold. Capital-efficient entry.');
+    }
+    // Liquidity warnings — chosen strikes' OI below the 500 threshold (informational, not scored)
+    if (callOI !== null && callOI < 500) {
+      suggWarn.push('⚠️ <strong>Low call liquidity:</strong> Selected $' + fmt(callStrike,2) + ' deep ITM call has OI of ' + fmtK(callOI) + ' — below the 500 threshold. Wider bid/ask and slippage are likely. Use a limit order at the mid, and consider checking the next nearest 50/50 strike if fills are poor.');
+    }
+    if (soldPutOI !== null && soldPutOI < 500) {
+      suggWarn.push('⚠️ <strong>Low sold-put liquidity:</strong> Selected $' + fmt(soldPutStrike,2) + ' sold put has OI of ' + fmtK(soldPutOI) + ' — below the 500 threshold. Wider bid/ask and slippage are likely on the spread leg. Use a limit order at the mid.');
+    }
+    if (boughtPutOI !== null && boughtPutOI < 500) {
+      suggWarn.push('⚠️ <strong>Low bought-put liquidity:</strong> Selected $' + fmt(boughtPutStrike,2) + ' bought put has OI of ' + fmtK(boughtPutOI) + ' — below the 500 threshold. Use a limit order at the mid for the bull put spread.');
     }
     if (score >= 4) {
       suggGood.push('✅ <strong>' + (score === 5 ? 'All criteria met' : score + '/5 criteria met') + '</strong> — strong MSL setup. Enter as a multi-leg order to avoid leg risk.');
