@@ -503,10 +503,18 @@ header {
   gap: 4px;
   margin-bottom: 8px;
 }
-/* Auto-size pill columns to a consistent ~14% each, so fewer pills don't stretch */
-.criteria-row.criteria-5 { grid-template-columns: repeat(5, minmax(0, 14.2%)); justify-content: start; }
-.criteria-row.criteria-6 { grid-template-columns: repeat(6, minmax(0, 14.2%)); justify-content: start; }
-.criteria-row.criteria-7 { grid-template-columns: repeat(7, minmax(0, 14.2%)); justify-content: start; }
+/* Fixed pill width so fewer pills don't stretch; pills stay a consistent size regardless of card width */
+.criteria-row.criteria-5,
+.criteria-row.criteria-6,
+.criteria-row.criteria-7 {
+  grid-template-columns: repeat(auto-fit, 64px);
+  justify-content: start;
+}
+.mini-rankings-cards .criteria-row.criteria-5,
+.mini-rankings-cards .criteria-row.criteria-6,
+.mini-rankings-cards .criteria-row.criteria-7 {
+  grid-template-columns: repeat(auto-fit, 80px);
+}
 .mini-box {
   text-align: center;
   padding: 3px 2px;
