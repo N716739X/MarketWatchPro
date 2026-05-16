@@ -1436,7 +1436,7 @@ input, textarea, select { -webkit-user-select: text; user-select: text; }
   <div class="tab" data-tab="leaps">LEAPS</div>
   <div class="tab" data-tab="synth">Synthetic Long</div>
   <div class="tab" data-tab="gut">Gut Spread</div>
-  <div class="tab" data-tab="msl">OG SL</div>
+  <div class="tab" data-tab="msl">MSL</div>
 </div>
 
 <!-- ═══ TICKER STRIP ═══ -->
@@ -1507,10 +1507,10 @@ input, textarea, select { -webkit-user-select: text; user-select: text; }
     <div class="dash-col">
       <div class="dash-col-header">
         <div class="dash-col-header-top">
-          <span class="dash-col-title">Option Goddess SL</span>
+          <span class="dash-col-title">MSL</span>
           <span class="dash-col-sub">Ranked by MR ↑</span>
         </div>
-        <span class="dash-col-desc">Sell put + buy put + buy deep ITM call</span>
+        <span class="dash-col-desc">Modified Synthetic Long — sell put + buy put + buy deep ITM call</span>
       </div>
       <div class="dash-col-body" id="col-msl"></div>
     </div>
@@ -1586,7 +1586,7 @@ input, textarea, select { -webkit-user-select: text; user-select: text; }
   <div id="mini-rankings-msl" class="mini-rankings"></div>
   <div class="analyzer-container">
     <div class="analyzer-status-row">
-      <span class="analyzer-label">Option Goddess SL</span>
+      <span class="analyzer-label">MSL — Modified Synthetic Long</span>
       <span class="status-msg" id="msl-status"></span>
       <input type="hidden" id="msl-ticker" />
     </div>
@@ -2684,7 +2684,7 @@ function buildColCard(ticker, d, strategy, rank, isBestTrade) {
       mb('P-OI',  d.gut_c6, d.gut_c6 === null ? '—' : (d.gut_c6 ? '✓' : '✗')) +
       mb('SPRD',  d.gut_c7, d.gut_c7 === null ? '—' : (d.gut_c7 ? '✓' : '✗'));
   } else {
-    // OG SL: 7 criteria — MR≤-2 4H, PutCr≥45%, IV>50%, DTE≥540, Debit≤33%, CallOI, PutOI
+    // MSL (Modified Synthetic Long): 7 criteria — MR≤-2 4H, PutCr≥42%, IV>50%, DTE≥540, Debit≤40%, CallOI, PutOI
     criteriaHtml =
       mb('MR',    d.msl_c1, mrDisp) +
       mb('P-CR',  d.msl_c2, d.msl_c2 === null ? '—' : (d.msl_c2 ? '✓' : '✗')) +
@@ -4907,7 +4907,7 @@ async function runMsl(forceTicker) {
     setStatus('msl-status', spinner() + 'Price & indicators…', 'loading');
     var pd = await fetchPriceData(ticker);
 
-    // OG SL uses 4-hour Mean Reversion (Laura's IADSS 4H chart)
+    // MSL uses 4-hour Mean Reversion (Laura's IADSS 4H chart)
     try {
       pd.meanRev = await fetchMeanRev(ticker, '4h');
     } catch(e) { /* keep daily MR as fallback */ }
@@ -5191,7 +5191,7 @@ async function runMsl(forceTicker) {
     }
 
     // Scorecard
-    html += '<div class="scorecard"><h3>Option Goddess SL — Score</h3><div class="criteria-list">';
+    html += '<div class="scorecard"><h3>MSL — Modified Synthetic Long — Score</h3><div class="criteria-list">';
     html += critRow(1,'MR · 4H (Oversold — Buy the Dip)', c1, mrZone(pd.meanRev).label);
     html += critRow(2,'Put Credit ≥ 42% of Width (≥50% = Ideal)', c2, putCreditPct !== null ? fmt(putCreditPct,1) + '%' + (c2Ideal ? ' ✨ IDEAL' : '') : 'N/A');
     html += critRow(3,'IV Rank > 50% (Fat Put Premiums)', c3, mslIVRank !== null ? fmt(mslIVRank,1) + '%' : 'N/A');
@@ -5207,7 +5207,7 @@ async function runMsl(forceTicker) {
       if (!isNaN(pd.meanRev) && pd.meanRev < -1 && pd.meanRev > -2) {
         suggWarn.push('💡 <strong>MR approaching:</strong> 4H Mean Reversion is ' + mrZone(pd.meanRev).label + ' — not yet Deeply Oversold. Wait for deeper oversold conditions.');
       } else {
-        suggWarn.push('💡 <strong>Not oversold:</strong> 4H Mean Reversion is ' + mrZone(pd.meanRev).label + ' — Option Goddess SL works best at market lows when put premiums are fattest.');
+        suggWarn.push('💡 <strong>Not oversold:</strong> 4H Mean Reversion is ' + mrZone(pd.meanRev).label + ' — MSL works best at market lows when put premiums are fattest.');
       }
     }
     if (!c2 && putCreditPct !== null) {
@@ -5237,7 +5237,7 @@ async function runMsl(forceTicker) {
       suggGood.push('✅ <strong>Low net debit:</strong> Only ' + fmt(netDebitPct,1) + '% of price — well under Laura\'s 1/3 threshold. Capital-efficient entry.');
     }
     if (score >= 6) {
-      suggGood.push('✅ <strong>' + (score === 7 ? 'All criteria met' : score + '/7 criteria met') + '</strong> — strong Option Goddess SL setup. Enter as a multi-leg order to avoid leg risk.');
+      suggGood.push('✅ <strong>' + (score === 7 ? 'All criteria met' : score + '/7 criteria met') + '</strong> — strong MSL setup. Enter as a multi-leg order to avoid leg risk.');
     }
     var suggestions = suggWarn.concat(suggGood);
     if (suggestions.length > 0) {
@@ -5470,7 +5470,7 @@ function buildMiniRankings(strategy, activeTicker) {
     return cardHtml;
   }).join('');
 
-  var stratLabel = { put: 'Cash-Secured Put', cc: 'Covered Call', leaps: 'LEAPS', synth: 'Synthetic Long', gut: 'Gut Spread', msl: 'Option Goddess SL' }[strategy];
+  var stratLabel = { put: 'Cash-Secured Put', cc: 'Covered Call', leaps: 'LEAPS', synth: 'Synthetic Long', gut: 'Gut Spread', msl: 'MSL — Modified Synthetic Long' }[strategy];
 
   return '<div class="mini-rankings-header">' +
     '<span class="mini-rankings-title">Top 3 · ' + stratLabel + '</span>' +

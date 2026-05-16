@@ -684,7 +684,7 @@ async function scoreTicker(ticker, env) {
   const gut_c7 = null;     // Spreads ≤ 10% (need chain)
   const gutScore = [gut_c1, gut_c2, gut_c3, gut_c4, gut_c5, gut_c6, gut_c7].filter(x => x === true).length;
 
-  // MSL (Option Goddess SL — Laura's 3-leg strategy)
+  // MSL (Modified Synthetic Long — Laura's 3-leg strategy)
   // Criteria: MR≤-2σ 4H, Put Credit≥45%, IV Rank>50%, Duration≥540, Net Debit≤33%, Call OI≥300, Put OI≥300
   // c1 uses 4H MR; c4 uses DTE; rest need option chain data (Phase 3 on frontend)
   let fourHourMR = meanRev; // fallback to daily
