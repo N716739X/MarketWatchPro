@@ -5467,7 +5467,7 @@ async function runMsl(forceTicker) {
           '<td>' + fmtK(pOi) + '</td>' +
           '<td>$' + fmt(rowWidth,0) + '</td>' +
           '<td>' + (rowCredit !== null ? fmtDollar(rowCredit) : '—') + '</td>' +
-          '<td' + (rowCreditPct !== null && rowCreditPct >= 50 ? ' style="color:var(--green);font-weight:600"' : (rowCreditPct !== null && rowCreditPct >= 42 ? ' style="color:var(--green)"' : '')) + '>' + (rowCreditPct !== null ? fmt(rowCreditPct,1) + '%' + (rowCreditPct >= 50 ? ' ✨' : '') : '—') + '</td></tr>';
+          '<td' + (rowCreditPct !== null && rowCreditPct >= 50 ? ' style="color:var(--green);font-weight:600"' : (rowCreditPct !== null && rowCreditPct >= 42 ? ' style="color:var(--green)"' : '')) + '>' + (rowCreditPct !== null ? fmt(rowCreditPct,1) + '%' : '—') + '</td></tr>';
       }
       html += '</tbody></table></div></div>';
     }
