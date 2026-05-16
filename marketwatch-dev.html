@@ -5280,12 +5280,7 @@ async function runMsl(forceTicker) {
         tsItem('Put Spread Credit',   putCredit100 !== null ? '+$' + fmt(putCredit100,2) : '—', 'ts-gain', fmt(putCreditPct,1) + '% of width') +
       sectionClose() +
 
-      // SECTION 2: Capital required (Profit Potential removed — Max Gain + Breakeven already in hero strip and comparison table)
-      sectionOpen('Capital Required') +
-        tsItem('Margin Req.',  mslSpreadMargin ? '$' + fmt(mslSpreadMargin,0) : '—', 'ts-neutral', 'Broker hold (spread width)') +
-        tsItem('Total Outlay', mslTotalOutlay ? '$' + fmt(mslTotalOutlay,0) : '—', 'ts-neutral', 'Margin + call premium') +
-        tsItem('Max Risk',     mslMaxRisk ? '$' + fmt(mslMaxRisk,0) : '—', 'ts-loss', 'Worst-case loss') +
-      sectionClose() +
+      // Capital Required section removed — Margin Req., Total Outlay, Max Risk all shown in the MSL vs SL comparison table below
     '</div>';
 
     // MSL vs SL — Laura's classmate comparison: Debit, Breakeven, Total Risk side-by-side
@@ -5355,7 +5350,17 @@ async function runMsl(forceTicker) {
             (marginSavingsPct !== null) ? '−' + fmt(marginSavingsPct,0) + '%' : '—',
             marginSavingsPct > 0 ? 'delta-better' : 'delta-worse'
           ) +
-          // Row 4: Max Risk (lower = better — the MSL's main edge)
+          // Row 4: Total Outlay (margin + net debit — total cash + margin tied up)
+          slcRow(
+            'Total Outlay',
+            'Margin + net debit',
+            slCapital ? '$' + fmt(slCapital,0) : '—',
+            mslTotalOutlay ? '$' + fmt(mslTotalOutlay,0) : '—',
+            '',
+            (savingsPct !== null) ? (savingsPct > 0 ? '−' : '+') + fmt(Math.abs(savingsPct),0) + '%' : '—',
+            savingsPct > 0 ? 'delta-better' : 'delta-worse'
+          ) +
+          // Row 5: Max Risk (lower = better — the MSL's main edge)
           slcRow(
             'Max Risk',
             'Worst-case loss',
