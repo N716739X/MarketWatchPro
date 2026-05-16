@@ -2,6 +2,8 @@
 // Handles: Auth (signup/login), Stripe checkout, JWT validation, API proxy, scoring engine
 
 // ── Tier & ticker configuration ─────────────────────────────────────────────────
+// Admin emails get full Trader-tier access regardless of subscription status
+const ADMIN_EMAILS = ['mattdavis@whiskerseeker.com'];
 const IA11_TICKERS = ['TSLA','NVDA','AMD','MRVL','PLTR','ALAB','AVGO','MU','GOOG','SATS'];
 const TIER_LIMITS = {
   ia:     { tickers: IA11_TICKERS, maxCustom: 0,  maxTotal: 11 },
@@ -136,11 +138,11 @@ async function handleLogin(req, env) {
   await env.DB.prepare('UPDATE users SET session_id = ? WHERE id = ?').bind(sessionId, user.id).run();
 
   const token = await signJWT(
-    { sub: user.id, email: user.email, status, trialEnd: user.trial_end, plan: user.plan, tier: user.tier || 'trial', sid: sessionId, exp: now + 86400 * 30 },
+    { sub: user.id, email: user.email, status, trialEnd: user.trial_end, plan: user.plan, tier: ADMIN_EMAILS.includes((user.email||'').toLowerCase()) ? 'trader' : (user.tier || 'trial'), sid: sessionId, exp: now + 86400 * 30 },
     env.JWT_SECRET
   );
 
-  return json({ token, email: user.email, status, trialEnd: user.trial_end, plan: user.plan, tier: user.tier || 'trial' });
+  return json({ token, email: user.email, status, trialEnd: user.trial_end, plan: user.plan, tier: ADMIN_EMAILS.includes((user.email||'').toLowerCase()) ? 'trader' : (user.tier || 'trial') });
 }
 
 // POST /auth/verify
@@ -161,7 +163,7 @@ async function handleVerify(req, env) {
     await env.DB.prepare('UPDATE users SET subscription_status = ? WHERE id = ?').bind('trial_expired', user.id).run();
   }
 
-  return json({ valid: true, email: user.email, status, trialEnd: user.trial_end, plan: user.plan, tier: user.tier || 'trial' });
+  return json({ valid: true, email: user.email, status, trialEnd: user.trial_end, plan: user.plan, tier: ADMIN_EMAILS.includes((user.email||'').toLowerCase()) ? 'trader' : (user.tier || 'trial') });
 }
 
 // POST /stripe/checkout
@@ -730,8 +732,8 @@ async function handleScores(req, env) {
   if (authCheck.error) return authCheck.error;
 
   await initDB(env.DB);
-  const user = await env.DB.prepare('SELECT tier FROM users WHERE id = ?').bind(authCheck.payload.sub).first();
-  const userTier = (user && user.tier) || 'trial';
+  const user = await env.DB.prepare('SELECT tier, email FROM users WHERE id = ?').bind(authCheck.payload.sub).first();
+  const userTier = (user && ADMIN_EMAILS.includes((user.email||'').toLowerCase())) ? 'trader' : ((user && user.tier) || 'trial');
   const tierConfig = TIER_LIMITS[userTier] || TIER_LIMITS.trial;
 
   const { tickers } = await req.json();
