@@ -2617,13 +2617,28 @@ function earningsBeforeExpiry(ticker, expiryStr) {
 //          LEAPS (MR proxy) | Synthetic Long (MR proxy)
 // ═══════════════════════════════════════════════════════
 
-function scoreToGrade(score, phase) {
+function scoreToGrade(score, max, phase) {
+  // Back-compat: if called with (score, phase) treat max as 7
+  if (phase === undefined) { phase = max; max = 7; }
   if (!phase || phase < 2) return '';
-  if (score >= 6) return 'A';
-  if (score >= 5) return 'B';
-  if (score >= 4) return 'C';
-  if (score >= 3) return 'D';
+  if (!max || max <= 0) return '';
+  var pct = score / max;
+  if (pct >= 0.85) return 'A';
+  if (pct >= 0.70) return 'B';
+  if (pct >= 0.55) return 'C';
+  if (pct >= 0.40) return 'D';
   return 'F';
+}
+
+// Per-strategy max criteria count (after OI removal)
+function maxCriteriaFor(strategy) {
+  if (strategy === 'put')   return 7;
+  if (strategy === 'cc')    return 7;
+  if (strategy === 'leaps') return 6;
+  if (strategy === 'synth') return 5;
+  if (strategy === 'gut')   return 5;
+  if (strategy === 'msl')   return 5;
+  return 7;
 }
 
 var COL_IDS = { put: 'col-put', cc: 'col-cc', leaps: 'col-leaps', synth: 'col-synth', gut: 'col-gut', msl: 'col-msl' };
@@ -2670,25 +2685,15 @@ function buildColCard(ticker, d, strategy, rank, isBestTrade) {
   else if (strategy === 'msl')   score = d.mslScore || 0;
   else                           score = d.synthScore || 0;
 
-  var totalCriteria = 7;
+  var totalCriteria = maxCriteriaFor(strategy);
 
-  // Grade — only meaningful once phase 2 data is loaded
+  // Grade — percentage-based, scales per-strategy max
   var grade = '';
   if (d.phase >= 2) {
-    if (isScored) {
-      // Put: 7 criteria
-      grade = score >= 6 ? 'A' : score >= 5 ? 'B' : score >= 4 ? 'C' : score >= 3 ? 'D' : 'F';
-    } else if (strategy === 'cc') {
-      // CC: 7 criteria — same grading as phase 3
-      grade = score >= 6 ? 'A' : score >= 5 ? 'B' : score >= 4 ? 'C' : score >= 3 ? 'D' : 'F';
+    if (d.phase < 3 && !isScored && strategy !== 'cc' && score <= 0) {
+      grade = '';
     } else {
-      if (d.phase >= 3) {
-        // Phase 3: full real score out of 7
-        grade = score >= 6 ? 'A' : score >= 5 ? 'B' : score >= 4 ? 'C' : score >= 3 ? 'D' : 'F';
-      } else {
-        // Phase 2 proxy: use absolute score (same scale as phase 3) to avoid inflated grades
-        grade = score >= 6 ? 'A' : score >= 5 ? 'B' : score >= 4 ? 'C' : score >= 3 ? 'D' : score > 0 ? 'F' : '';
-      }
+      grade = scoreToGrade(score, totalCriteria, d.phase);
     }
   }
 
@@ -2698,18 +2703,20 @@ function buildColCard(ticker, d, strategy, rank, isBestTrade) {
   var mrColor = mrZ.cls;
   var mrDisp  = mrZ.short;
 
-  // Badge
+  // Badge — thresholds scale with per-strategy max
   var badgeCls, badgeTxt;
+  var pctScore = totalCriteria > 0 ? score / totalCriteria : 0;
+  var scoreLbl = score + '/' + totalCriteria;
   if (isScored) {
     // Put: show NO TRADE for low scores
-    if (score >= 5)      { badgeCls = 'badge-ideal';    badgeTxt = 'IDEAL · ' + score + '/7'; }
-    else if (score >= 3) { badgeCls = 'badge-watch';    badgeTxt = 'WATCH · ' + score + '/7'; }
-    else                 { badgeCls = 'badge-notready'; badgeTxt = 'NO TRADE · ' + score + '/7'; }
+    if (pctScore >= 0.70)      { badgeCls = 'badge-ideal';    badgeTxt = 'IDEAL · ' + scoreLbl; }
+    else if (pctScore >= 0.40) { badgeCls = 'badge-watch';    badgeTxt = 'WATCH · ' + scoreLbl; }
+    else                       { badgeCls = 'badge-notready'; badgeTxt = 'NO TRADE · ' + scoreLbl; }
   } else {
-    // CC/LEAPS/Synth: show score out of 7
-    if (score >= 5)      { badgeCls = 'badge-ideal';    badgeTxt = 'IDEAL · ' + score + '/7'; }
-    else if (score >= 3) { badgeCls = 'badge-watch';    badgeTxt = 'WATCH · ' + score + '/7'; }
-    else                 { badgeCls = 'badge-notready'; badgeTxt = 'WAIT · ' + score + '/7'; }
+    // CC/LEAPS/Synth/Gut/MSL: percentage-based
+    if (pctScore >= 0.70)      { badgeCls = 'badge-ideal';    badgeTxt = 'IDEAL · ' + scoreLbl; }
+    else if (pctScore >= 0.40) { badgeCls = 'badge-watch';    badgeTxt = 'WATCH · ' + scoreLbl; }
+    else                       { badgeCls = 'badge-notready'; badgeTxt = 'WAIT · ' + scoreLbl; }
   }
 
   // Price / change
@@ -2787,7 +2794,6 @@ function buildColCard(ticker, d, strategy, rank, isBestTrade) {
       mb('CAGR',  d.leaps_c2, cagrDisp) +
       mb('DUR',   d.leaps_c3, d.leaps_c3 === true ? '✓' : d.leaps_c3 === false ? '✗' : '—') +
       mb('IV',    d.leaps_c5, ivDisp) +
-      mb('OI',    d.leaps_c6, d.leaps_c6 === null ? '—' : (d.leaps_c6 ? '✓' : '✗')) +
       mb('BID/A', d.leaps_c7, d.leaps_c7 === null ? '—' : (d.leaps_c7 ? '✓' : '✗'));
   } else if (strategy === 'synth') {
     // Synthetic Long: 7 criteria — MR≤-2 Wkly, IV>50%, DTE≥540, Debit≤5%, Call OI, Put OI, Spreads
@@ -2796,8 +2802,6 @@ function buildColCard(ticker, d, strategy, rank, isBestTrade) {
       mb('IV',    d.synth_c2, d.synth_c2 === null ? '—' : (d.synth_c2 ? '✓' : '✗')) +
       mb('DUR',   d.synth_c3, d.synth_c3 === true ? '✓' : d.synth_c3 === false ? '✗' : '—') +
       mb('DEBIT', d.synth_c4, d.synth_c4 === null ? '—' : (d.synth_c4 ? '✓' : '✗')) +
-      mb('C-OI',  d.synth_c5, d.synth_c5 === null ? '—' : (d.synth_c5 ? '✓' : '✗')) +
-      mb('P-OI',  d.synth_c6, d.synth_c6 === null ? '—' : (d.synth_c6 ? '✓' : '✗')) +
       mb('SPRD',  d.synth_c7, d.synth_c7 === null ? '—' : (d.synth_c7 ? '✓' : '✗'));
   } else if (strategy === 'gut') {
     // Gut Spread: 7 criteria — MR≤-2 Wkly, IV>50%, DTE≥540, Debit≤5%, Call OI, Put OI, Spreads
@@ -2806,19 +2810,15 @@ function buildColCard(ticker, d, strategy, rank, isBestTrade) {
       mb('IV',    d.gut_c2, d.gut_c2 === null ? '—' : (d.gut_c2 ? '✓' : '✗')) +
       mb('DUR',   d.gut_c3, d.gut_c3 === true ? '✓' : d.gut_c3 === false ? '✗' : '—') +
       mb('DEBIT', d.gut_c4, d.gut_c4 === null ? '—' : (d.gut_c4 ? '✓' : '✗')) +
-      mb('C-OI',  d.gut_c5, d.gut_c5 === null ? '—' : (d.gut_c5 ? '✓' : '✗')) +
-      mb('P-OI',  d.gut_c6, d.gut_c6 === null ? '—' : (d.gut_c6 ? '✓' : '✗')) +
       mb('SPRD',  d.gut_c7, d.gut_c7 === null ? '—' : (d.gut_c7 ? '✓' : '✗'));
   } else {
-    // MSL (Modified Synthetic Long): 7 criteria — MR≤-2 4H, PutCr≥42%, IV>50%, DTE≥540, Debit≤40%, CallOI, PutOI
+    // MSL (Modified Synthetic Long): 5 criteria — MR≤-2 4H, PutCr≥42%, IV>50%, DTE≥540, Debit≤40%
     criteriaHtml =
       mb('MR',    d.msl_c1, mrDisp) +
       mb('P-CR',  d.msl_c2, d.msl_c2 === null ? '—' : (d.msl_c2 ? '✓' : '✗')) +
       mb('IV',    d.msl_c3, d.msl_c3 === null ? '—' : (d.mslIVRank !== null && d.mslIVRank !== undefined ? fmt(d.mslIVRank, 0) + '%' : (d.msl_c3 ? '✓' : '✗'))) +
       mb('DUR',   d.msl_c4, d.msl_c4 === true ? '✓' : d.msl_c4 === false ? '✗' : '—') +
-      mb('DEBIT', d.msl_c5, d.msl_c5 === null ? '—' : (d.msl_c5 ? '✓' : '✗')) +
-      mb('C-OI',  d.msl_c6, d.msl_c6 === null ? '—' : (d.msl_c6 ? '✓' : '✗')) +
-      mb('P-OI',  d.msl_c7, d.msl_c7 === null ? '—' : (d.msl_c7 ? '✓' : '✗'));
+      mb('DEBIT', d.msl_c5, d.msl_c5 === null ? '—' : (d.msl_c5 ? '✓' : '✗'));
   }
 
   // Footer score / label
@@ -2926,34 +2926,34 @@ function renderColumns() {
   var colGut   = document.getElementById('col-gut');
   var colMsl   = document.getElementById('col-msl');
 
-  // Find the single best trade across all columns (highest score, min 6/7)
-  // Collect every visible card with its score, then pick the absolute best
+  // Find the single best trade across all columns by score/max ratio (strategies now have varying max scores)
   var allTop = [];
   var colMap = [
-    { list: putSorted,   strat: 'put',   key: 'putScore' },
-    { list: ccSorted,    strat: 'cc',    key: 'ccScore' },
-    { list: leapsSorted, strat: 'leaps', key: 'leapsScore' },
-    { list: synthSorted, strat: 'synth', key: 'synthScore' },
-    { list: gutSorted,   strat: 'gut',   key: 'gutScore' },
-    { list: mslSorted,   strat: 'msl',   key: 'mslScore' }
+    { list: putSorted,   strat: 'put',   key: 'putScore',   max: 7 },
+    { list: ccSorted,    strat: 'cc',    key: 'ccScore',    max: 7 },
+    { list: leapsSorted, strat: 'leaps', key: 'leapsScore', max: 6 },
+    { list: synthSorted, strat: 'synth', key: 'synthScore', max: 5 },
+    { list: gutSorted,   strat: 'gut',   key: 'gutScore',   max: 5 },
+    { list: mslSorted,   strat: 'msl',   key: 'mslScore',   max: 5 }
   ];
   for (var ci = 0; ci < colMap.length; ci++) {
     var cList = colMap[ci].list.slice(0, 4);
     for (var cj = 0; cj < cList.length; cj++) {
       var cTk = cList[cj];
-      allTop.push({ ticker: cTk, strategy: colMap[ci].strat, score: cardData[cTk][colMap[ci].key] || 0 });
+      var rawScore = cardData[cTk][colMap[ci].key] || 0;
+      allTop.push({ ticker: cTk, strategy: colMap[ci].strat, score: rawScore, ratio: rawScore / colMap[ci].max });
     }
   }
-  allTop.sort(function(a, b) { return b.score - a.score; });
-  var bestTrade = allTop.length > 0 ? allTop[0] : { ticker: null, strategy: null, score: 0 };
-  var starMin = 6; // minimum score to earn the star
+  allTop.sort(function(a, b) { return b.ratio - a.ratio; });
+  var bestTrade = allTop.length > 0 ? allTop[0] : { ticker: null, strategy: null, score: 0, ratio: 0 };
+  var starMinRatio = 0.85; // ≥85% of max criteria to earn the star (e.g. 5/5, 6/7, 7/7)
 
-  colPut.innerHTML   = putSorted.slice(0,4).map(function(t,i)   { return buildColCard(t, cardData[t], 'put',   i, bestTrade.score >= starMin && bestTrade.ticker === t && bestTrade.strategy === 'put'); }).join('');
-  colCC.innerHTML    = ccSorted.slice(0,4).map(function(t,i)     { return buildColCard(t, cardData[t], 'cc',    i, bestTrade.score >= starMin && bestTrade.ticker === t && bestTrade.strategy === 'cc'); }).join('');
-  colLeaps.innerHTML = leapsSorted.slice(0,4).map(function(t,i)  { return buildColCard(t, cardData[t], 'leaps', i, bestTrade.score >= starMin && bestTrade.ticker === t && bestTrade.strategy === 'leaps'); }).join('');
-  colSynth.innerHTML = synthSorted.slice(0,4).map(function(t,i)  { return buildColCard(t, cardData[t], 'synth', i, bestTrade.score >= starMin && bestTrade.ticker === t && bestTrade.strategy === 'synth'); }).join('');
-  colGut.innerHTML   = gutSorted.slice(0,4).map(function(t,i)    { return buildColCard(t, cardData[t], 'gut',   i, bestTrade.score >= starMin && bestTrade.ticker === t && bestTrade.strategy === 'gut'); }).join('');
-  colMsl.innerHTML    = mslSorted.slice(0,4).map(function(t,i)    { return buildColCard(t, cardData[t], 'msl',   i, bestTrade.score >= starMin && bestTrade.ticker === t && bestTrade.strategy === 'msl'); }).join('');
+  colPut.innerHTML   = putSorted.slice(0,4).map(function(t,i)   { return buildColCard(t, cardData[t], 'put',   i, bestTrade.ratio >= starMinRatio && bestTrade.ticker === t && bestTrade.strategy === 'put'); }).join('');
+  colCC.innerHTML    = ccSorted.slice(0,4).map(function(t,i)     { return buildColCard(t, cardData[t], 'cc',    i, bestTrade.ratio >= starMinRatio && bestTrade.ticker === t && bestTrade.strategy === 'cc'); }).join('');
+  colLeaps.innerHTML = leapsSorted.slice(0,4).map(function(t,i)  { return buildColCard(t, cardData[t], 'leaps', i, bestTrade.ratio >= starMinRatio && bestTrade.ticker === t && bestTrade.strategy === 'leaps'); }).join('');
+  colSynth.innerHTML = synthSorted.slice(0,4).map(function(t,i)  { return buildColCard(t, cardData[t], 'synth', i, bestTrade.ratio >= starMinRatio && bestTrade.ticker === t && bestTrade.strategy === 'synth'); }).join('');
+  colGut.innerHTML   = gutSorted.slice(0,4).map(function(t,i)    { return buildColCard(t, cardData[t], 'gut',   i, bestTrade.ratio >= starMinRatio && bestTrade.ticker === t && bestTrade.strategy === 'gut'); }).join('');
+  colMsl.innerHTML    = mslSorted.slice(0,4).map(function(t,i)    { return buildColCard(t, cardData[t], 'msl',   i, bestTrade.ratio >= starMinRatio && bestTrade.ticker === t && bestTrade.strategy === 'msl'); }).join('');
 
   // Trigger full phase 3 analysis once all tickers are loaded
   triggerPhase3();
@@ -3087,7 +3087,7 @@ async function fetchTickerData(ticker) {
     var leaps_c5 = ivRank !== null ? ivRank < 55 : null;             // IV < 55% (Buy Low IV)
     var leaps_c6 = null;                                             // OI ≥ 500 (need chain)
     var leaps_c7 = null;                                             // Bid/Ask ≤ 10% (need chain)
-    var leapsScore = [leaps_c1,leaps_c2,leaps_c3,leaps_c4,leaps_c5,leaps_c6,leaps_c7].filter(function(x){return x===true;}).length;
+    var leapsScore = [leaps_c1,leaps_c2,leaps_c3,leaps_c4,leaps_c5,leaps_c7].filter(function(x){return x===true;}).length;
 
     // Score Synthetic Long criteria (proxy) — same-strike call+put
     // Synth 7: MR≤-2 Wkly, IV>50%, Duration≥540d, Net Debit≤5%, Call OI≥500, Put OI≥500, Spreads≤10%
@@ -3099,7 +3099,7 @@ async function fetchTickerData(ticker) {
     var synth_c5 = null;                                             // Call OI ≥ 500 (need chain)
     var synth_c6 = null;                                             // Put OI ≥ 500 (need chain)
     var synth_c7 = null;                                             // Spreads ≤ 10% (need chain)
-    var synthScore = [synth_c1,synth_c2,synth_c3,synth_c4,synth_c5,synth_c6,synth_c7].filter(function(x){return x===true;}).length;
+    var synthScore = [synth_c1,synth_c2,synth_c3,synth_c4,synth_c7].filter(function(x){return x===true;}).length;
 
     d.phase        = 2;
     d.putScore     = putScore;
@@ -3218,7 +3218,7 @@ async function runLeapsPhase3(ticker) {
     d.leapsDelta    = bestDelta;
     d.leapsCAGR     = breakevenCAGR;
     d.leapsMR       = weeklyMR;
-    d.leapsScore = [d.leaps_c1,d.leaps_c2,d.leaps_c3,d.leaps_c4,d.leaps_c5,d.leaps_c6,d.leaps_c7]
+    d.leapsScore = [d.leaps_c1,d.leaps_c2,d.leaps_c3,d.leaps_c4,d.leaps_c5,d.leaps_c7]
       .filter(function(x){return x===true;}).length;
     d.phase = 3;
     renderColumns();
@@ -3323,7 +3323,7 @@ async function runSynthPhase3(ticker) {
     d.synth_c5 = slCall.oi !== null ? slCall.oi >= 500 : null;                   // Call OI ≥ 500
     d.synth_c6 = slPut.oi  !== null ? slPut.oi  >= 500 : null;                   // Put OI ≥ 500
     d.synth_c7 = (callSpreadPct !== null && putSpreadPct !== null) ? (callSpreadPct <= 10 && putSpreadPct <= 10) : null; // Spreads ≤ 10%
-    d.synthScore = [d.synth_c1,d.synth_c2,d.synth_c3,d.synth_c4,d.synth_c5,d.synth_c6,d.synth_c7]
+    d.synthScore = [d.synth_c1,d.synth_c2,d.synth_c3,d.synth_c4,d.synth_c7]
       .filter(function(x){return x===true;}).length;
     d.phase = 3;
     renderColumns();
@@ -3436,7 +3436,7 @@ async function runGutPhase3(ticker) {
     d.gut_c5 = gsCall.oi !== null ? gsCall.oi >= 500 : null;
     d.gut_c6 = gsPut.oi  !== null ? gsPut.oi  >= 500 : null;
     d.gut_c7 = (callSpreadPct !== null && putSpreadPct !== null) ? (callSpreadPct <= 10 && putSpreadPct <= 10) : null;
-    d.gutScore = [d.gut_c1,d.gut_c2,d.gut_c3,d.gut_c4,d.gut_c5,d.gut_c6,d.gut_c7]
+    d.gutScore = [d.gut_c1,d.gut_c2,d.gut_c3,d.gut_c4,d.gut_c7]
       .filter(function(x){return x===true;}).length;
     d.phase = 3;
     renderColumns();
@@ -3514,18 +3514,34 @@ async function runMslPhase3(ticker) {
     var putSpreadCredit = (soldPutMid !== null && boughtPutMid !== null) ? soldPutMid - boughtPutMid : null;
     var putCreditPct = (putSpreadCredit !== null && spreadWidth > 0) ? (putSpreadCredit / spreadWidth * 100) : null;
 
-    // Leg 3: Buy deep ITM call with ~50/50 intrinsic/extrinsic
-    var bestCallIdx = -1, bestRatioDiff = Infinity;
+    // Leg 3: Buy deep ITM call with ~50/50 intrinsic/extrinsic.
+    // Pass 1: find best 50/50 ratio diff. Pass 2: among strikes within 5pp of best, prefer highest OI (liquidity tie-break).
+    var bestRatioDiff = Infinity;
     for (var ci = 0; ci < callChain.strike.length; ci++) {
-      if (callChain.strike[ci] >= pd.price) continue; // must be ITM
+      if (callChain.strike[ci] >= pd.price) continue;
       var cMid = callChain.mid ? callChain.mid[ci] : null;
       if (cMid === null || cMid <= 0) continue;
       var intrinsic = pd.price - callChain.strike[ci];
       var extrinsic = cMid - intrinsic;
-      if (extrinsic <= 0) continue; // all intrinsic, too deep
-      var ratio = intrinsic / cMid; // target 0.50
+      if (extrinsic <= 0) continue;
+      var ratio = intrinsic / cMid;
       var diff = Math.abs(ratio - 0.50);
-      if (diff < bestRatioDiff) { bestRatioDiff = diff; bestCallIdx = ci; }
+      if (diff < bestRatioDiff) bestRatioDiff = diff;
+    }
+    var bestCallIdx = -1, bestCallOI = -1;
+    for (var ci2 = 0; ci2 < callChain.strike.length; ci2++) {
+      if (callChain.strike[ci2] >= pd.price) continue;
+      var cMid2 = callChain.mid ? callChain.mid[ci2] : null;
+      if (cMid2 === null || cMid2 <= 0) continue;
+      var intr2 = pd.price - callChain.strike[ci2];
+      var extr2 = cMid2 - intr2;
+      if (extr2 <= 0) continue;
+      var ratio2 = intr2 / cMid2;
+      var diff2 = Math.abs(ratio2 - 0.50);
+      if (diff2 <= bestRatioDiff + 0.05) {
+        var oi2 = callChain.openInterest ? (callChain.openInterest[ci2] || 0) : 0;
+        if (oi2 > bestCallOI) { bestCallOI = oi2; bestCallIdx = ci2; }
+      }
     }
     if (bestCallIdx < 0) return;
     var callStrike = callChain.strike[bestCallIdx];
@@ -3568,7 +3584,7 @@ async function runMslPhase3(ticker) {
     d.mslNetDebitPct = netDebitPct;
     d.msl_c6 = callOI !== null ? callOI >= 500 : null;
     d.msl_c7 = soldPutOI !== null ? soldPutOI >= 500 : null;
-    d.mslScore = [d.msl_c1,d.msl_c2,d.msl_c3,d.msl_c4,d.msl_c5,d.msl_c6,d.msl_c7]
+    d.mslScore = [d.msl_c1,d.msl_c2,d.msl_c3,d.msl_c4,d.msl_c5]
       .filter(function(x){return x===true;}).length;
     d.phase = 3;
     renderColumns();
@@ -4276,9 +4292,8 @@ async function runLeaps(forceTicker) {
     var c3 = repDTE >= 540;
     var c4 = !isNaN(pd.meanRev) ? pd.meanRev <= -2 : null;
     var c5 = currentIV !== null ? currentIV < 55 : null;
-    var c6 = bestOI !== null ? bestOI >= 500 : null;
     var c7 = bestSpread !== null ? bestSpread <= 10 : null;
-    var score = [c1,c2,c3,c4,c5,c6,c7].filter(function(x){return x===true;}).length;
+    var score = [c1,c2,c3,c4,c5,c7].filter(function(x){return x===true;}).length;
 
     setStatus('leaps-status', 'Done', 'ok');
 
@@ -4324,9 +4339,8 @@ async function runLeaps(forceTicker) {
     html += critRow(3,'BE CAGR ≤ 15% (Achievable breakeven)', c2, breakevenCAGR !== null ? fmt(breakevenCAGR,1)+'%' : 'N/A');
     html += critRow(4,'Duration 18+ months (540+ DTE)', c3, repDTE + ' days');
     html += critRow(5,'IV < 55% (Don\'t overpay time value)', c5, currentIV !== null ? fmt(currentIV,1)+'%' : 'N/A');
-    html += critRow(6,'Liquidity OI ≥ 500', c6, bestOI !== null ? fmtK(bestOI) : 'N/A');
-    html += critRow(7,'Bid/Ask Spread ≤ 10%', c7, bestSpread !== null ? fmt(bestSpread,1)+'%' : 'N/A');
-    html += '</div>' + scoreSummaryHtml(score,7) + '</div>';
+    html += critRow(6,'Bid/Ask Spread ≤ 10%', c7, bestSpread !== null ? fmt(bestSpread,1)+'%' : 'N/A');
+    html += '</div>' + scoreSummaryHtml(score,6) + '</div>';
 
     // ── Contextual suggestions (James-aligned) ──
     var suggestions = [];
@@ -4348,13 +4362,10 @@ async function runLeaps(forceTicker) {
     if (!c5 && currentIV !== null) {
       suggestions.push('💡 <strong>IV elevated:</strong> Current IV is ' + fmt(currentIV,1) + '% — you are overpaying for time value. Wait for a volatility cooldown to get a cheaper entry on the same strike.');
     }
-    if (!c6 && bestOI !== null) {
-      suggestions.push('💡 <strong>Low liquidity:</strong> Open interest is ' + fmtK(bestOI) + ' — below 500. Wide spreads and difficulty exiting are risks. Check a different expiry or a more liquid underlying.');
-    }
     if (!c7 && bestSpread !== null) {
       suggestions.push('💡 <strong>Wide spread:</strong> Bid/ask spread is ' + fmt(bestSpread,1) + '% — this eats directly into your return. Use a limit order at the mid price.');
     }
-    if (score === 7) {
+    if (score === 6) {
       suggestions.push('✅ <strong>All criteria met</strong> — strong LEAPS setup per James\'s method. Consider entering at the ★ strike on the farthest expiry.');
     }
     if (suggestions.length > 0) {
@@ -4576,10 +4587,8 @@ async function runSynth(forceTicker) {
     var c2 = ivRank !== null ? ivRank > 50 : null;                             // IV > 50%
     var c3 = dte >= 540;                                                       // Duration ≥ 540 DTE
     var c4 = netCostPct !== null ? netCostPct <= 5 : null;                     // Net Debit ≤ 5% (credit always passes)
-    var c5 = slCall.oi !== null ? slCall.oi >= 500 : null;                     // Call OI ≥ 500
-    var c6 = slPut.oi  !== null ? slPut.oi  >= 500 : null;                     // Put OI ≥ 500
     var c7 = (callSpreadPct !== null && putSpreadPct !== null) ? (callSpreadPct <= 10 && putSpreadPct <= 10) : null; // Spreads ≤ 10%
-    var score = [c1,c2,c3,c4,c5,c6,c7].filter(function(x){return x===true;}).length;
+    var score = [c1,c2,c3,c4,c7].filter(function(x){return x===true;}).length;
 
     setStatus('synth-status', 'Done', 'ok');
 
@@ -4679,10 +4688,8 @@ async function runSynth(forceTicker) {
     html += critRow(2,'IV > 50% (High Vol — Fat Put Premiums)', c2, ivRank !== null ? fmt(ivRank,1) + '%' : 'N/A');
     html += critRow(3,'Duration ≥ 540 DTE (LEAPS-Length)', c3, dte + ' days');
     html += critRow(4,'Net Debit ≤ 5% (Put Funds the Call)', c4, netCostPct !== null ? fmt(Math.abs(netCostPct),2) + '%' : 'N/A');
-    html += critRow(5,'Call OI ≥ 500 (Liquidity)', c5, fmtK(slCall.oi));
-    html += critRow(6,'Put OI ≥ 500 (Liquidity)', c6, fmtK(slPut.oi));
-    html += critRow(7,'Both Spreads ≤ 10% (Tight)', c7, (callSpreadPct !== null ? fmt(callSpreadPct,1)+'%' : '—')+' / '+(putSpreadPct !== null ? fmt(putSpreadPct,1)+'%' : '—'));
-    html += '</div>' + scoreSummaryHtml(score,7) + '</div>';
+    html += critRow(5,'Both Spreads ≤ 10% (Tight)', c7, (callSpreadPct !== null ? fmt(callSpreadPct,1)+'%' : '—')+' / '+(putSpreadPct !== null ? fmt(putSpreadPct,1)+'%' : '—'));
+    html += '</div>' + scoreSummaryHtml(score,5) + '</div>';
 
     // ── Contextual suggestions ──
     var suggWarn = [], suggGood = [];
@@ -4702,9 +4709,6 @@ async function runSynth(forceTicker) {
     if (!c4 && netCostPct !== null) {
       suggWarn.push('💡 <strong>Net debit elevated:</strong> ' + fmt(Math.abs(netCostPct),2) + '% — above 5%. At ATM same-strike, high net debit means the call is much pricier than the put. This often improves during vol spikes when put premiums expand.');
     }
-    if (!c5 || !c6) {
-      suggWarn.push('💡 <strong>Liquidity concern:</strong> OI below 500 on one or both legs. Use limit orders at the mid and enter as a combo/spread order.');
-    }
     if (!c7) {
       suggWarn.push('💡 <strong>Wide spreads:</strong> One or both legs have spreads above 10%. Trade during high-liquidity hours (9:45–11am ET) and use limit orders.');
     }
@@ -4718,8 +4722,8 @@ async function runSynth(forceTicker) {
     if (beAboveCur !== null && Math.abs(beAboveCur) <= 3) {
       suggGood.push('✅ <strong>Tight breakeven:</strong> Only ' + fmt(Math.abs(beAboveCur),1) + '% from current price — very efficient entry.');
     }
-    if (score >= 6) {
-      suggGood.push('✅ <strong>' + (score === 7 ? 'All criteria met' : score + '/7 criteria met') + '</strong> — strong synthetic long setup. Enter as a combo order to avoid leg risk. Hedge later by selling OTM calls after vol spikes.');
+    if (score >= 4) {
+      suggGood.push('✅ <strong>' + (score === 5 ? 'All criteria met' : score + '/5 criteria met') + '</strong> — strong synthetic long setup. Enter as a combo order to avoid leg risk. Hedge later by selling OTM calls after vol spikes.');
     }
     var suggestions = suggWarn.concat(suggGood);
     if (suggestions.length > 0) {
@@ -4850,10 +4854,8 @@ async function runGut(forceTicker) {
     var c2 = ivRank !== null ? ivRank > 50 : null;
     var c3 = dte >= 540;
     var c4 = netCostPct !== null ? Math.abs(netCostPct) <= 5 : null;
-    var c5 = gsCall.oi !== null ? gsCall.oi >= 500 : null;
-    var c6 = gsPut.oi  !== null ? gsPut.oi  >= 500 : null;
     var c7 = (callSpreadPct !== null && putSpreadPct !== null) ? (callSpreadPct <= 10 && putSpreadPct <= 10) : null;
-    var score = [c1,c2,c3,c4,c5,c6,c7].filter(function(x){return x===true;}).length;
+    var score = [c1,c2,c3,c4,c7].filter(function(x){return x===true;}).length;
 
     setStatus('gut-status', 'Done', 'ok');
 
@@ -4959,10 +4961,8 @@ async function runGut(forceTicker) {
     html += critRow(2,'IV > 50% (High Vol — Fat Put Premiums)', c2, ivRank !== null ? fmt(ivRank,1) + '%' : 'N/A');
     html += critRow(3,'Duration ≥ 540 DTE (LEAPS-Length)', c3, dte + ' days');
     html += critRow(4,'Net Debit ≤ 5% (Put Funds the Call)', c4, netCostPct !== null ? fmt(Math.abs(netCostPct),2) + '%' : 'N/A');
-    html += critRow(5,'Call OI ≥ 500 (Liquidity)', c5, fmtK(gsCall.oi));
-    html += critRow(6,'Put OI ≥ 500 (Liquidity)', c6, fmtK(gsPut.oi));
-    html += critRow(7,'Both Spreads ≤ 10% (Tight)', c7, (callSpreadPct !== null ? fmt(callSpreadPct,1)+'%' : '—')+' / '+(putSpreadPct !== null ? fmt(putSpreadPct,1)+'%' : '—'));
-    html += '</div>' + scoreSummaryHtml(score,7) + '</div>';
+    html += critRow(5,'Both Spreads ≤ 10% (Tight)', c7, (callSpreadPct !== null ? fmt(callSpreadPct,1)+'%' : '—')+' / '+(putSpreadPct !== null ? fmt(putSpreadPct,1)+'%' : '—'));
+    html += '</div>' + scoreSummaryHtml(score,5) + '</div>';
 
     // Contextual suggestions
     var suggWarn = [], suggGood = [];
@@ -4982,9 +4982,6 @@ async function runGut(forceTicker) {
     if (!c4 && netCostPct !== null) {
       suggWarn.push('💡 <strong>Net debit elevated:</strong> ' + fmt(Math.abs(netCostPct),2) + '% — above 5%. The higher-strike put isn\'t generating enough credit. Consider waiting for vol expansion.');
     }
-    if (!c5 || !c6) {
-      suggWarn.push('💡 <strong>Liquidity concern:</strong> OI below 500 on one or both legs. Use limit orders at the mid and enter as a combo/spread order.');
-    }
     if (!c7) {
       suggWarn.push('💡 <strong>Wide spreads:</strong> One or both legs have spreads above 10%. Trade during high-liquidity hours (9:45–11am ET).');
     }
@@ -4998,8 +4995,8 @@ async function runGut(forceTicker) {
     if (beAboveCur !== null && Math.abs(beAboveCur) <= 3) {
       suggGood.push('✅ <strong>Tight breakeven:</strong> Only ' + fmt(Math.abs(beAboveCur),1) + '% from current price — very efficient entry.');
     }
-    if (score >= 6) {
-      suggGood.push('✅ <strong>' + (score === 7 ? 'All criteria met' : score + '/7 criteria met') + '</strong> — strong gut spread setup. Enter as a combo order to avoid leg risk.');
+    if (score >= 4) {
+      suggGood.push('✅ <strong>' + (score === 5 ? 'All criteria met' : score + '/5 criteria met') + '</strong> — strong gut spread setup. Enter as a combo order to avoid leg risk.');
     }
     var suggestions = suggWarn.concat(suggGood);
     if (suggestions.length > 0) {
@@ -5128,17 +5125,33 @@ async function runMsl(forceTicker) {
     var putCreditPct = (putSpreadCredit !== null && spreadWidth > 0) ? (putSpreadCredit / spreadWidth * 100) : null;
 
     // === Leg 3: Buy Deep ITM Call (~50/50 intrinsic/extrinsic) ===
-    var bestCallIdx = -1, bestRatioDiff = Infinity;
+    // Pass 1: find best 50/50 ratio diff. Pass 2: among strikes within 5pp of best, prefer highest OI.
+    var bestRatioDiff = Infinity;
     for (var ci = 0; ci < callChain.strike.length; ci++) {
-      if (callChain.strike[ci] >= pd.price) continue; // must be ITM
+      if (callChain.strike[ci] >= pd.price) continue;
       var cMid = callChain.mid ? callChain.mid[ci] : null;
       if (cMid === null || cMid <= 0) continue;
       var intrinsic = pd.price - callChain.strike[ci];
       var extrinsic = cMid - intrinsic;
-      if (extrinsic <= 0) continue; // all intrinsic, too deep
-      var ratio = intrinsic / cMid; // target 0.50
+      if (extrinsic <= 0) continue;
+      var ratio = intrinsic / cMid;
       var diff = Math.abs(ratio - 0.50);
-      if (diff < bestRatioDiff) { bestRatioDiff = diff; bestCallIdx = ci; }
+      if (diff < bestRatioDiff) bestRatioDiff = diff;
+    }
+    var bestCallIdx = -1, bestCallOI = -1;
+    for (var ci2 = 0; ci2 < callChain.strike.length; ci2++) {
+      if (callChain.strike[ci2] >= pd.price) continue;
+      var cMid2 = callChain.mid ? callChain.mid[ci2] : null;
+      if (cMid2 === null || cMid2 <= 0) continue;
+      var intr2 = pd.price - callChain.strike[ci2];
+      var extr2 = cMid2 - intr2;
+      if (extr2 <= 0) continue;
+      var ratio2 = intr2 / cMid2;
+      var diff2 = Math.abs(ratio2 - 0.50);
+      if (diff2 <= bestRatioDiff + 0.05) {
+        var oi2 = callChain.openInterest ? (callChain.openInterest[ci2] || 0) : 0;
+        if (oi2 > bestCallOI) { bestCallOI = oi2; bestCallIdx = ci2; }
+      }
     }
     if (bestCallIdx < 0) throw new Error('No suitable deep ITM call found with ~50/50 intrinsic/extrinsic.');
     var callStrike = callChain.strike[bestCallIdx];
@@ -5184,9 +5197,7 @@ async function runMsl(forceTicker) {
     var c3 = mslIVRank !== null ? mslIVRank > 50 : null;
     var c4 = dte >= 540;
     var c5 = netDebitPct !== null ? netDebitPct <= 33 : null;
-    var c6 = callOI !== null ? callOI >= 500 : null;
-    var c7 = soldPutOI !== null ? soldPutOI >= 500 : null;
-    var score = [c1,c2,c3,c4,c5,c6,c7].filter(function(x){return x===true;}).length;
+    var score = [c1,c2,c3,c4,c5].filter(function(x){return x===true;}).length;
 
     setStatus('msl-status', 'Done', 'ok');
 
@@ -5479,9 +5490,7 @@ async function runMsl(forceTicker) {
     html += critRow(3,'IV Rank > 50% (Fat Put Premiums)', c3, mslIVRank !== null ? fmt(mslIVRank,1) + '%' : 'N/A');
     html += critRow(4,'Duration ≥ 540 DTE (LEAPS-Length)', c4, dte + ' days');
     html += critRow(5,'Net Debit ≤ 33% of Price (~1/3 Rule)', c5, netDebitPct !== null ? fmt(netDebitPct,1) + '%' : 'N/A');
-    html += critRow(6,'Call OI ≥ 500 (Liquidity)', c6, fmtK(callOI));
-    html += critRow(7,'Sold Put OI ≥ 500 (Liquidity)', c7, fmtK(soldPutOI));
-    html += '</div>' + scoreSummaryHtml(score,7) + '</div>';
+    html += '</div>' + scoreSummaryHtml(score,5) + '</div>';
 
     // Contextual suggestions
     var suggWarn = [], suggGood = [];
@@ -5509,17 +5518,14 @@ async function runMsl(forceTicker) {
     } else if (c5 && !c5Ideal && netDebitPct !== null) {
       suggWarn.push('⚠️ <strong>Net debit elevated:</strong> ' + fmt(netDebitPct,1) + '% of price — acceptable but above Laura\'s ~1/3 rule (33%) ideal zone.');
     }
-    if (!c6 || !c7) {
-      suggWarn.push('💡 <strong>Liquidity concern:</strong> OI below 500 on one or more legs. Use limit orders at the mid and consider entering as a multi-leg order.');
-    }
     if (c2 && putCreditPct !== null && putCreditPct >= 50) {
       suggGood.push('✅ <strong>Excellent put credit:</strong> ' + fmt(putCreditPct,1) + '% of spread width — the bull put spread more than pays for itself.');
     }
     if (c5 && netDebitPct !== null && netDebitPct <= 20) {
       suggGood.push('✅ <strong>Low net debit:</strong> Only ' + fmt(netDebitPct,1) + '% of price — well under Laura\'s 1/3 threshold. Capital-efficient entry.');
     }
-    if (score >= 6) {
-      suggGood.push('✅ <strong>' + (score === 7 ? 'All criteria met' : score + '/7 criteria met') + '</strong> — strong MSL setup. Enter as a multi-leg order to avoid leg risk.');
+    if (score >= 4) {
+      suggGood.push('✅ <strong>' + (score === 5 ? 'All criteria met' : score + '/5 criteria met') + '</strong> — strong MSL setup. Enter as a multi-leg order to avoid leg risk.');
     }
     // Laura's MSL goal #1: risk should be ~half of SL
     if (riskReductionPct !== null && riskReductionPct >= 45) {
