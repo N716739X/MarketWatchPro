@@ -5102,14 +5102,21 @@ async function runMsl(forceTicker) {
         '<div class="ts-val ' + cls + '">' + val + '</div>' +
         (note ? '<div class="ts-note">' + note + '</div>' : '') + '</div>';
     }
-    // MSL margin = Max Risk (fully defined: spread width + net debit)
-    var mslMargin = maxRisk;
-    // Equivalent SL margin for comparison: 50% of sold put strike + net cost of (call - sold put)
-    // Note: SL net cost = callMid - soldPutMid (no protective put leg)
-    var slNetCost = (callMid !== null && soldPutMid !== null) ? callMid - soldPutMid : null;
-    var slMargin  = (soldPutStrike && slNetCost !== null) ? (soldPutStrike * 0.50 + slNetCost) * 100 : null;
-    var savingsPct = (slMargin && mslMargin) ? (1 - mslMargin / slMargin) * 100 : null;
-    var savingsDollars = (slMargin && mslMargin) ? slMargin - mslMargin : null;
+    // MSL capital requirements (3 distinct numbers per broker reality):
+    //   1. Margin = bull put spread width × 100 (broker-locked margin only)
+    //   2. Total Outlay = spread margin + call premium (full cash + margin tied up)
+    //   3. Max Risk = spread width + net debit (worst-case loss; credit already received)
+    var mslSpreadMargin = (soldPutStrike && boughtPutStrike) ? (soldPutStrike - boughtPutStrike) * 100 : null;
+    var mslTotalOutlay  = (mslSpreadMargin !== null && callMid !== null) ? mslSpreadMargin + (callMid * 100) : null;
+    var mslMaxRisk      = maxRisk;
+
+    // Equivalent SL capital comparison: use Laura's Reg T formula
+    // SL = sell ATM put + buy ATM call (same strike), net debit = callMid - soldPutMid
+    // SL margin = 50% of put strike + net debit (Reg T short-put margin + call cash debit)
+    var slNetCost  = (callMid !== null && soldPutMid !== null) ? callMid - soldPutMid : null;
+    var slCapital  = (soldPutStrike && slNetCost !== null) ? (soldPutStrike * 0.50 + slNetCost) * 100 : null;
+    var savingsPct = (slCapital && mslTotalOutlay) ? (1 - mslTotalOutlay / slCapital) * 100 : null;
+    var savingsDollars = (slCapital && mslTotalOutlay) ? slCapital - mslTotalOutlay : null;
     html += '<div class="trade-summary"><h4>Trade Summary — 1 Contract per Leg</h4><div class="trade-summary-grid">' +
       tsItem('Net Debit', netDebit100 !== null ? '$' + fmt(netDebit100,2) : '—', 'ts-neutral', 'Call cost − put credit') +
       tsItem('Buy Call (Deep ITM)', callCost100 ? '$' + fmt(callCost100,2) : '—', 'ts-loss', fmtDollar(callStrike) + ' — ' + fmt(callRatio*100,0) + '/' + fmt((1-callRatio)*100,0) + ' I/E') +
@@ -5117,18 +5124,19 @@ async function runMsl(forceTicker) {
       tsItem('Buy Put (Lower)', boughtPutMid ? '$' + fmt(boughtPutMid*100,2) : '—', 'ts-loss', fmtDollar(boughtPutStrike) + ' (protection)') +
       tsItem('Put Spread Credit', putCredit100 !== null ? '$' + fmt(putCredit100,2) : '—', 'ts-gain', fmt(putCreditPct,1) + '% of width') +
       tsItem('Max Gain', '∞', 'ts-gain', 'Unlimited above breakeven') +
-      tsItem('Max Risk', maxRisk ? '$' + fmt(maxRisk,2) : '—', 'ts-loss', 'Spread width + net debit') +
-      tsItem('Margin Req.', mslMargin ? '$' + fmt(mslMargin,0) : '—', 'ts-gain', '= Max Risk (fully defined)') +
+      tsItem('Margin Req.', mslSpreadMargin ? '$' + fmt(mslSpreadMargin,0) : '—', 'ts-gain', 'Spread width only') +
+      tsItem('Total Outlay', mslTotalOutlay ? '$' + fmt(mslTotalOutlay,0) : '—', 'ts-neutral', 'Margin + call debit') +
+      tsItem('Max Risk', mslMaxRisk ? '$' + fmt(mslMaxRisk,2) : '—', 'ts-loss', 'Worst-case loss') +
       tsItem('Breakeven', breakeven ? fmtDollar(breakeven) : '—', 'ts-neutral', beAboveCur !== null ? fmt(beAboveCur,1) + '% away' : 'Call strike + net debit') +
     '</div></div>';
 
-    // MSL vs SL comparison chip
-    if (slMargin && mslMargin && savingsPct !== null && savingsPct > 0) {
+    // MSL vs SL capital efficiency comparison (uses total outlay for fair comparison)
+    if (slCapital && mslTotalOutlay && savingsPct !== null && savingsPct > 0) {
       html += '<div class="sl-comparison">' +
         '<div class="slc-title">💰 Capital Efficiency vs. Synthetic Long</div>' +
         '<div class="slc-row">' +
-          '<div class="slc-cell"><div class="slc-label">MSL Margin</div><div class="slc-val ts-gain">$' + fmt(mslMargin,0) + '</div></div>' +
-          '<div class="slc-cell"><div class="slc-label">SL Margin (50% strike + debit)</div><div class="slc-val ts-loss">$' + fmt(slMargin,0) + '</div></div>' +
+          '<div class="slc-cell"><div class="slc-label">MSL Total Outlay</div><div class="slc-val ts-gain">$' + fmt(mslTotalOutlay,0) + '</div></div>' +
+          '<div class="slc-cell"><div class="slc-label">SL Total (50% strike + debit)</div><div class="slc-val ts-loss">$' + fmt(slCapital,0) + '</div></div>' +
           '<div class="slc-cell"><div class="slc-label">You Save</div><div class="slc-val ts-gain">$' + fmt(savingsDollars,0) + ' (' + fmt(savingsPct,0) + '%)</div></div>' +
         '</div>' +
       '</div>';
