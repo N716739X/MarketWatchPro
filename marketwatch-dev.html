@@ -5341,7 +5341,17 @@ async function runMsl(forceTicker) {
             (beDeltaDollars !== null) ? (beDeltaDollars >= 0 ? '+' : '−') + fmt(Math.abs(beDeltaPct),1) + '%' : '—',
             beWithin10 ? 'delta-better' : 'delta-worse'
           ) +
-          // Row 3: Margin Requirement — MSL almost always lower (spread width vs 50% Reg T) = green
+          // Row 3: Max Risk — the MSL's main edge. MSL almost always much lower = green
+          slcRow(
+            'Max Risk',
+            'Worst-case loss',
+            slMaxRisk ? '$' + fmt(slMaxRisk,0) : '—',
+            mslMaxRisk ? '$' + fmt(mslMaxRisk,0) : '—',
+            (riskReductionPct !== null && riskReductionPct > 0) ? 'msl-gain' : 'msl-loss',
+            (riskReductionPct !== null) ? '−' + fmt(riskReductionPct,0) + '%' : '—',
+            riskHalfGoal ? 'delta-better' : (riskReductionPct > 0 ? 'delta-better' : 'delta-worse')
+          ) +
+          // Row 4: Margin Requirement — MSL almost always lower (spread width vs 50% Reg T) = green
           slcRow(
             'Margin Req.',
             'Broker hold',
@@ -5351,7 +5361,7 @@ async function runMsl(forceTicker) {
             (marginSavingsPct !== null) ? (marginSavingsPct > 0 ? '−' : '+') + fmt(Math.abs(marginSavingsPct),0) + '%' : '—',
             marginSavingsPct > 0 ? 'delta-better' : 'delta-worse'
           ) +
-          // Row 4: Total Outlay (margin + net debit) — green if MSL ties up less capital
+          // Row 5: Total Outlay (margin + net debit) — green if MSL ties up less capital
           slcRow(
             'Total Outlay',
             'Margin + net debit',
@@ -5360,16 +5370,6 @@ async function runMsl(forceTicker) {
             (savingsPct !== null && savingsPct > 0) ? 'msl-gain' : 'msl-loss',
             (savingsPct !== null) ? (savingsPct > 0 ? '−' : '+') + fmt(Math.abs(savingsPct),0) + '%' : '—',
             savingsPct > 0 ? 'delta-better' : 'delta-worse'
-          ) +
-          // Row 5: Max Risk — the MSL's main edge. MSL almost always much lower = green
-          slcRow(
-            'Max Risk',
-            'Worst-case loss',
-            slMaxRisk ? '$' + fmt(slMaxRisk,0) : '—',
-            mslMaxRisk ? '$' + fmt(mslMaxRisk,0) : '—',
-            (riskReductionPct !== null && riskReductionPct > 0) ? 'msl-gain' : 'msl-loss',
-            (riskReductionPct !== null) ? '−' + fmt(riskReductionPct,0) + '%' : '—',
-            riskHalfGoal ? 'delta-better' : (riskReductionPct > 0 ? 'delta-better' : 'delta-worse')
           ) +
         '</div>' +
       '</div>';
