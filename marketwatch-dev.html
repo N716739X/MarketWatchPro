@@ -5368,7 +5368,7 @@ async function runMsl(forceTicker) {
             slMaxRisk ? '$' + fmt(slMaxRisk,0) : '—',
             mslMaxRisk ? '$' + fmt(mslMaxRisk,0) : '—',
             (riskReductionPct !== null && riskReductionPct > 0) ? 'msl-gain' : 'msl-loss',
-            (riskReductionPct !== null) ? '−' + fmt(riskReductionPct,0) + '%' + (riskHalfGoal ? ' ✨' : '') : '—',
+            (riskReductionPct !== null) ? '−' + fmt(riskReductionPct,0) + '%' : '—',
             riskHalfGoal ? 'delta-better' : (riskReductionPct > 0 ? 'delta-better' : 'delta-worse')
           ) +
         '</div>' +
