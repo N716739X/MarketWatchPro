@@ -745,6 +745,9 @@ header {
 .badge-fail { width:20px;height:20px;border-radius:50%;background:var(--fail);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex-shrink:0; }
 .badge-na   { width:20px;height:20px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-muted);flex-shrink:0; }
 .rank-pip { font-size:9px;background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:1px 4px;color:var(--text-muted);flex-shrink:0; }
+.wt-pill { display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;margin-left:6px;vertical-align:middle;letter-spacing:0.3px;cursor:help; }
+.wt-pill.wt-t1 { background:rgba(155,89,182,0.18);color:#bd8ddd;border:1px solid rgba(155,89,182,0.4); }
+.wt-pill.wt-t2 { background:rgba(120,120,140,0.15);color:#a0a0b0;border:1px solid rgba(120,120,140,0.3); }
 .crit-label { font-weight:600;flex:1;font-size:12px; }
 .crit-val   { font-size:11px;color:var(--text-muted); }
 .score-summary {
@@ -5504,14 +5507,19 @@ async function runMsl(forceTicker) {
       html += '</tbody></table></div></div>';
     }
 
-    // Scorecard
+    // Scorecard — ordered by weight: Tier-1 gates (2pt) first, then Tier-2 quality (1pt), then Tier-3 formality (1pt)
+    var pPill2 = '<span class="wt-pill wt-t1" title="Tier-1 thesis gate — 2 points">+2</span>';
+    var pPill1 = '<span class="wt-pill wt-t2" title="Quality criterion — 1 point">+1</span>';
     html += '<div class="scorecard"><h3>MSL — Modified Synthetic Long — Score</h3><div class="criteria-list">';
-    html += critRow(1,'MR · 4H (Oversold — Buy the Dip)', c1, mrZone(pd.meanRev).label);
-    html += critRow(2,'Put Credit ≥ 42% of Width (≥50% = Ideal)', c2, putCreditPct !== null ? fmt(putCreditPct,1) + '%' + (c2Ideal ? ' ✨ IDEAL' : '') : 'N/A');
-    html += critRow(3,'Call Intrinsic/Extrinsic 40–60% (45–55% = Ideal)', c3, (callRatio !== null && !isNaN(callRatio)) ? fmt(callRatio*100,0) + '/' + fmt((1-callRatio)*100,0) + (c3Ideal ? ' ✨ IDEAL' : '') : 'N/A');
-    html += critRow(4,'Duration ≥ 365 DTE (LEAPS — ≥540 = Ideal)', c4, dte + ' days' + (c4Ideal ? ' ✨ IDEAL' : ''));
-    html += critRow(5,'Net Debit ≤ 33% of Price (~1/3 Rule)', c5, netDebitPct !== null ? fmt(netDebitPct,1) + '%' : 'N/A');
-    html += critRow(6,'MSL Risk ≤ 60% of SL Risk (≤50% = Ideal)', c8, mslRiskRatio !== null ? fmt(mslRiskRatio,0) + '% of SL' + (c8Ideal ? ' ✨ IDEAL' : '') : 'N/A');
+    // Tier 1 — Thesis gates (2 pts each, must all pass)
+    html += critRow(1,'MR · 4H (Oversold — Buy the Dip) ' + pPill2, c1, mrZone(pd.meanRev).label);
+    html += critRow(2,'Put Credit ≥ 42% of Width (≥50% = Ideal) ' + pPill2, c2, putCreditPct !== null ? fmt(putCreditPct,1) + '%' + (c2Ideal ? ' ✨ IDEAL' : '') : 'N/A');
+    html += critRow(3,'MSL Risk ≤ 60% of SL Risk (≤50% = Ideal) ' + pPill2, c8, mslRiskRatio !== null ? fmt(mslRiskRatio,0) + '% of SL' + (c8Ideal ? ' ✨ IDEAL' : '') : 'N/A');
+    // Tier 2 — Quality (1 pt each)
+    html += critRow(4,'Call Intrinsic/Extrinsic 40–60% (45–55% = Ideal) ' + pPill1, c3, (callRatio !== null && !isNaN(callRatio)) ? fmt(callRatio*100,0) + '/' + fmt((1-callRatio)*100,0) + (c3Ideal ? ' ✨ IDEAL' : '') : 'N/A');
+    html += critRow(5,'Net Debit ≤ 33% of Price (~1/3 Rule) ' + pPill1, c5, netDebitPct !== null ? fmt(netDebitPct,1) + '%' : 'N/A');
+    // Tier 3 — Formality (1 pt)
+    html += critRow(6,'Duration ≥ 365 DTE (LEAPS — ≥540 = Ideal) ' + pPill1, c4, dte + ' days' + (c4Ideal ? ' ✨ IDEAL' : ''));
     // MSL uses weighted score (0-9) + thesis gate for the summary band
     var mslWeighted = (c1 === true ? 2 : 0) + (c2 === true ? 2 : 0) + (c8 === true ? 2 : 0) +
                       (c3 === true ? 1 : 0) + (c5 === true ? 1 : 0) + (c4 === true ? 1 : 0);
