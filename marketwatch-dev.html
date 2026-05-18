@@ -448,6 +448,23 @@ header {
 .oi-low  { color: var(--fail); font-weight: 700; }
 .oi-mid  { color: #FFB020; font-weight: 600; }
 .oi-high { color: var(--pass); font-weight: 600; }
+/* Earnings risk warning banner — shown on cards where earnings fall before expiry */
+.earn-warn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0 10px 6px;
+  padding: 3px 8px;
+  background: rgba(255, 64, 64, 0.18);
+  border: 1px solid var(--fail);
+  border-radius: 4px;
+  color: var(--fail);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
 
 /* 52W Range */
 .range-row {
@@ -2880,6 +2897,9 @@ function buildColCard(ticker, d, strategy, rank, isBestTrade) {
         '<div class="range-dot" style="left:' + rangePos + '%"></div>' +
       '</div>' +
     '</div>' +
+    (d.earningsRisk && EARNINGS[ticker]
+      ? '<div class="earn-warn" title="Earnings ' + EARNINGS[ticker] + ' falls before expiry \u2014 elevated assignment / IV-crush risk">⚠️ Earnings ' + EARNINGS[ticker] + ' before expiry</div>'
+      : '') +
     '<div class="criteria-row criteria-' + totalCriteria + '">' + criteriaHtml + '</div>' +
     '<div style="display:flex;align-items:center;gap:6px;padding:2px 10px;font-size:9px;color:var(--text-muted);min-height:20px;">' +
       (d.atrSeries && d.atrSeries.length >= 3
