@@ -3655,8 +3655,12 @@ async function runMslPhase3(ticker) {
     // Tier 3 (formality, 1 pt): c4 DTE
     d.mslWeighted = (d.msl_c1 === true ? 2 : 0) + (d.msl_c2 === true ? 2 : 0) + (d.msl_c8 === true ? 2 : 0) +
                     (d.msl_c3 === true ? 1 : 0) + (d.msl_c5 === true ? 1 : 0) + (d.msl_c4 === true ? 1 : 0);
-    // Thesis gate: all 3 Tier-1 criteria must pass; otherwise badge → "WAIT FOR SETUP"
-    d.mslT1Pass = (d.msl_c1 === true && d.msl_c2 === true && d.msl_c8 === true);
+    // Liquidity hard-reject: any selected leg below the OI floor → untradeable, fails Tier-1
+    var _mslOiFloorCall = 10, _mslOiFloorPut = 25;
+    d.mslOiHardReject = (callOI !== null && callOI < _mslOiFloorCall) ||
+                        (soldPutOI !== null && soldPutOI < _mslOiFloorPut);
+    // Thesis gate: all 3 Tier-1 criteria must pass AND legs must be tradeable; otherwise badge → "WAIT FOR SETUP"
+    d.mslT1Pass = (d.msl_c1 === true && d.msl_c2 === true && d.msl_c8 === true && !d.mslOiHardReject);
     d.phase = 3;
     renderColumns();
     renderMiniRankings('msl');
@@ -5511,7 +5515,26 @@ async function runMsl(forceTicker) {
     // MSL uses weighted score (0-9) + thesis gate for the summary band
     var mslWeighted = (c1 === true ? 2 : 0) + (c2 === true ? 2 : 0) + (c8 === true ? 2 : 0) +
                       (c3 === true ? 1 : 0) + (c5 === true ? 1 : 0) + (c4 === true ? 1 : 0);
-    var t1Pass = (c1 === true && c2 === true && c8 === true);
+    // Liquidity hard-reject thresholds — below these, no real market exists.
+    // Deep ITM calls naturally have thinner books (acts like stock on a limit), so allow looser threshold.
+    // ATM puts on a spread leg need real OI — slippage on entry AND exit kills the trade math.
+    var MSL_OI_FLOOR_CALL = 10;
+    var MSL_OI_FLOOR_PUT  = 25;
+    var oiHardReject = false;
+    var oiRejReasons = [];
+    if (callOI !== null && callOI < MSL_OI_FLOOR_CALL) {
+      oiHardReject = true;
+      oiRejReasons.push('ITM call OI ' + callOI + ' (<' + MSL_OI_FLOOR_CALL + ')');
+    }
+    if (soldPutOI !== null && soldPutOI < MSL_OI_FLOOR_PUT) {
+      oiHardReject = true;
+      oiRejReasons.push('sold put OI ' + soldPutOI + ' (<' + MSL_OI_FLOOR_PUT + ')');
+    }
+    if (boughtPutOI !== null && boughtPutOI < MSL_OI_FLOOR_PUT) {
+      oiHardReject = true;
+      oiRejReasons.push('bought put OI ' + boughtPutOI + ' (<' + MSL_OI_FLOOR_PUT + ')');
+    }
+    var t1Pass = (c1 === true && c2 === true && c8 === true) && !oiHardReject;
     var sumCls, sumLabel;
     if (!t1Pass) {
       sumCls = 'wait';
@@ -5520,6 +5543,7 @@ async function runMsl(forceTicker) {
       if (c1 !== true) failed.push('MR Oversold');
       if (c2 !== true) failed.push('Put Credit ≥42%');
       if (c8 !== true) failed.push('Risk Reduction');
+      if (oiHardReject) failed.push('Untradeable Liquidity');
       sumLabel = '⏳ Wait for Setup — missing: ' + failed.join(', ');
     } else if (mslWeighted >= 7) {
       sumCls = 'strong';
@@ -5578,20 +5602,30 @@ async function runMsl(forceTicker) {
     if (c5 && netDebitPct !== null && netDebitPct <= 20) {
       suggGood.push('✅ <strong>Low net debit:</strong> Only ' + fmt(netDebitPct,1) + '% of price — well under Laura\'s 1/3 threshold. Capital-efficient entry.');
     }
-    // Liquidity warnings — chosen strikes' OI below the 500 threshold (informational, not scored)
-    if (callOI !== null && callOI < 500) {
+    // Liquidity — HARD REJECT below floor (no real market), WARN below 500 (slippage risk)
+    if (callOI !== null && callOI < MSL_OI_FLOOR_CALL) {
+      suggWarn.push('❌ <strong>Untradeable ITM call:</strong> Selected $' + fmt(callStrike,2) + ' call has OI of only ' + oiSpan(callOI) + ' — below the ' + MSL_OI_FLOOR_CALL + '-contract floor. No real market exists; mid-quote is stale. Pick a different ITM strike.');
+    } else if (callOI !== null && callOI < 500) {
       suggWarn.push('⚠️ <strong>Low call liquidity:</strong> Selected $' + fmt(callStrike,2) + ' deep ITM call has OI of ' + oiSpan(callOI) + ' — below the 500 threshold. Wider bid/ask and slippage are likely. Use a limit order at the mid, and consider checking the next nearest 50/50 strike if fills are poor.');
     }
-    if (soldPutOI !== null && soldPutOI < 500) {
+    if (soldPutOI !== null && soldPutOI < MSL_OI_FLOOR_PUT) {
+      suggWarn.push('❌ <strong>Untradeable sold put:</strong> Selected $' + fmt(soldPutStrike,2) + ' sold put has OI of only ' + oiSpan(soldPutOI) + ' — below the ' + MSL_OI_FLOOR_PUT + '-contract floor. Spread leg has no real market; entry and exit will both slip badly.');
+    } else if (soldPutOI !== null && soldPutOI < 500) {
       suggWarn.push('⚠️ <strong>Low sold-put liquidity:</strong> Selected $' + fmt(soldPutStrike,2) + ' sold put has OI of ' + oiSpan(soldPutOI) + ' — below the 500 threshold. Wider bid/ask and slippage are likely on the spread leg. Use a limit order at the mid.');
     }
-    if (boughtPutOI !== null && boughtPutOI < 500) {
+    if (boughtPutOI !== null && boughtPutOI < MSL_OI_FLOOR_PUT) {
+      suggWarn.push('❌ <strong>Untradeable bought put:</strong> Selected $' + fmt(boughtPutStrike,2) + ' bought put has OI of only ' + oiSpan(boughtPutOI) + ' — below the ' + MSL_OI_FLOOR_PUT + '-contract floor. Long leg of the spread has no real market; the protective wing is unreliable.');
+    } else if (boughtPutOI !== null && boughtPutOI < 500) {
       suggWarn.push('⚠️ <strong>Low bought-put liquidity:</strong> Selected $' + fmt(boughtPutStrike,2) + ' bought put has OI of ' + oiSpan(boughtPutOI) + ' — below the 500 threshold. Use a limit order at the mid for the bull put spread.');
     }
     if (t1Pass && mslWeighted >= 7) {
       suggGood.push('✅ <strong>' + (mslWeighted === 9 ? 'All Tier-1 + quality criteria met' : 'Tier-1 thesis confirmed (' + mslWeighted + '/9)') + '</strong> — strong MSL setup. Enter as a multi-leg order to avoid leg risk.');
     } else if (!t1Pass) {
-      suggWarn.push('⏳ <strong>Wait for setup:</strong> One or more Tier-1 thesis gates (MR Oversold · Put Credit ≥42% · Risk ≤60% of SL) failed. Quality criteria can\'t compensate for a missing thesis — Laura\'s MSL is a mean-reversion play with strict risk math.');
+      if (oiHardReject) {
+        suggWarn.push('⏳ <strong>Wait for setup:</strong> Strike liquidity is too thin to trade (' + oiRejReasons.join(', ') + '). MSL math assumes mid-quote fills — when OI is this low, the quote is stale and the spread won\'t fill at the price the analyzer shows.');
+      } else {
+        suggWarn.push('⏳ <strong>Wait for setup:</strong> One or more Tier-1 thesis gates (MR Oversold · Put Credit ≥42% · Risk ≤60% of SL) failed. Quality criteria can\'t compensate for a missing thesis — Laura\'s MSL is a mean-reversion play with strict risk math.');
+      }
     }
     // Laura's MSL goal #1: risk should be ~half of SL
     if (riskReductionPct !== null && riskReductionPct >= 45) {
