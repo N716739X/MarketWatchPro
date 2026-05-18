@@ -2460,7 +2460,20 @@ async function fetchTD(endpoint, params) {
 // ═══════════════════════════════════════════════════════
 // MARKETDATA CACHE (15-minute TTL in localStorage)
 // ═══════════════════════════════════════════════════════
-var MD_CACHE_TTL = 15 * 60 * 1000; // 15 minutes in ms
+var MD_CACHE_TTL = 15 * 60 * 1000;             // 15 minutes (default — quotes etc.)
+var MD_CACHE_TTL_CHAIN = 4 * 60 * 60 * 1000;   // 4 hours (option chains — slow-changing)
+var MD_CACHE_TTL_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours (expiration lists rarely change)
+var MD_CACHE_TTL_STALE_ON_QUOTA = 48 * 60 * 60 * 1000; // serve stale up to 48hr when API quota hit
+
+// In-flight request dedup map — prevents parallel callers from making N duplicate API calls
+// for the same (path, params) before any of them populate the cache.
+var _mdInflight = {};
+
+function mdTTLFor(path) {
+  if (path && path.indexOf('options/chain/') === 0) return MD_CACHE_TTL_CHAIN;
+  if (path && path.indexOf('options/expirations/') === 0) return MD_CACHE_TTL_EXPIRY;
+  return MD_CACHE_TTL;
+}
 
 function mdCacheKey(path, params) {
   var key = 'owp_md_' + path;
@@ -2468,12 +2481,24 @@ function mdCacheKey(path, params) {
   return key;
 }
 
-function mdCacheGet(key) {
+function mdCacheGet(key, ttl) {
+  if (ttl === undefined) ttl = MD_CACHE_TTL;
   try {
     var raw = localStorage.getItem(key);
     if (!raw) return null;
     var entry = JSON.parse(raw);
-    if (Date.now() - entry.ts > MD_CACHE_TTL) { localStorage.removeItem(key); return null; }
+    if (Date.now() - entry.ts > ttl) return null; // expired — do NOT delete (stale-on-quota may need it)
+    return entry.data;
+  } catch(e) { return null; }
+}
+
+// Returns cached entry regardless of staleness (up to maxStale). Used as 429/5xx fallback.
+function mdCacheGetStale(key, maxStale) {
+  try {
+    var raw = localStorage.getItem(key);
+    if (!raw) return null;
+    var entry = JSON.parse(raw);
+    if (Date.now() - entry.ts > maxStale) { localStorage.removeItem(key); return null; }
     return entry.data;
   } catch(e) { return null; }
 }
@@ -2491,43 +2516,61 @@ function clearMDCache() {
 }
 
 async function fetchMD(path, params) {
-  // Check cache first
   var cacheKey = mdCacheKey(path, params);
-  var cached = mdCacheGet(cacheKey);
+  var ttl = mdTTLFor(path);
+
+  // 1. Fresh cache hit
+  var cached = mdCacheGet(cacheKey, ttl);
   if (cached) return cached;
 
-  // Symbol goes IN the path: options/expirations/TSLA/
-  // Worker BASE = https://api.marketdata.app/v1, so no /v1/ prefix here
-  var url = new URL(CF_PROXY);
-  url.searchParams.set('path', path);
-  if (params) {
-    Object.keys(params).forEach(function(k) { url.searchParams.set(k, params[k]); });
-  }
-  var headers = _authToken ? { 'Authorization': 'Bearer ' + _authToken } : {};
-  var r = await fetch(url.toString(), { headers: headers });
-  if (checkSessionKicked(r)) throw new Error('session-kicked');
-  if (!r.ok) {
-    var errText = await r.text();
-    // 404 with no_data = ticker has no options chain (e.g. ADRs, low-volume OTC)
-    // Treat as empty chain rather than surfacing an error banner
-    if (r.status === 404 && errText.indexOf('no_data') !== -1) {
-      var emptyChain = { s: 'no_data', optionSymbol: [], strike: [], bid: [], ask: [], mid: [], delta: [], openInterest: [], expiration: [] };
-      mdCacheSet(cacheKey, emptyChain);
-      return emptyChain;
-    }
-    throw new Error('MarketData HTTP ' + r.status + ': ' + errText);
-  }
-  var data = await r.json();
-  if (data.s === 'no_data') {
-    // Same treatment for 200 OK with no_data payload
-    var empty = { s: 'no_data', optionSymbol: [], strike: [], bid: [], ask: [], mid: [], delta: [], openInterest: [], expiration: [] };
-    mdCacheSet(cacheKey, empty);
-    return empty;
-  }
+  // 2. In-flight dedup — if a parallel caller is already fetching this same key,
+  //    piggyback on their promise so we make ONE API call instead of N.
+  if (_mdInflight[cacheKey]) return _mdInflight[cacheKey];
 
-  // Store in cache
-  mdCacheSet(cacheKey, data);
-  return data;
+  // 3. Build and dispatch the network request, register as in-flight
+  var fetchPromise = (async function() {
+    try {
+      // Symbol goes IN the path: options/expirations/TSLA/
+      // Worker BASE = https://api.marketdata.app/v1, so no /v1/ prefix here
+      var url = new URL(CF_PROXY);
+      url.searchParams.set('path', path);
+      if (params) {
+        Object.keys(params).forEach(function(k) { url.searchParams.set(k, params[k]); });
+      }
+      var headers = _authToken ? { 'Authorization': 'Bearer ' + _authToken } : {};
+      var r = await fetch(url.toString(), { headers: headers });
+      if (checkSessionKicked(r)) throw new Error('session-kicked');
+      if (!r.ok) {
+        var errText = await r.text();
+        // 404 with no_data = ticker has no options chain (e.g. ADRs, low-volume OTC)
+        if (r.status === 404 && errText.indexOf('no_data') !== -1) {
+          var emptyChain = { s: 'no_data', optionSymbol: [], strike: [], bid: [], ask: [], mid: [], delta: [], openInterest: [], expiration: [] };
+          mdCacheSet(cacheKey, emptyChain);
+          return emptyChain;
+        }
+        // 429 quota or 5xx — try stale cache fallback before failing
+        if (r.status === 429 || (r.status >= 500 && r.status < 600)) {
+          var stale = mdCacheGetStale(cacheKey, MD_CACHE_TTL_STALE_ON_QUOTA);
+          if (stale) return stale;
+        }
+        throw new Error('MarketData HTTP ' + r.status + ': ' + errText);
+      }
+      var data = await r.json();
+      if (data.s === 'no_data') {
+        var empty = { s: 'no_data', optionSymbol: [], strike: [], bid: [], ask: [], mid: [], delta: [], openInterest: [], expiration: [] };
+        mdCacheSet(cacheKey, empty);
+        return empty;
+      }
+      mdCacheSet(cacheKey, data);
+      return data;
+    } finally {
+      // Always clear the in-flight slot (success or error) so future callers can retry
+      delete _mdInflight[cacheKey];
+    }
+  })();
+
+  _mdInflight[cacheKey] = fetchPromise;
+  return fetchPromise;
 }
 
 async function fetchPriceData(ticker, tf) {
