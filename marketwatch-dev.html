@@ -2593,19 +2593,26 @@ async function fetchATRSeries(ticker) {
 async function fetchExpirations(ticker) {
   var data = await fetchMD('options/expirations/' + ticker + '/');
   var raw = data.expirations || [];
-  // Normalize: some APIs report monthly expiry as Thursday instead of Friday.
-  // Shift Thu→Fri so dates match broker displays.
-  return raw.map(function(d) {
-    var dt = new Date(d + 'T12:00:00');
-    if (dt.getDay() === 4) { // Thursday
-      dt.setDate(dt.getDate() + 1);
-      var y = dt.getFullYear();
-      var m = ('0' + (dt.getMonth() + 1)).slice(-2);
-      var dd = ('0' + dt.getDate()).slice(-2);
-      return y + '-' + m + '-' + dd;
-    }
-    return d;
-  });
+  // Return raw API expirations — must match what the chain endpoint expects.
+  // MarketData.app stores monthly expirations on Thursday (settlement date); we used to
+  // shift Thu→Fri for cosmetics but that caused chain requests to 404. Keep raw dates;
+  // display layer can call expiryDisplay() to format for users if a Friday label is desired.
+  return raw;
+}
+
+// Convert an API expiration date (sometimes a Thursday) to its broker-display Friday.
+// Use this ONLY for user-facing labels — never for API requests.
+function expiryDisplay(d) {
+  if (!d) return d;
+  var dt = new Date(d + 'T12:00:00');
+  if (dt.getDay() === 4) {
+    dt.setDate(dt.getDate() + 1);
+    var y = dt.getFullYear();
+    var m = ('0' + (dt.getMonth() + 1)).slice(-2);
+    var dd = ('0' + dt.getDate()).slice(-2);
+    return y + '-' + m + '-' + dd;
+  }
+  return d;
 }
 
 async function fetchChain(ticker, expiration, side) {
@@ -2849,7 +2856,7 @@ function buildColCard(ticker, d, strategy, rank, isBestTrade) {
     '<div class="card-header">' +
       '<div>' +
         '<div class="card-ticker">' + (isBestTrade ? '<span class="top3-star">★</span>' : '') + ticker + '</div>' +
-        '<div class="card-name" style="font-size:9px;color:var(--text-muted)">' + (strategy.toUpperCase()) + (d.expiry ? ' · ' + d.expiry : '') + '</div>' +
+        '<div class="card-name" style="font-size:9px;color:var(--text-muted)">' + (strategy.toUpperCase()) + (d.expiry ? ' · ' + expiryDisplay(d.expiry) : '') + '</div>' +
       '</div>' +
       '<div class="grade-box grade-' + grade + '">' + (grade || '—') + '</div>' +
     '</div>' +
@@ -3905,7 +3912,7 @@ async function runPut(forceTicker) {
     var html = priceBarHtml(ticker, pd, 'Daily');
     html += '<div class="info-box">' +
       '<div class="info-item"><div class="info-label">Assignment Capital</div><div class="info-val">' + (assignCap ? '$' + assignCap.toLocaleString() : '—') + '</div></div>' +
-      '<div class="info-item"><div class="info-label">Expiry</div><div class="info-val">' + bestExpiry + '</div></div>' +
+      '<div class="info-item"><div class="info-label">Expiry</div><div class="info-val">' + expiryDisplay(bestExpiry) + '</div></div>' +
       '<div class="info-item"><div class="info-label">DTE</div><div class="info-val">' + dte + '</div></div>' +
       '<div class="info-item"><div class="info-label">Target Strike</div><div class="info-val">' + (bestStrike ? fmtDollar(bestStrike) : '—') + '</div></div>' +
       '<div class="info-item"><div class="info-label">Premium (Mid)</div><div class="info-val">' + (bestPremium ? fmtDollar(bestPremium) : '—') + '</div></div>' +
@@ -4071,7 +4078,7 @@ async function runCC(forceTicker) {
     html += '<div class="info-box">' +
       '<div class="info-item"><div class="info-label">Upside if Assigned</div><div class="info-val">' + (upsidePct !== null ? '+'+fmt(upsidePct,2)+'%' : '—') + '</div></div>' +
       '<div class="info-item"><div class="info-label">Total Return</div><div class="info-val">' + (totalRet !== null ? '+'+fmt(totalRet,2)+'%' : '—') + '</div></div>' +
-      '<div class="info-item"><div class="info-label">Expiry</div><div class="info-val">' + bestExpiry + '</div></div>' +
+      '<div class="info-item"><div class="info-label">Expiry</div><div class="info-val">' + expiryDisplay(bestExpiry) + '</div></div>' +
       '<div class="info-item"><div class="info-label">DTE</div><div class="info-val">' + dte + '</div></div>' +
       '<div class="info-item"><div class="info-label">Target Strike</div><div class="info-val">' + (bestStrike ? fmtDollar(bestStrike) : '—') + '</div></div>' +
       '<div class="info-item"><div class="info-label">Premium (Mid)</div><div class="info-val">' + (bestPremium ? fmtDollar(bestPremium) : '—') + '</div></div>' +
@@ -4600,7 +4607,7 @@ async function runSynth(forceTicker) {
 
     var html = priceBarHtml(ticker, pd, 'Daily');
     html += '<div class="info-box">' +
-      '<div class="info-item"><div class="info-label">Expiry</div><div class="info-val">' + bestExpiry + '</div></div>' +
+      '<div class="info-item"><div class="info-label">Expiry</div><div class="info-val">' + expiryDisplay(bestExpiry) + '</div></div>' +
       '<div class="info-item"><div class="info-label">DTE</div><div class="info-val">' + dte + '</div></div>' +
       '<div class="info-item"><div class="info-label">Strike</div><div class="info-val">' + fmtDollar(atmStrike) + ' (same for both legs)</div></div>' +
       '<div class="info-item"><div class="info-label">Net Cost</div><div class="info-val">' + (netCost !== null ? (netCost >= 0 ? fmtDollar(netCost) + ' debit' : fmtDollar(Math.abs(netCost)) + ' credit') : '—') + ' (' + (netCostPct !== null ? fmt(Math.abs(netCostPct),2)+'%' : '—') + ')</div></div>' +
@@ -4874,7 +4881,7 @@ async function runGut(forceTicker) {
 
     var html = priceBarHtml(ticker, pd, 'Daily');
     html += '<div class="info-box">' +
-      '<div class="info-item"><div class="info-label">Expiry</div><div class="info-val">' + bestExpiry + '</div></div>' +
+      '<div class="info-item"><div class="info-label">Expiry</div><div class="info-val">' + expiryDisplay(bestExpiry) + '</div></div>' +
       '<div class="info-item"><div class="info-label">DTE</div><div class="info-val">' + dte + '</div></div>' +
       '<div class="info-item"><div class="info-label">Call Strike (ATM)</div><div class="info-val">' + fmtDollar(atmStrike) + '</div></div>' +
       '<div class="info-item"><div class="info-label">Put Strike (ITM)</div><div class="info-val">' + fmtDollar(gsPut.strike) + ' (higher)</div></div>' +
@@ -5209,7 +5216,7 @@ async function runMsl(forceTicker) {
     var html = priceBarHtml(ticker, pd, '4H');
     // Compact expiry/DTE chip (everything else moved into Trade Summary to avoid duplication)
     html += '<div style="display:flex;gap:14px;align-items:center;padding:8px 14px;margin-bottom:10px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);font-size:11px">' +
-      '<span style="color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;font-weight:700">Expiry</span><span style="color:var(--accent);font-weight:800">' + bestExpiry + '</span>' +
+      '<span style="color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;font-weight:700">Expiry</span><span style="color:var(--accent);font-weight:800">' + expiryDisplay(bestExpiry) + '</span>' +
       '<span style="color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-left:8px">DTE</span><span style="color:var(--accent);font-weight:800">' + dte + ' days</span>' +
       '<span style="color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-left:8px">Net Debit % of Price</span><span style="color:' + (netDebitPct !== null && netDebitPct <= 33 ? 'var(--green)' : 'var(--accent)') + ';font-weight:800">' + (netDebitPct !== null ? fmt(netDebitPct,1) + '%' : '—') + '</span>' +
     '</div>';
