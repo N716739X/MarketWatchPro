@@ -501,6 +501,7 @@ header {
 .badge-ideal   { background: rgba(0,255,204,0.15); color: var(--green); border: 1px solid var(--green); }
 .badge-watch   { background: rgba(255,204,0,0.12); color: var(--yellow); border: 1px solid var(--yellow); }
 .badge-notready{ background: rgba(255,34,102,0.12); color: var(--red); border: 1px solid var(--red); }
+.badge-wait    { background: rgba(255,152,0,0.14); color: #FF9800; border: 1px solid #FF9800; }
 
 /* Criteria mini boxes */
 .criteria-row {
@@ -757,6 +758,7 @@ header {
 .score-summary.strong  { background:rgba(0,255,204,0.12);border:1px solid var(--green); }
 .score-summary.moderate{ background:rgba(255,204,0,0.10);border:1px solid var(--yellow); }
 .score-summary.weak    { background:rgba(255,34,102,0.10);border:1px solid var(--red); }
+.score-summary.wait    { background:rgba(255,152,0,0.12);border:1px solid #FF9800; }
 .score-label { font-weight:800;font-size:13px; }
 .score-num   { font-size:20px;font-weight:900;color:var(--accent); }
 
@@ -2737,13 +2739,22 @@ function buildColCard(ticker, d, strategy, rank, isBestTrade) {
   var badgeCls, badgeTxt;
   var pctScore = totalCriteria > 0 ? score / totalCriteria : 0;
   var scoreLbl = score + '/' + totalCriteria;
-  if (isScored) {
+  // MSL uses weighted score (0-9) for grade band + thesis gate override
+  if (strategy === 'msl' && d.phase >= 3) {
+    var mslW = d.mslWeighted != null ? d.mslWeighted : 0;
+    // Thesis gate: any Tier-1 fail → WAIT FOR SETUP regardless of total
+    if (d.mslT1Pass === false) {
+      badgeCls = 'badge-wait'; badgeTxt = 'WAIT FOR SETUP · ' + scoreLbl;
+    } else if (mslW >= 7)      { badgeCls = 'badge-ideal';    badgeTxt = 'IDEAL · ' + scoreLbl; }
+    else if (mslW >= 5)        { badgeCls = 'badge-watch';    badgeTxt = 'WATCH · ' + scoreLbl; }
+    else                       { badgeCls = 'badge-notready'; badgeTxt = 'WAIT · ' + scoreLbl; }
+  } else if (isScored) {
     // Put: show NO TRADE for low scores
     if (pctScore >= 0.70)      { badgeCls = 'badge-ideal';    badgeTxt = 'IDEAL · ' + scoreLbl; }
     else if (pctScore >= 0.40) { badgeCls = 'badge-watch';    badgeTxt = 'WATCH · ' + scoreLbl; }
     else                       { badgeCls = 'badge-notready'; badgeTxt = 'NO TRADE · ' + scoreLbl; }
   } else {
-    // CC/LEAPS/Synth/Gut/MSL: percentage-based
+    // CC/LEAPS/Synth/Gut: percentage-based
     if (pctScore >= 0.70)      { badgeCls = 'badge-ideal';    badgeTxt = 'IDEAL · ' + scoreLbl; }
     else if (pctScore >= 0.40) { badgeCls = 'badge-watch';    badgeTxt = 'WATCH · ' + scoreLbl; }
     else                       { badgeCls = 'badge-notready'; badgeTxt = 'WAIT · ' + scoreLbl; }
@@ -2929,8 +2940,14 @@ function renderColumns() {
     return ((cardData[a].weeklyMeanRev != null ? cardData[a].weeklyMeanRev : cardData[a].meanRev) || 999) - ((cardData[b].weeklyMeanRev != null ? cardData[b].weeklyMeanRev : cardData[b].meanRev) || 999);
   });
 
-  // Laura's MSL: sort by mslScore desc, ties broken by weekly MR asc (most oversold first)
+  // Laura's MSL: gated tickers (Tier-1 fail) sink; then sort by mslWeighted desc, then mslScore desc, ties broken by weekly MR asc (most oversold first)
   mslSorted.sort(function(a, b) {
+    var ga = cardData[a].mslT1Pass === false ? 0 : 1;
+    var gb = cardData[b].mslT1Pass === false ? 0 : 1;
+    if (gb !== ga) return gb - ga;
+    var wa = cardData[a].mslWeighted != null ? cardData[a].mslWeighted : -1;
+    var wb = cardData[b].mslWeighted != null ? cardData[b].mslWeighted : -1;
+    if (wb !== wa) return wb - wa;
     var sa = cardData[a].mslScore !== null ? cardData[a].mslScore : -1;
     var sb = cardData[b].mslScore !== null ? cardData[b].mslScore : -1;
     if (sb !== sa) return sb - sa;
@@ -3586,8 +3603,17 @@ async function runMslPhase3(ticker) {
     d.msl_c7 = soldPutOI !== null ? soldPutOI >= 500 : null;
     d.msl_c8 = mslRiskRatioPh3 !== null ? mslRiskRatioPh3 <= 60 : null;  // MSL risk ≤ 60% of SL (ideal ≤50%)
     d.mslRiskRatio = mslRiskRatioPh3;
+    // Criteria-passed count (displayed as X/6 — unchanged for UX continuity)
     d.mslScore = [d.msl_c1,d.msl_c2,d.msl_c3,d.msl_c4,d.msl_c5,d.msl_c8]
       .filter(function(x){return x===true;}).length;
+    // Weighted score (0-9) — used for grade band + ranking
+    // Tier 1 (gates, 2 pts each): c1 MR, c2 PutCredit, c8 RiskReduction
+    // Tier 2 (quality, 1 pt each): c3 I/E, c5 NetDebit
+    // Tier 3 (formality, 1 pt): c4 DTE
+    d.mslWeighted = (d.msl_c1 === true ? 2 : 0) + (d.msl_c2 === true ? 2 : 0) + (d.msl_c8 === true ? 2 : 0) +
+                    (d.msl_c3 === true ? 1 : 0) + (d.msl_c5 === true ? 1 : 0) + (d.msl_c4 === true ? 1 : 0);
+    // Thesis gate: all 3 Tier-1 criteria must pass; otherwise badge → "WAIT FOR SETUP"
+    d.mslT1Pass = (d.msl_c1 === true && d.msl_c2 === true && d.msl_c8 === true);
     d.phase = 3;
     renderColumns();
     renderMiniRankings('msl');
@@ -3688,6 +3714,8 @@ function applyServerScores(s) {
     gut_c1: s.gut ? s.gut.c1 : null, gut_c2: s.gut ? s.gut.c2 : null, gut_c3: s.gut ? s.gut.c3 : null,
     gut_c4: s.gut ? s.gut.c4 : null, gut_c5: s.gut ? s.gut.c5 : null, gut_c6: s.gut ? s.gut.c6 : null, gut_c7: s.gut ? s.gut.c7 : null,
     mslScore:  s.msl ? s.msl.score : null,
+    mslWeighted: s.msl ? s.msl.weighted : null,
+    mslT1Pass: s.msl ? s.msl.t1Pass : null,
     msl_c1: s.msl ? s.msl.c1 : null, msl_c2: s.msl ? s.msl.c2 : null, msl_c3: s.msl ? s.msl.c3 : null,
     msl_c4: s.msl ? s.msl.c4 : null, msl_c5: s.msl ? s.msl.c5 : null, msl_c6: s.msl ? s.msl.c6 : null, msl_c7: s.msl ? s.msl.c7 : null, msl_c8: s.msl ? s.msl.c8 : null,
     // Legacy fields for card rendering
@@ -5437,7 +5465,36 @@ async function runMsl(forceTicker) {
     html += critRow(4,'Duration ≥ 365 DTE (LEAPS — ≥540 = Ideal)', c4, dte + ' days' + (c4Ideal ? ' ✨ IDEAL' : ''));
     html += critRow(5,'Net Debit ≤ 33% of Price (~1/3 Rule)', c5, netDebitPct !== null ? fmt(netDebitPct,1) + '%' : 'N/A');
     html += critRow(6,'MSL Risk ≤ 60% of SL Risk (≤50% = Ideal)', c8, mslRiskRatio !== null ? fmt(mslRiskRatio,0) + '% of SL' + (c8Ideal ? ' ✨ IDEAL' : '') : 'N/A');
-    html += '</div>' + scoreSummaryHtml(score,6) + '</div>';
+    // MSL uses weighted score (0-9) + thesis gate for the summary band
+    var mslWeighted = (c1 === true ? 2 : 0) + (c2 === true ? 2 : 0) + (c8 === true ? 2 : 0) +
+                      (c3 === true ? 1 : 0) + (c5 === true ? 1 : 0) + (c4 === true ? 1 : 0);
+    var t1Pass = (c1 === true && c2 === true && c8 === true);
+    var sumCls, sumLabel;
+    if (!t1Pass) {
+      sumCls = 'wait';
+      // List which Tier-1 gates failed
+      var failed = [];
+      if (c1 !== true) failed.push('MR Oversold');
+      if (c2 !== true) failed.push('Put Credit ≥42%');
+      if (c8 !== true) failed.push('Risk Reduction');
+      sumLabel = '⏳ Wait for Setup — missing: ' + failed.join(', ');
+    } else if (mslWeighted >= 7) {
+      sumCls = 'strong';
+      sumLabel = '✅ ' + (mslWeighted === 9 ? 'Ideal Setup' : 'Strong Setup');
+    } else if (mslWeighted >= 5) {
+      sumCls = 'moderate';
+      sumLabel = '⚠️ Moderate Setup';
+    } else {
+      sumCls = 'weak';
+      sumLabel = '❌ Weak Setup';
+    }
+    html += '</div>' +
+      '<div class="score-summary ' + sumCls + '">' +
+        '<span class="score-label">' + sumLabel + '</span>' +
+        '<span class="score-num">' + score + '/6</span>' +
+      '</div>' +
+      '<div style="margin-top:6px;font-size:11px;color:var(--text-muted);text-align:right">Weighted: <strong style="color:var(--accent)">' + mslWeighted + '/9</strong> · Tier-1 gates (MR · Put Credit · Risk) must all pass</div>' +
+      '</div>';
 
     // Contextual suggestions
     var suggWarn = [], suggGood = [];
@@ -5488,8 +5545,10 @@ async function runMsl(forceTicker) {
     if (boughtPutOI !== null && boughtPutOI < 500) {
       suggWarn.push('⚠️ <strong>Low bought-put liquidity:</strong> Selected $' + fmt(boughtPutStrike,2) + ' bought put has OI of ' + oiSpan(boughtPutOI) + ' — below the 500 threshold. Use a limit order at the mid for the bull put spread.');
     }
-    if (score >= 5) {
-      suggGood.push('✅ <strong>' + (score === 6 ? 'All criteria met' : score + '/6 criteria met') + '</strong> — strong MSL setup. Enter as a multi-leg order to avoid leg risk.');
+    if (t1Pass && mslWeighted >= 7) {
+      suggGood.push('✅ <strong>' + (mslWeighted === 9 ? 'All Tier-1 + quality criteria met' : 'Tier-1 thesis confirmed (' + mslWeighted + '/9)') + '</strong> — strong MSL setup. Enter as a multi-leg order to avoid leg risk.');
+    } else if (!t1Pass) {
+      suggWarn.push('⏳ <strong>Wait for setup:</strong> One or more Tier-1 thesis gates (MR Oversold · Put Credit ≥42% · Risk ≤60% of SL) failed. Quality criteria can\'t compensate for a missing thesis — Laura\'s MSL is a mean-reversion play with strict risk math.');
     }
     // Laura's MSL goal #1: risk should be ~half of SL
     if (riskReductionPct !== null && riskReductionPct >= 45) {
