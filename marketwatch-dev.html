@@ -2667,7 +2667,7 @@ function maxCriteriaFor(strategy) {
   if (strategy === 'leaps') return 5;
   if (strategy === 'synth') return 4;
   if (strategy === 'gut')   return 4;
-  if (strategy === 'msl')   return 4;
+  if (strategy === 'msl')   return 6;
   return 6;
 }
 
@@ -2830,12 +2830,14 @@ function buildColCard(ticker, d, strategy, rank, isBestTrade) {
       mb('DEBIT', d.gut_c4, d.gut_c4 === null ? '—' : (d.gut_c4 ? '✓' : '✗')) +
       mb('SPRD',  d.gut_c7, d.gut_c7 === null ? '—' : (d.gut_c7 ? '✓' : '✗'));
   } else {
-    // MSL (Modified Synthetic Long): 4 criteria — MR≤-2 4H, PutCr≥42%, DTE≥540, Debit≤33% (IV Rank removed)
+    // MSL (Modified Synthetic Long): 6 criteria — MR≤-2 4H, PutCr≥42%, I/E 50/50, DTE≥365, Debit≤33%, MSL Risk ≤60% of SL
     criteriaHtml =
       mb('MR',    d.msl_c1, mrDisp) +
       mb('P-CR',  d.msl_c2, d.msl_c2 === null ? '—' : (d.msl_c2 ? '✓' : '✗')) +
+      mb('I/E',   d.msl_c3, d.msl_c3 === null ? '—' : (d.msl_c3 ? '✓' : '✗')) +
       mb('DUR',   d.msl_c4, d.msl_c4 === true ? '✓' : d.msl_c4 === false ? '✗' : '—') +
-      mb('DEBIT', d.msl_c5, d.msl_c5 === null ? '—' : (d.msl_c5 ? '✓' : '✗'));
+      mb('DEBIT', d.msl_c5, d.msl_c5 === null ? '—' : (d.msl_c5 ? '✓' : '✗')) +
+      mb('RISK',  d.msl_c8, d.msl_c8 === null ? '—' : (d.msl_c8 ? '✓' : '✗'));
   }
 
   // Footer score / label
@@ -2951,7 +2953,7 @@ function renderColumns() {
     { list: leapsSorted, strat: 'leaps', key: 'leapsScore', max: 5 },
     { list: synthSorted, strat: 'synth', key: 'synthScore', max: 4 },
     { list: gutSorted,   strat: 'gut',   key: 'gutScore',   max: 4 },
-    { list: mslSorted,   strat: 'msl',   key: 'mslScore',   max: 4 }
+    { list: mslSorted,   strat: 'msl',   key: 'mslScore',   max: 6 }
   ];
   for (var ci = 0; ci < colMap.length; ci++) {
     var cList = colMap[ci].list.slice(0, 4);
@@ -3558,35 +3560,33 @@ async function runMslPhase3(ticker) {
     var netDebit = (callMid !== null && putSpreadCredit !== null) ? callMid - putSpreadCredit : null;
     var netDebitPct = (netDebit !== null && pd.price) ? (netDebit / pd.price * 100) : null;
 
-    // IV Rank from put chain (replaces 50/50 rule — 50/50 still used in strike selection above)
-    var mslIVRank = null;
-    if (putChain && putChain.iv && putChain.iv.length > 0) {
-      var ivs = [];
-      for (var iv_i = 0; iv_i < putChain.iv.length; iv_i++) {
-        var iv_v = putChain.iv[iv_i];
-        if (iv_v !== null && iv_v !== undefined && !isNaN(iv_v) && iv_v > 0) ivs.push(iv_v <= 1 ? iv_v * 100 : iv_v);
-      }
-      if (ivs.length > 0) {
-        ivs.sort(function(a,b){return a-b;});
-        var atmIV = ivs[Math.floor(ivs.length/2)];
-        var ivRange = ivs[ivs.length-1] - ivs[0];
-        mslIVRank = ivRange > 0 ? Math.min(100, Math.max(0, (atmIV - ivs[0]) / ivRange * 100)) : 50;
-      }
+    // Equivalent SL risk for comparison: ATM call mid - ATM put mid, risk = strike + net debit
+    var slCallIdxPh3 = -1, slCallBestDistPh3 = Infinity;
+    for (var sciPh3 = 0; sciPh3 < callChain.strike.length; sciPh3++) {
+      var sdPh3 = Math.abs(callChain.strike[sciPh3] - soldPutStrike);
+      if (sdPh3 < slCallBestDistPh3) { slCallBestDistPh3 = sdPh3; slCallIdxPh3 = sciPh3; }
     }
+    var slCallMidPh3 = (slCallIdxPh3 >= 0 && callChain.mid) ? callChain.mid[slCallIdxPh3] : null;
+    var slNetDebitPh3 = (slCallMidPh3 !== null && soldPutMid !== null) ? slCallMidPh3 - soldPutMid : null;
+    var slRiskPh3 = (slNetDebitPh3 !== null && soldPutStrike) ? (soldPutStrike + slNetDebitPh3) : null;
+    var mslRiskPh3 = (netDebit !== null && spreadWidth > 0) ? (netDebit + spreadWidth) : null;
+    var mslRiskRatioPh3 = (slRiskPh3 && slRiskPh3 > 0 && mslRiskPh3 !== null) ? (mslRiskPh3 / slRiskPh3 * 100) : null;
 
-    // 7 criteria
+    // 6 scored criteria + back-compat fields
     d.msl_c1 = !isNaN(pd.meanRev) ? pd.meanRev <= -2 : null;
     d.mslMR  = fourHourMR;
     d.msl_c2 = putCreditPct !== null ? putCreditPct >= 42 : null;  // Laura's floor
-    d.msl_c3 = null; // IV Rank removed
-    d.mslIVRank = mslIVRank;
-    d.mslCallRatio = callRatio; // kept for info display, not scored
-    d.msl_c4 = dte >= 540;
+    d.msl_c3 = (callRatio !== null && !isNaN(callRatio)) ? (callRatio >= 0.40 && callRatio <= 0.60) : null; // 50/50 I/E
+    d.mslCallRatio = callRatio;
+    d.msl_c4 = dte >= 365;  // Laura's "line in the sand" for LEAPS
+    d.mslDTEIdeal = dte >= 540;
     d.msl_c5 = netDebitPct !== null ? netDebitPct <= 40 : null;  // Soft pass to 40%; <=33% = ideal
     d.mslNetDebitPct = netDebitPct;
     d.msl_c6 = callOI !== null ? callOI >= 500 : null;
     d.msl_c7 = soldPutOI !== null ? soldPutOI >= 500 : null;
-    d.mslScore = [d.msl_c1,d.msl_c2,d.msl_c4,d.msl_c5]
+    d.msl_c8 = mslRiskRatioPh3 !== null ? mslRiskRatioPh3 <= 60 : null;  // MSL risk ≤ 60% of SL (ideal ≤50%)
+    d.mslRiskRatio = mslRiskRatioPh3;
+    d.mslScore = [d.msl_c1,d.msl_c2,d.msl_c3,d.msl_c4,d.msl_c5,d.msl_c8]
       .filter(function(x){return x===true;}).length;
     d.phase = 3;
     renderColumns();
@@ -3689,7 +3689,7 @@ function applyServerScores(s) {
     gut_c4: s.gut ? s.gut.c4 : null, gut_c5: s.gut ? s.gut.c5 : null, gut_c6: s.gut ? s.gut.c6 : null, gut_c7: s.gut ? s.gut.c7 : null,
     mslScore:  s.msl ? s.msl.score : null,
     msl_c1: s.msl ? s.msl.c1 : null, msl_c2: s.msl ? s.msl.c2 : null, msl_c3: s.msl ? s.msl.c3 : null,
-    msl_c4: s.msl ? s.msl.c4 : null, msl_c5: s.msl ? s.msl.c5 : null, msl_c6: s.msl ? s.msl.c6 : null, msl_c7: s.msl ? s.msl.c7 : null,
+    msl_c4: s.msl ? s.msl.c4 : null, msl_c5: s.msl ? s.msl.c5 : null, msl_c6: s.msl ? s.msl.c6 : null, msl_c7: s.msl ? s.msl.c7 : null, msl_c8: s.msl ? s.msl.c8 : null,
     // Legacy fields for card rendering
     score: s.put.score,
     c1: s.put.c1, c2: s.put.c2, c3: s.put.c3, c4: s.put.c4, c5: s.put.c5, c6: s.put.c6, c7: s.put.c7
@@ -5126,13 +5126,18 @@ async function runMsl(forceTicker) {
     var breakeven = (netDebit !== null) ? callStrike + netDebit : null;
     var beAboveCur = (breakeven !== null && pd.price) ? ((breakeven / pd.price - 1) * 100) : null;
 
-    // 4 criteria (IV Rank removed)
+    // 6 criteria (IV Rank removed; added Call I/E quality and MSL-vs-SL Risk Reduction)
     var c1 = !isNaN(pd.meanRev) ? pd.meanRev <= -2 : null;
     var c2 = putCreditPct !== null ? putCreditPct >= 42 : null;  // Laura's floor; >=50% = ideal (badge)
     var c2Ideal = putCreditPct !== null && putCreditPct >= 50;
-    var c4 = dte >= 540;
+    var c3 = (callRatio !== null && !isNaN(callRatio)) ? (callRatio >= 0.40 && callRatio <= 0.60) : null; // 50/50 I/E (40-60 pass, 45-55 ideal)
+    var c3Ideal = (callRatio !== null && !isNaN(callRatio)) && (callRatio >= 0.45 && callRatio <= 0.55);
+    var c4 = dte >= 365;  // Laura's LEAPS "line in the sand" — ≥540 = ideal (3yr preferred)
+    var c4Ideal = dte >= 540;
     var c5 = netDebitPct !== null ? netDebitPct <= 33 : null;
-    var score = [c1,c2,c4,c5].filter(function(x){return x===true;}).length;
+    // c8 computed after slMaxRisk below — placeholder so score is in declaration order
+    var c8 = null;
+    var score = 0; // recomputed after c8 is known
 
     setStatus('msl-status', 'Done', 'ok');
 
@@ -5191,6 +5196,12 @@ async function runMsl(forceTicker) {
     var riskReductionPct = (slMaxRisk && mslMaxRisk) ? (1 - mslMaxRisk / slMaxRisk) * 100 : null;
     var riskReductionDollars = (slMaxRisk && mslMaxRisk) ? slMaxRisk - mslMaxRisk : null;
     var riskHalfGoal = riskReductionPct !== null && riskReductionPct >= 45;
+    // c8 — MSL Max Risk ≤ 60% of SL Max Risk (Laura's "goal is half"); ≤50% = ideal
+    var mslRiskRatio = (slMaxRisk && mslMaxRisk) ? (mslMaxRisk / slMaxRisk * 100) : null;
+    c8 = mslRiskRatio !== null ? mslRiskRatio <= 60 : null;
+    var c8Ideal = mslRiskRatio !== null && mslRiskRatio <= 50;
+    // Final score (recompute now that c8 is known)
+    score = [c1,c2,c3,c4,c5,c8].filter(function(x){return x===true;}).length;
     // SL breakeven = ATM call strike + net debit (call strike == put strike for true SL)
     var beMSL  = breakeven; // call strike + net debit (MSL deep-ITM call)
     var beSL   = (slCallStrike !== null && slNetCost !== null) ? slCallStrike + slNetCost : null;
@@ -5422,9 +5433,11 @@ async function runMsl(forceTicker) {
     html += '<div class="scorecard"><h3>MSL — Modified Synthetic Long — Score</h3><div class="criteria-list">';
     html += critRow(1,'MR · 4H (Oversold — Buy the Dip)', c1, mrZone(pd.meanRev).label);
     html += critRow(2,'Put Credit ≥ 42% of Width (≥50% = Ideal)', c2, putCreditPct !== null ? fmt(putCreditPct,1) + '%' + (c2Ideal ? ' ✨ IDEAL' : '') : 'N/A');
-    html += critRow(3,'Duration ≥ 540 DTE (LEAPS-Length)', c4, dte + ' days');
-    html += critRow(4,'Net Debit ≤ 33% of Price (~1/3 Rule)', c5, netDebitPct !== null ? fmt(netDebitPct,1) + '%' : 'N/A');
-    html += '</div>' + scoreSummaryHtml(score,4) + '</div>';
+    html += critRow(3,'Call Intrinsic/Extrinsic 40–60% (45–55% = Ideal)', c3, (callRatio !== null && !isNaN(callRatio)) ? fmt(callRatio*100,0) + '/' + fmt((1-callRatio)*100,0) + (c3Ideal ? ' ✨ IDEAL' : '') : 'N/A');
+    html += critRow(4,'Duration ≥ 365 DTE (LEAPS — ≥540 = Ideal)', c4, dte + ' days' + (c4Ideal ? ' ✨ IDEAL' : ''));
+    html += critRow(5,'Net Debit ≤ 33% of Price (~1/3 Rule)', c5, netDebitPct !== null ? fmt(netDebitPct,1) + '%' : 'N/A');
+    html += critRow(6,'MSL Risk ≤ 60% of SL Risk (≤50% = Ideal)', c8, mslRiskRatio !== null ? fmt(mslRiskRatio,0) + '% of SL' + (c8Ideal ? ' ✨ IDEAL' : '') : 'N/A');
+    html += '</div>' + scoreSummaryHtml(score,6) + '</div>';
 
     // Contextual suggestions
     var suggWarn = [], suggGood = [];
@@ -5438,8 +5451,21 @@ async function runMsl(forceTicker) {
     if (!c2 && putCreditPct !== null) {
       suggWarn.push('💡 <strong>Low put credit:</strong> ' + fmt(putCreditPct,1) + '% of spread width — below Laura’s 42% floor. She targets ~50%+ so the spread "pays for itself."');
     }
+    if (!c3 && callRatio !== null && !isNaN(callRatio)) {
+      var ieDisp = fmt(callRatio*100,0) + '/' + fmt((1-callRatio)*100,0);
+      if (callRatio > 0.60) {
+        suggWarn.push('💡 <strong>Call too deep ITM:</strong> Best available is ' + ieDisp + ' I/E — too much intrinsic. Laura wants 50/50. Consider a slightly higher strike (less ITM) so extrinsic catches up.');
+      } else {
+        suggWarn.push('💡 <strong>Call not deep enough ITM:</strong> Best available is ' + ieDisp + ' I/E — too much extrinsic. Laura wants 50/50. Consider a deeper ITM strike so intrinsic catches up.');
+      }
+    }
     if (!c4) {
-      suggWarn.push('💡 <strong>Short duration:</strong> ' + dte + ' DTE is below 540-day target. Laura uses farthest Dec LEAPS for maximum time.');
+      suggWarn.push('💡 <strong>Below LEAPS threshold:</strong> ' + dte + ' DTE is under 365-day LEAPS "line in the sand." Laura uses farthest Dec LEAPS — prefer ≥540 (3yr if available).');
+    } else if (c4 && !c4Ideal) {
+      suggWarn.push('⚠️ <strong>LEAPS but under ideal:</strong> ' + dte + ' DTE qualifies as LEAPS but Laura prefers ≥540 (1.5yr+). Time decay accelerates in the last 90 DTE.');
+    }
+    if (!c8 && mslRiskRatio !== null) {
+      suggWarn.push('💡 <strong>Risk reduction insufficient:</strong> MSL risks ' + fmt(mslRiskRatio,0) + '% of an equivalent SL. Laura targets ≤60% (ideal ≤50%) — the whole point of MSL is half the risk. Widen the bull put spread or pick a tighter call.');
     }
     if (!c5 && netDebitPct !== null) {
       suggWarn.push('💡 <strong>Net debit too high:</strong> ' + fmt(netDebitPct,1) + '% of price — above 40% ceiling. The put spread credit isn\'t offsetting enough of the call cost.');
@@ -5462,8 +5488,8 @@ async function runMsl(forceTicker) {
     if (boughtPutOI !== null && boughtPutOI < 500) {
       suggWarn.push('⚠️ <strong>Low bought-put liquidity:</strong> Selected $' + fmt(boughtPutStrike,2) + ' bought put has OI of ' + oiSpan(boughtPutOI) + ' — below the 500 threshold. Use a limit order at the mid for the bull put spread.');
     }
-    if (score >= 4) {
-      suggGood.push('✅ <strong>' + (score === 5 ? 'All criteria met' : score + '/5 criteria met') + '</strong> — strong MSL setup. Enter as a multi-leg order to avoid leg risk.');
+    if (score >= 5) {
+      suggGood.push('✅ <strong>' + (score === 6 ? 'All criteria met' : score + '/6 criteria met') + '</strong> — strong MSL setup. Enter as a multi-leg order to avoid leg risk.');
     }
     // Laura's MSL goal #1: risk should be ~half of SL
     if (riskReductionPct !== null && riskReductionPct >= 45) {
