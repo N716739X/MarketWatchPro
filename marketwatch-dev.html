@@ -2648,8 +2648,8 @@ function earningsBeforeExpiry(ticker, expiryStr) {
 // ═══════════════════════════════════════════════════════
 
 function scoreToGrade(score, max, phase) {
-  // Back-compat: if called with (score, phase) treat max as 7
-  if (phase === undefined) { phase = max; max = 7; }
+  // Back-compat: if called with (score, phase) treat max as 6
+  if (phase === undefined) { phase = max; max = 6; }
   if (!phase || phase < 2) return '';
   if (!max || max <= 0) return '';
   var pct = score / max;
@@ -2660,15 +2660,15 @@ function scoreToGrade(score, max, phase) {
   return 'F';
 }
 
-// Per-strategy max criteria count (after OI removal)
+// Per-strategy max criteria count (after OI + IV Rank removal)
 function maxCriteriaFor(strategy) {
-  if (strategy === 'put')   return 7;
-  if (strategy === 'cc')    return 7;
-  if (strategy === 'leaps') return 6;
-  if (strategy === 'synth') return 5;
-  if (strategy === 'gut')   return 5;
-  if (strategy === 'msl')   return 5;
-  return 7;
+  if (strategy === 'put')   return 6;
+  if (strategy === 'cc')    return 6;
+  if (strategy === 'leaps') return 5;
+  if (strategy === 'synth') return 4;
+  if (strategy === 'gut')   return 4;
+  if (strategy === 'msl')   return 4;
+  return 6;
 }
 
 var COL_IDS = { put: 'col-put', cc: 'col-cc', leaps: 'col-leaps', synth: 'col-synth', gut: 'col-gut', msl: 'col-msl' };
@@ -2772,13 +2772,6 @@ function buildColCard(ticker, d, strategy, rank, isBestTrade) {
     cx = { c1: d.cc_c1, c2: d.cc_c2, c3: d.cc_c3, c4: d.cc_c4, c5: d.cc_c5, c6: d.cc_c6, c7: d.cc_c7 };
   }
 
-  // For LEAPS phase 3 cards, show actual IV%; for others show IV rank
-  var ivDisp;
-  if (strategy === 'leaps' && d.phase >= 3 && d.currentIV !== null && d.currentIV !== undefined) {
-    ivDisp = Math.round(d.currentIV) + '%';
-  } else {
-    ivDisp = d.ivRank !== null && d.ivRank !== undefined ? Math.round(d.ivRank) + '%' : (d.phase < 2 ? '…' : '—');
-  }
   var premDisp = d.premPct !== null && d.premPct !== undefined ? fmt(d.premPct, 1) + '%' : (d.phase < 2 ? '…' : '—');
   var dteDisp  = d.dte !== null && d.dte !== undefined ? d.dte + 'd' : (d.phase < 2 ? '…' : '—');
 
@@ -2789,33 +2782,31 @@ function buildColCard(ticker, d, strategy, rank, isBestTrade) {
 
   var criteriaHtml;
   if (isScored) {
-    // Put: 7 criteria — IV>80, MR≤-2, SMA200, Earnings, Premium, Delta, DTE
+    // Put: 6 criteria — MR≤-2, SMA200, Earnings, Premium, Delta, DTE (IV Rank removed)
     var putSmaDisp = cx.c3 === true ? '▲' : cx.c3 === false ? '▼' : '—';
     var putEarnDisp = cx.c4 === true ? 'OK' : cx.c4 === false ? 'RISK' : (d.phase < 2 ? '…' : '—');
     var putDeltaDisp = d.phase < 2 ? '…' : (cx.c6 === true ? '✓' : cx.c6 === false ? '✗' : '—');
     criteriaHtml =
       mb('MR',    cx.c2, mrDisp) +
-      mb('IV',    cx.c1, ivDisp) +
       mb('SMA',   cx.c3, putSmaDisp) +
       mb('EARN',  cx.c4, putEarnDisp) +
       mb('PREM',  cx.c5, premDisp) +
       mb('DELTA', cx.c6, putDeltaDisp) +
       mb('DTE',   cx.c7, dteDisp);
   } else if (strategy === 'cc') {
-    // CC: 7 criteria — MR≥+2, IV>80, SMA200, Earnings, Premium, Delta, DTE
+    // CC: 6 criteria — MR≥+2, SMA200, Earnings, Premium, Delta, DTE (IV Rank removed)
     var ccSmaDisp = cx.c3 === true ? '▲' : cx.c3 === false ? '▼' : '—';
     var ccEarnDisp = cx.c4 === true ? 'OK' : cx.c4 === false ? 'RISK' : (d.phase < 2 ? '…' : '—');
     var ccDeltaDisp = d.phase < 2 ? '…' : (cx.c6 === true ? '✓' : cx.c6 === false ? '✗' : '—');
     criteriaHtml =
       mb('MR',    cx.c2, mrDisp) +
-      mb('IV',    cx.c1, ivDisp) +
       mb('SMA',   cx.c3, ccSmaDisp) +
       mb('EARN',  cx.c4, ccEarnDisp) +
       mb('PREM',  cx.c5, premDisp) +
       mb('DELTA', cx.c6, ccDeltaDisp) +
       mb('DTE',   cx.c7, dteDisp);
   } else if (strategy === 'leaps') {
-    // LEAPS James: 7 criteria — MR, Delta, BE CAGR, Duration, IV, OI, Spread
+    // LEAPS: 5 criteria — MR, Delta, BE CAGR, Duration, Bid/Ask (IV<55% removed)
     var deltaDisp = d.leapsDelta !== null && d.leapsDelta !== undefined ? fmt(d.leapsDelta,2) : (d.leaps_c1 === null ? '—' : (d.leaps_c1 ? '✓' : '✗'));
     var cagrDisp  = d.leapsCAGR !== null && d.leapsCAGR !== undefined ? fmt(d.leapsCAGR,1)+'%' : (d.leaps_c2 === null ? '—' : (d.leaps_c2 ? '✓' : '✗'));
     criteriaHtml =
@@ -2823,30 +2814,26 @@ function buildColCard(ticker, d, strategy, rank, isBestTrade) {
       mb('DELTA', d.leaps_c1, deltaDisp) +
       mb('CAGR',  d.leaps_c2, cagrDisp) +
       mb('DUR',   d.leaps_c3, d.leaps_c3 === true ? '✓' : d.leaps_c3 === false ? '✗' : '—') +
-      mb('IV',    d.leaps_c5, ivDisp) +
       mb('BID/A', d.leaps_c7, d.leaps_c7 === null ? '—' : (d.leaps_c7 ? '✓' : '✗'));
   } else if (strategy === 'synth') {
-    // Synthetic Long: 7 criteria — MR≤-2 Wkly, IV>50%, DTE≥540, Debit≤5%, Call OI, Put OI, Spreads
+    // Synthetic Long: 4 criteria — MR≤-2 Wkly, DTE≥540, Debit≤5%, Spreads (IV>50% removed)
     criteriaHtml =
       mb('MR',    d.synth_c1, mrDisp) +
-      mb('IV',    d.synth_c2, d.synth_c2 === null ? '—' : (d.synth_c2 ? '✓' : '✗')) +
       mb('DUR',   d.synth_c3, d.synth_c3 === true ? '✓' : d.synth_c3 === false ? '✗' : '—') +
       mb('DEBIT', d.synth_c4, d.synth_c4 === null ? '—' : (d.synth_c4 ? '✓' : '✗')) +
       mb('SPRD',  d.synth_c7, d.synth_c7 === null ? '—' : (d.synth_c7 ? '✓' : '✗'));
   } else if (strategy === 'gut') {
-    // Gut Spread: 7 criteria — MR≤-2 Wkly, IV>50%, DTE≥540, Debit≤5%, Call OI, Put OI, Spreads
+    // Gut Spread: 4 criteria — MR≤-2 Wkly, DTE≥540, Debit≤5%, Spreads (IV>50% removed)
     criteriaHtml =
       mb('MR',    d.gut_c1, mrDisp) +
-      mb('IV',    d.gut_c2, d.gut_c2 === null ? '—' : (d.gut_c2 ? '✓' : '✗')) +
       mb('DUR',   d.gut_c3, d.gut_c3 === true ? '✓' : d.gut_c3 === false ? '✗' : '—') +
       mb('DEBIT', d.gut_c4, d.gut_c4 === null ? '—' : (d.gut_c4 ? '✓' : '✗')) +
       mb('SPRD',  d.gut_c7, d.gut_c7 === null ? '—' : (d.gut_c7 ? '✓' : '✗'));
   } else {
-    // MSL (Modified Synthetic Long): 5 criteria — MR≤-2 4H, PutCr≥42%, IV>50%, DTE≥540, Debit≤40%
+    // MSL (Modified Synthetic Long): 4 criteria — MR≤-2 4H, PutCr≥42%, DTE≥540, Debit≤33% (IV Rank removed)
     criteriaHtml =
       mb('MR',    d.msl_c1, mrDisp) +
       mb('P-CR',  d.msl_c2, d.msl_c2 === null ? '—' : (d.msl_c2 ? '✓' : '✗')) +
-      mb('IV',    d.msl_c3, d.msl_c3 === null ? '—' : (d.mslIVRank !== null && d.mslIVRank !== undefined ? fmt(d.mslIVRank, 0) + '%' : (d.msl_c3 ? '✓' : '✗'))) +
       mb('DUR',   d.msl_c4, d.msl_c4 === true ? '✓' : d.msl_c4 === false ? '✗' : '—') +
       mb('DEBIT', d.msl_c5, d.msl_c5 === null ? '—' : (d.msl_c5 ? '✓' : '✗'));
   }
@@ -2959,12 +2946,12 @@ function renderColumns() {
   // Find the single best trade across all columns by score/max ratio (strategies now have varying max scores)
   var allTop = [];
   var colMap = [
-    { list: putSorted,   strat: 'put',   key: 'putScore',   max: 7 },
-    { list: ccSorted,    strat: 'cc',    key: 'ccScore',    max: 7 },
-    { list: leapsSorted, strat: 'leaps', key: 'leapsScore', max: 6 },
-    { list: synthSorted, strat: 'synth', key: 'synthScore', max: 5 },
-    { list: gutSorted,   strat: 'gut',   key: 'gutScore',   max: 5 },
-    { list: mslSorted,   strat: 'msl',   key: 'mslScore',   max: 5 }
+    { list: putSorted,   strat: 'put',   key: 'putScore',   max: 6 },
+    { list: ccSorted,    strat: 'cc',    key: 'ccScore',    max: 6 },
+    { list: leapsSorted, strat: 'leaps', key: 'leapsScore', max: 5 },
+    { list: synthSorted, strat: 'synth', key: 'synthScore', max: 4 },
+    { list: gutSorted,   strat: 'gut',   key: 'gutScore',   max: 4 },
+    { list: mslSorted,   strat: 'msl',   key: 'mslScore',   max: 4 }
   ];
   for (var ci = 0; ci < colMap.length; ci++) {
     var cList = colMap[ci].list.slice(0, 4);
@@ -3088,24 +3075,24 @@ async function fetchTickerData(ticker) {
     var deltaOk = bestDelta !== null && Math.abs(bestDelta) >= 0.15 && Math.abs(bestDelta) <= 0.25;
 
     // Score PUT criteria — 7 total
-    var put_c1 = ivRank !== null ? ivRank > 80 : null;
+    var put_c1 = null; // IV Rank removed — kept as null for back-compat with existing field references
     var put_c2 = !isNaN(pd.meanRev) ? pd.meanRev <= -2 : null;
     var put_c3 = !isNaN(pd.sma200) ? pd.price > pd.sma200 : null;  // Price above 200 SMA (confirmed uptrend)
     var put_c4 = earningsRisk === null ? null : !earningsRisk;
     var put_c5 = premPct !== null ? premPct > 2 : null;
     var put_c6 = deltaOk;
     var put_c7 = dte !== null ? (dte >= 30 && dte <= 45) : null;
-    var putScore = [put_c1,put_c2,put_c3,put_c4,put_c5,put_c6,put_c7].filter(function(x){return x===true;}).length;
+    var putScore = [put_c2,put_c3,put_c4,put_c5,put_c6,put_c7].filter(function(x){return x===true;}).length;
 
     // Score CC criteria
-    var cc_c1 = ivRank !== null ? ivRank > 80 : null;
+    var cc_c1 = null; // IV Rank removed
     var cc_c2 = !isNaN(pd.meanRev) ? pd.meanRev >= 2 : null;
     var cc_c3 = !isNaN(pd.sma200) ? pd.price > pd.sma200 : null;
     var cc_c4 = earningsRisk === null ? null : !earningsRisk;
     var cc_c5 = premPct !== null ? premPct >= 2 : null;
     var cc_c6 = deltaOk;
     var cc_c7 = dte !== null ? (dte >= 30 && dte <= 45) : null;
-    var ccScore = [cc_c1,cc_c2,cc_c3,cc_c4,cc_c5,cc_c6,cc_c7].filter(function(x){return x===true;}).length;
+    var ccScore = [cc_c2,cc_c3,cc_c4,cc_c5,cc_c6,cc_c7].filter(function(x){return x===true;}).length;
 
     // Score LEAPS criteria (proxy — from available data, no extra fetches)
     // James/InvestAnswers 7: Delta≥0.80, BE CAGR≤15%, Duration 540+, MR≤-2σw, IV<55%, OI≥500, Spread≤10%
@@ -3114,10 +3101,10 @@ async function fetchTickerData(ticker) {
     var leaps_c2 = null;                                             // BE CAGR ≤ 15% (need chain)
     var leaps_c3 = hasLeapsExp;                                      // Duration 540+ DTE
     var leaps_c4 = null;                                             // MR ≤ -2 Weekly (needs weekly MR from phase 3)
-    var leaps_c5 = ivRank !== null ? ivRank < 55 : null;             // IV < 55% (Buy Low IV)
+    var leaps_c5 = null;                                             // IV<55% removed
     var leaps_c6 = null;                                             // OI ≥ 500 (need chain)
     var leaps_c7 = null;                                             // Bid/Ask ≤ 10% (need chain)
-    var leapsScore = [leaps_c1,leaps_c2,leaps_c3,leaps_c4,leaps_c5,leaps_c7].filter(function(x){return x===true;}).length;
+    var leapsScore = [leaps_c1,leaps_c2,leaps_c3,leaps_c4,leaps_c7].filter(function(x){return x===true;}).length;
 
     // Score Synthetic Long criteria (proxy) — same-strike call+put
     // Synth 7: MR≤-2 Wkly, IV>50%, Duration≥540d, Net Debit≤5%, Call OI≥500, Put OI≥500, Spreads≤10%
@@ -3129,7 +3116,7 @@ async function fetchTickerData(ticker) {
     var synth_c5 = null;                                             // Call OI ≥ 500 (need chain)
     var synth_c6 = null;                                             // Put OI ≥ 500 (need chain)
     var synth_c7 = null;                                             // Spreads ≤ 10% (need chain)
-    var synthScore = [synth_c1,synth_c2,synth_c3,synth_c4,synth_c7].filter(function(x){return x===true;}).length;
+    var synthScore = [synth_c1,synth_c3,synth_c4,synth_c7].filter(function(x){return x===true;}).length;
 
     d.phase        = 2;
     d.putScore     = putScore;
@@ -3241,14 +3228,14 @@ async function runLeapsPhase3(ticker) {
     d.leaps_c2 = breakevenCAGR !== null ? breakevenCAGR <= 15 : null;
     d.leaps_c3 = repDTE >= 540;
     d.leaps_c4 = !isNaN(pd.meanRev) ? pd.meanRev <= -2 : null;
-    d.leaps_c5 = currentIV !== null ? currentIV < 55 : null;
+    d.leaps_c5 = null; // IV<55% removed
     d.leaps_c6 = bestOI !== null ? bestOI >= 500 : null;
     d.leaps_c7 = bestSpread !== null ? bestSpread <= 10 : null;
     d.currentIV     = currentIV;
     d.leapsDelta    = bestDelta;
     d.leapsCAGR     = breakevenCAGR;
     d.leapsMR       = weeklyMR;
-    d.leapsScore = [d.leaps_c1,d.leaps_c2,d.leaps_c3,d.leaps_c4,d.leaps_c5,d.leaps_c7]
+    d.leapsScore = [d.leaps_c1,d.leaps_c2,d.leaps_c3,d.leaps_c4,d.leaps_c7]
       .filter(function(x){return x===true;}).length;
     d.phase = 3;
     renderColumns();
@@ -3347,13 +3334,13 @@ async function runSynthPhase3(ticker) {
     // James-aligned 7 criteria
     d.synth_c1 = !isNaN(pd.meanRev) ? pd.meanRev <= -2 : null; // MR ≤ -2σ Weekly
     d.synthMR  = weeklyMR; // store for card rendering
-    d.synth_c2 = synthIVRank !== null ? synthIVRank > 50 : null; // IV > 50% (from LEAPS-length chain)
+    d.synth_c2 = null; // IV>50% removed
     d.synth_c3 = dte >= 540;                                                     // Duration ≥ 540 DTE
     d.synth_c4 = netCostPct !== null ? netCostPct <= 5 : null;                   // Net Debit ≤ 5% (credit always passes)
     d.synth_c5 = slCall.oi !== null ? slCall.oi >= 500 : null;                   // Call OI ≥ 500
     d.synth_c6 = slPut.oi  !== null ? slPut.oi  >= 500 : null;                   // Put OI ≥ 500
     d.synth_c7 = (callSpreadPct !== null && putSpreadPct !== null) ? (callSpreadPct <= 10 && putSpreadPct <= 10) : null; // Spreads ≤ 10%
-    d.synthScore = [d.synth_c1,d.synth_c2,d.synth_c3,d.synth_c4,d.synth_c7]
+    d.synthScore = [d.synth_c1,d.synth_c3,d.synth_c4,d.synth_c7]
       .filter(function(x){return x===true;}).length;
     d.phase = 3;
     renderColumns();
@@ -3460,13 +3447,13 @@ async function runGutPhase3(ticker) {
     // 7 criteria — same as Synth but with gut spread strike selection
     d.gut_c1 = !isNaN(pd.meanRev) ? pd.meanRev <= -2 : null;
     d.gutMR  = weeklyMR;
-    d.gut_c2 = gutIVRank !== null ? gutIVRank > 50 : null;
+    d.gut_c2 = null; // IV>50% removed
     d.gut_c3 = dte >= 540;
     d.gut_c4 = netCostPct !== null ? netCostPct <= 5 : null;
     d.gut_c5 = gsCall.oi !== null ? gsCall.oi >= 500 : null;
     d.gut_c6 = gsPut.oi  !== null ? gsPut.oi  >= 500 : null;
     d.gut_c7 = (callSpreadPct !== null && putSpreadPct !== null) ? (callSpreadPct <= 10 && putSpreadPct <= 10) : null;
-    d.gutScore = [d.gut_c1,d.gut_c2,d.gut_c3,d.gut_c4,d.gut_c7]
+    d.gutScore = [d.gut_c1,d.gut_c3,d.gut_c4,d.gut_c7]
       .filter(function(x){return x===true;}).length;
     d.phase = 3;
     renderColumns();
@@ -3591,7 +3578,7 @@ async function runMslPhase3(ticker) {
     d.msl_c1 = !isNaN(pd.meanRev) ? pd.meanRev <= -2 : null;
     d.mslMR  = fourHourMR;
     d.msl_c2 = putCreditPct !== null ? putCreditPct >= 42 : null;  // Laura's floor
-    d.msl_c3 = mslIVRank !== null ? mslIVRank > 50 : null; // IV Rank > 50% (replaces 50/50 rule)
+    d.msl_c3 = null; // IV Rank removed
     d.mslIVRank = mslIVRank;
     d.mslCallRatio = callRatio; // kept for info display, not scored
     d.msl_c4 = dte >= 540;
@@ -3599,7 +3586,7 @@ async function runMslPhase3(ticker) {
     d.mslNetDebitPct = netDebitPct;
     d.msl_c6 = callOI !== null ? callOI >= 500 : null;
     d.msl_c7 = soldPutOI !== null ? soldPutOI >= 500 : null;
-    d.mslScore = [d.msl_c1,d.msl_c2,d.msl_c3,d.msl_c4,d.msl_c5]
+    d.mslScore = [d.msl_c1,d.msl_c2,d.msl_c4,d.msl_c5]
       .filter(function(x){return x===true;}).length;
     d.phase = 3;
     renderColumns();
@@ -3882,13 +3869,8 @@ async function runPut(forceTicker) {
 
     var earningsRisk = earningsBeforeExpiry(ticker, bestExpiry);
 
-    setStatus('put-status', spinner() + 'Put chain & IV…', 'loading');
+    setStatus('put-status', spinner() + 'Put chain…', 'loading');
     var chain = await fetchChain(ticker, bestExpiry, 'put');
-
-    // IV Rank derived from chain IV distribution
-    var ivResult = await fetchIVData(ticker, bestExpiry);
-    var ivRank = ivResult ? ivResult.ivRank : null;
-    var atmIV  = ivResult ? ivResult.atmIV  : null;
 
     var bestStrike = null, bestDelta = null, bestPremium = null;
     if (chain && chain.strike) {
@@ -3904,14 +3886,13 @@ async function runPut(forceTicker) {
     var deltaOk  = bestDelta !== null && Math.abs(bestDelta) >= 0.15 && Math.abs(bestDelta) <= 0.25;
     var assignCap= bestStrike ? bestStrike * 100 : null;
 
-    var c1 = ivRank !== null ? ivRank > 80 : null;
     var c2 = !isNaN(pd.meanRev) ? pd.meanRev <= -2 : null;
     var c3 = !isNaN(pd.sma200) ? pd.price > pd.sma200 : null;
     var c4 = !earningsRisk;
     var c5 = premPct !== null ? premPct > 2 : null;
     var c6 = deltaOk;
     var c7 = dte >= 30 && dte <= 45;
-    var score = [c1,c2,c3,c4,c5,c6,c7].filter(function(x){return x===true;}).length;
+    var score = [c2,c3,c4,c5,c6,c7].filter(function(x){return x===true;}).length;
 
     setStatus('put-status', 'Done', 'ok');
 
@@ -3923,7 +3904,6 @@ async function runPut(forceTicker) {
       '<div class="info-item"><div class="info-label">Target Strike</div><div class="info-val">' + (bestStrike ? fmtDollar(bestStrike) : '—') + '</div></div>' +
       '<div class="info-item"><div class="info-label">Premium (Mid)</div><div class="info-val">' + (bestPremium ? fmtDollar(bestPremium) : '—') + '</div></div>' +
       '<div class="info-item"><div class="info-label">Prem %</div><div class="info-val">' + (premPct !== null ? fmt(premPct,2) + '%' : '—') + '</div></div>' +
-      '<div class="info-item"><div class="info-label">IV Rank</div><div class="info-val">' + (ivRank !== null ? fmt(ivRank,1) + '%' : '—') + '</div></div>' +
       '<div class="info-item"><div class="info-label">200 SMA</div><div class="info-val">' + (pd.sma200 ? fmtDollar(pd.sma200) : '—') + '</div></div>' +
     '</div>';
     // Trade Summary calculations
@@ -3951,13 +3931,12 @@ async function runPut(forceTicker) {
 
     html += '<div class="scorecard"><h3>Cash-Secured Put — Score</h3><div class="criteria-list">';
     html += critRow(1,'MR · Daily (Oversold Zone)', c2, mrZone(pd.meanRev).label);
-    html += critRow(2,'IV Rank > 80% (Elevated Premium)', c1, ivRank !== null ? fmt(ivRank,1)+'%' : 'N/A');
-    html += critRow(3,'Price Above 200 SMA (Confirmed Uptrend)', c3, pd.sma200 ? fmtDollar(pd.price) + ' vs ' + fmtDollar(pd.sma200) : 'N/A');
-    html += critRow(4,'No Earnings Before Expiry', c4, earningsRisk ? 'Earnings: '+EARNINGS[ticker] : 'Clear');
-    html += critRow(5,'Premium > 2% of Price', c5, premPct !== null ? fmt(premPct,2)+'%' : 'N/A');
-    html += critRow(6,'Strike Delta 0.15–0.25', c6, bestDelta !== null ? fmt(bestDelta,2) : 'N/A');
-    html += critRow(7,'Duration 30–45 DTE', c7, dte+' days');
-    html += '</div>' + scoreSummaryHtml(score,7) + '</div>';
+    html += critRow(2,'Price Above 200 SMA (Confirmed Uptrend)', c3, pd.sma200 ? fmtDollar(pd.price) + ' vs ' + fmtDollar(pd.sma200) : 'N/A');
+    html += critRow(3,'No Earnings Before Expiry', c4, earningsRisk ? 'Earnings: '+EARNINGS[ticker] : 'Clear');
+    html += critRow(4,'Premium > 2% of Price', c5, premPct !== null ? fmt(premPct,2)+'%' : 'N/A');
+    html += critRow(5,'Strike Delta 0.15–0.25', c6, bestDelta !== null ? fmt(bestDelta,2) : 'N/A');
+    html += critRow(6,'Duration 30–45 DTE', c7, dte+' days');
+    html += '</div>' + scoreSummaryHtml(score,6) + '</div>';
 
     // ── Contextual suggestions (warnings first, positives last) ──
     var suggWarnP = [], suggGoodP = [];
@@ -3968,16 +3947,13 @@ async function runPut(forceTicker) {
     if (!c2 && !isNaN(pd.meanRev) && pd.meanRev < -1 && pd.meanRev > -2) {
       suggWarnP.push('💡 <strong>MR approaching:</strong> Mean Reversion is ' + mrZone(pd.meanRev).label + ' — approaching the Deeply Oversold zone. Watch for a continued dip before entering.');
     }
-    if (!c1 && ivRank !== null && ivRank >= 60) {
-      suggWarnP.push('💡 <strong>IV warming up:</strong> IV is ' + fmt(ivRank,1) + '% — approaching the 80% threshold. Wait for a volatility spike (news, market selloff) before selling the put for maximum premium.');
-    }
     if (!c3 && pd.sma200 && pd.price) {
       suggWarnP.push('💡 <strong>Below 200 SMA:</strong> Price is ' + fmtDollar(pd.price) + ' vs SMA ' + fmtDollar(pd.sma200) + ' — stock is below its 200-day MA, suggesting a sustained downtrend. Wait for price to reclaim the 200 SMA before selling puts to avoid catching a falling knife.');
     }
     if (!c5 && premPct !== null && premPct >= 1.5) {
       suggWarnP.push('💡 <strong>Premium close:</strong> Premium is ' + fmt(premPct,2) + '% — just below the 2% floor. Try a slightly lower strike to collect more premium.');
     }
-    if (score === 7) {
+    if (score === 6) {
       suggGoodP.push('✅ <strong>All criteria met</strong> — this is an ideal setup. Consider entering today with the recommended strike above.');
     }
     var suggestionsP = suggWarnP.concat(suggGoodP);
@@ -4043,13 +4019,8 @@ async function runCC(forceTicker) {
 
     var earningsRisk = earningsBeforeExpiry(ticker, bestExpiry);
 
-    setStatus('cc-status', spinner() + 'Call chain & IV…', 'loading');
+    setStatus('cc-status', spinner() + 'Call chain…', 'loading');
     var chain = await fetchChain(ticker, bestExpiry, 'call');
-
-    // IV Rank derived from chain IV distribution (use put chain for IV data)
-    var ivResult = await fetchIVData(ticker, bestExpiry);
-    var ivRank = ivResult ? ivResult.ivRank : null;
-    var atmIV  = ivResult ? ivResult.atmIV  : null;
 
     var bestStrike = null, bestDelta = null, bestPremium = null;
     if (chain && chain.strike) {
@@ -4069,14 +4040,13 @@ async function runCC(forceTicker) {
     var otmOk     = upsidePct !== null ? (upsidePct >= 5 && upsidePct <= 15) : null;
     var totalRet  = (upsidePct !== null && premPct !== null) ? (upsidePct + premPct) : null;
 
-    var c1 = ivRank !== null ? ivRank > 80 : null;
     var c2 = !isNaN(pd.meanRev) ? pd.meanRev >= 2 : null;
     var c3 = !isNaN(pd.sma200) ? pd.price > pd.sma200 : null;
     var c4 = !earningsRisk;
     var c5 = premPct !== null ? premPct >= 2 : null;
     var c6 = otmOk;
     var c7 = dte >= 30 && dte <= 45;
-    var score = [c1,c2,c3,c4,c5,c6,c7].filter(function(x){return x===true;}).length;
+    var score = [c2,c3,c4,c5,c6,c7].filter(function(x){return x===true;}).length;
 
     setStatus('cc-status', 'Done', 'ok');
 
@@ -4088,7 +4058,6 @@ async function runCC(forceTicker) {
       '<div class="info-item"><div class="info-label">DTE</div><div class="info-val">' + dte + '</div></div>' +
       '<div class="info-item"><div class="info-label">Target Strike</div><div class="info-val">' + (bestStrike ? fmtDollar(bestStrike) : '—') + '</div></div>' +
       '<div class="info-item"><div class="info-label">Premium (Mid)</div><div class="info-val">' + (bestPremium ? fmtDollar(bestPremium) : '—') + '</div></div>' +
-      '<div class="info-item"><div class="info-label">IV Rank</div><div class="info-val">' + (ivRank !== null ? fmt(ivRank,1)+'%' : '—') + '</div></div>' +
       '<div class="info-item"><div class="info-label">200 SMA</div><div class="info-val">' + (pd.sma200 ? fmtDollar(pd.sma200) : '—') + '</div></div>' +
     '</div>';
     // Trade Summary calculations for CC
@@ -4117,13 +4086,12 @@ async function runCC(forceTicker) {
 
     html += '<div class="scorecard"><h3>Covered Call — Score</h3><div class="criteria-list">';
     html += critRow(1,'MR · Daily (Overbought Zone)', c2, mrZone(pd.meanRev).label);
-    html += critRow(2,'IV Rank > 80% (Elevated Premium)', c1, ivRank !== null ? fmt(ivRank,1)+'%' : 'N/A');
-    html += critRow(3,'Price Above 200 SMA (Confirmed Uptrend)', c3, pd.sma200 ? fmtDollar(pd.price) + ' vs ' + fmtDollar(pd.sma200) : 'N/A');
-    html += critRow(4,'No Earnings Before Expiry', c4, earningsRisk ? 'Earnings: '+EARNINGS[ticker] : 'Clear');
-    html += critRow(5,'Premium ≥ 2% of Price', c5, premPct !== null ? fmt(premPct,2)+'%' : 'N/A');
-    html += critRow(6,'Strike 5–10% OTM (Δ 0.15–0.25)', c6, (upsidePct !== null ? fmt(upsidePct,1)+'% OTM' : (bestDelta !== null ? 'Δ'+fmt(bestDelta,2) : 'N/A')));
-    html += critRow(7,'Duration 30–45 DTE', c7, dte+' days');
-    html += '</div>' + scoreSummaryHtml(score,7) + '</div>';
+    html += critRow(2,'Price Above 200 SMA (Confirmed Uptrend)', c3, pd.sma200 ? fmtDollar(pd.price) + ' vs ' + fmtDollar(pd.sma200) : 'N/A');
+    html += critRow(3,'No Earnings Before Expiry', c4, earningsRisk ? 'Earnings: '+EARNINGS[ticker] : 'Clear');
+    html += critRow(4,'Premium ≥ 2% of Price', c5, premPct !== null ? fmt(premPct,2)+'%' : 'N/A');
+    html += critRow(5,'Strike 5–10% OTM (Δ 0.15–0.25)', c6, (upsidePct !== null ? fmt(upsidePct,1)+'% OTM' : (bestDelta !== null ? 'Δ'+fmt(bestDelta,2) : 'N/A')));
+    html += critRow(6,'Duration 30–45 DTE', c7, dte+' days');
+    html += '</div>' + scoreSummaryHtml(score,6) + '</div>';
 
     // ── Contextual suggestions (warnings first, positives last) ──
     var suggWarnC = [], suggGoodC = [];
@@ -4134,9 +4102,6 @@ async function runCC(forceTicker) {
     if (!c2 && !isNaN(pd.meanRev) && pd.meanRev > 1 && pd.meanRev < 2) {
       suggWarnC.push('💡 <strong>MR approaching:</strong> Mean Reversion is ' + mrZone(pd.meanRev).label + ' — approaching the Deeply Overbought zone. Watch for a continued rally before selling the call.');
     }
-    if (!c1 && ivRank !== null && ivRank >= 60) {
-      suggWarnC.push('💡 <strong>IV warming up:</strong> IV is ' + fmt(ivRank,1) + '% — approaching the 80% threshold. Wait for a volatility spike to get richer premium before capping your upside.');
-    }
     if (!c3 && pd.sma200 && pd.price) {
       suggWarnC.push('💡 <strong>Below 200 SMA:</strong> Price is ' + fmtDollar(pd.price) + ' vs SMA ' + fmtDollar(pd.sma200) + ' — stock is in a downtrend. Wait for price to reclaim the 200-day moving average before selling calls.');
     }
@@ -4146,7 +4111,7 @@ async function runCC(forceTicker) {
     if (!c6 && upsidePct !== null) {
       suggWarnC.push('💡 <strong>Strike too far OTM:</strong> ' + fmt(upsidePct,1) + '% OTM is outside the 5–10% target. The app selected the closest available strike — consider checking if a strike closer to 8% OTM is available.');
     }
-    if (score === 7) {
+    if (score === 6) {
       suggGoodC.push('✅ <strong>All criteria met</strong> — this is an ideal setup. Consider entering today with the recommended strike above.');
     }
     var suggestionsC = suggWarnC.concat(suggGoodC);
@@ -4218,16 +4183,10 @@ async function runLeaps(forceTicker) {
     }
     if (leapsExpiries.length === 0) throw new Error('No LEAPS expirations found (18+ months).');
 
-    setStatus('leaps-status', spinner() + 'LEAPS chains & IV…', 'loading');
+    setStatus('leaps-status', spinner() + 'LEAPS chains…', 'loading');
     var chains = await Promise.all(leapsExpiries.map(function(exp) {
       return fetchChain(ticker, exp, 'call').catch(function() { return null; });
     }));
-
-    // IV from nearest standard expiry (30-50 DTE) for more reliable IV Rank
-    var nearExpiry = findBestExpiry(expirations, 30, 60);
-    var ivResult   = nearExpiry ? await fetchIVData(ticker, nearExpiry) : null;
-    var ivRank     = ivResult ? ivResult.ivRank : null;
-    var currentIV  = ivResult ? ivResult.atmIV  : null;
 
     // James method: use FARTHEST expiry (last in list, sorted ascending)
     var bestExpIdx = leapsExpiries.length - 1;
@@ -4306,9 +4265,8 @@ async function runLeaps(forceTicker) {
     var c2 = breakevenCAGR !== null ? breakevenCAGR <= 15 : null;
     var c3 = repDTE >= 540;
     var c4 = !isNaN(pd.meanRev) ? pd.meanRev <= -2 : null;
-    var c5 = currentIV !== null ? currentIV < 55 : null;
     var c7 = bestSpread !== null ? bestSpread <= 10 : null;
-    var score = [c1,c2,c3,c4,c5,c7].filter(function(x){return x===true;}).length;
+    var score = [c1,c2,c3,c4,c7].filter(function(x){return x===true;}).length;
 
     setStatus('leaps-status', 'Done', 'ok');
 
@@ -4316,8 +4274,6 @@ async function runLeaps(forceTicker) {
 
     // ── Summary bar ──
     html += '<div class="info-box">' +
-      '<div class="info-item"><div class="info-label">Current IV</div><div class="info-val">' + (currentIV !== null ? fmt(currentIV,1)+'%' : '—') + '</div></div>' +
-      '<div class="info-item"><div class="info-label">IV Rank</div><div class="info-val">' + (ivRank !== null ? fmt(ivRank,1)+'%' : '—') + '</div></div>' +
       '<div class="info-item"><div class="info-label">Expiry (Farthest)</div><div class="info-val">' + leapsExpiries[bestExpIdx] + '</div></div>' +
       '<div class="info-item"><div class="info-label">DTE</div><div class="info-val">' + repDTE + '</div></div>' +
     '</div>';
@@ -4353,9 +4309,8 @@ async function runLeaps(forceTicker) {
     html += critRow(2,'Delta ≥ 0.80 (Deep ITM, ~stock exposure)', c1, bestDelta !== null ? fmt(bestDelta,2) + (shareEquiv ? ' (~' + shareEquiv + ' sh)' : '') : 'N/A');
     html += critRow(3,'BE CAGR ≤ 15% (Achievable breakeven)', c2, breakevenCAGR !== null ? fmt(breakevenCAGR,1)+'%' : 'N/A');
     html += critRow(4,'Duration 18+ months (540+ DTE)', c3, repDTE + ' days');
-    html += critRow(5,'IV < 55% (Don\'t overpay time value)', c5, currentIV !== null ? fmt(currentIV,1)+'%' : 'N/A');
-    html += critRow(6,'Bid/Ask Spread ≤ 10%', c7, bestSpread !== null ? fmt(bestSpread,1)+'%' : 'N/A');
-    html += '</div>' + scoreSummaryHtml(score,6) + '</div>';
+    html += critRow(5,'Bid/Ask Spread ≤ 10%', c7, bestSpread !== null ? fmt(bestSpread,1)+'%' : 'N/A');
+    html += '</div>' + scoreSummaryHtml(score,5) + '</div>';
 
     // ── Contextual suggestions (James-aligned) ──
     var suggestions = [];
@@ -4373,9 +4328,6 @@ async function runLeaps(forceTicker) {
       suggestions.push('💡 <strong>MR approaching entry:</strong> Mean Reversion is ' + mrZone(pd.meanRev).label + ' — not Deeply Oversold yet. James says "buy options when prices are crazy low." Watch for a continued dip into the Deeply Oversold zone.');
     } else if (!c4) {
       suggestions.push('💡 <strong>Not oversold:</strong> Mean Reversion is ' + mrZone(pd.meanRev).label + ' — James\'s rule: "You do not buy the tops." Wait for a pullback to get a cheaper entry.');
-    }
-    if (!c5 && currentIV !== null) {
-      suggestions.push('💡 <strong>IV elevated:</strong> Current IV is ' + fmt(currentIV,1) + '% — you are overpaying for time value. Wait for a volatility cooldown to get a cheaper entry on the same strike.');
     }
     if (!c7 && bestSpread !== null) {
       suggestions.push('💡 <strong>Wide spread:</strong> Bid/ask spread is ' + fmt(bestSpread,1) + '% — this eats directly into your return. Use a limit order at the mid price.');
@@ -4598,16 +4550,12 @@ async function runSynth(forceTicker) {
     var breakeven  = netCost !== null ? atmStrike + Math.max(netCost, 0) : null;
     var beAboveCur = (breakeven !== null && pd.price) ? ((breakeven / pd.price - 1) * 100) : null;
 
-    // Fetch IV rank for this expiration
-    var ivRank = await fetchIVRank(ticker, bestExpiry).catch(function(){ return null; });
-
-    // James-aligned 7 criteria
+    // 4 criteria (IV>50% removed)
     var c1 = !isNaN(pd.meanRev) ? pd.meanRev <= -2 : null; // MR ≤ -2σ Weekly
-    var c2 = ivRank !== null ? ivRank > 50 : null;                             // IV > 50%
     var c3 = dte >= 540;                                                       // Duration ≥ 540 DTE
     var c4 = netCostPct !== null ? netCostPct <= 5 : null;                     // Net Debit ≤ 5% (credit always passes)
     var c7 = (callSpreadPct !== null && putSpreadPct !== null) ? (callSpreadPct <= 10 && putSpreadPct <= 10) : null; // Spreads ≤ 10%
-    var score = [c1,c2,c3,c4,c7].filter(function(x){return x===true;}).length;
+    var score = [c1,c3,c4,c7].filter(function(x){return x===true;}).length;
 
     setStatus('synth-status', 'Done', 'ok');
 
@@ -4618,7 +4566,6 @@ async function runSynth(forceTicker) {
       '<div class="info-item"><div class="info-label">Strike</div><div class="info-val">' + fmtDollar(atmStrike) + ' (same for both legs)</div></div>' +
       '<div class="info-item"><div class="info-label">Net Cost</div><div class="info-val">' + (netCost !== null ? (netCost >= 0 ? fmtDollar(netCost) + ' debit' : fmtDollar(Math.abs(netCost)) + ' credit') : '—') + ' (' + (netCostPct !== null ? fmt(Math.abs(netCostPct),2)+'%' : '—') + ')</div></div>' +
       '<div class="info-item"><div class="info-label">Breakeven</div><div class="info-val">' + (breakeven !== null ? fmtDollar(breakeven) : '—') + (beAboveCur !== null ? ' ('+fmt(beAboveCur,1)+'% away)' : '') + '</div></div>' +
-      (ivRank !== undefined && ivRank !== null ? '<div class="info-item"><div class="info-label">IV Rank</div><div class="info-val">' + fmt(ivRank,1) + '%</div></div>' : '') +
     '</div>';
 
     // ── Trade Summary ──
@@ -4704,11 +4651,10 @@ async function runSynth(forceTicker) {
 
     html += '<div class="scorecard"><h3>Synthetic Long — Score</h3><div class="criteria-list">';
     html += critRow(1,'MR · Weekly (Oversold — Buy the Dip)', c1, mrZone(pd.meanRev).label);
-    html += critRow(2,'IV > 50% (High Vol — Fat Put Premiums)', c2, ivRank !== null ? fmt(ivRank,1) + '%' : 'N/A');
-    html += critRow(3,'Duration ≥ 540 DTE (LEAPS-Length)', c3, dte + ' days');
-    html += critRow(4,'Net Debit ≤ 5% (Put Funds the Call)', c4, netCostPct !== null ? fmt(Math.abs(netCostPct),2) + '%' : 'N/A');
-    html += critRow(5,'Both Spreads ≤ 10% (Tight)', c7, (callSpreadPct !== null ? fmt(callSpreadPct,1)+'%' : '—')+' / '+(putSpreadPct !== null ? fmt(putSpreadPct,1)+'%' : '—'));
-    html += '</div>' + scoreSummaryHtml(score,5) + '</div>';
+    html += critRow(2,'Duration ≥ 540 DTE (LEAPS-Length)', c3, dte + ' days');
+    html += critRow(3,'Net Debit ≤ 5% (Put Funds the Call)', c4, netCostPct !== null ? fmt(Math.abs(netCostPct),2) + '%' : 'N/A');
+    html += critRow(4,'Both Spreads ≤ 10% (Tight)', c7, (callSpreadPct !== null ? fmt(callSpreadPct,1)+'%' : '—')+' / '+(putSpreadPct !== null ? fmt(putSpreadPct,1)+'%' : '—'));
+    html += '</div>' + scoreSummaryHtml(score,4) + '</div>';
 
     // ── Contextual suggestions ──
     var suggWarn = [], suggGood = [];
@@ -4718,9 +4664,6 @@ async function runSynth(forceTicker) {
       } else {
         suggWarn.push('💡 <strong>Not oversold:</strong> Weekly Mean Reversion is ' + mrZone(pd.meanRev).label + ' — synthetics work best entered at market lows when put premiums are fattest.');
       }
-    }
-    if (!c2 && ivRank !== null) {
-      suggWarn.push('💡 <strong>Low IV:</strong> IV is ' + fmt(ivRank,1) + '% — below 50%. In low-vol environments the put credit won\'t adequately fund the call. Wait for a volatility spike.');
     }
     if (!c3) {
       suggWarn.push('💡 <strong>Short duration:</strong> ' + dte + ' DTE is below the 540-day target. Longer expirations give the thesis time to play out and reduce time decay pressure.');
@@ -4872,16 +4815,12 @@ async function runGut(forceTicker) {
     var breakeven  = netCost !== null ? gsPut.strike + Math.max(netCost, 0) : null;
     var beAboveCur = (breakeven !== null && pd.price) ? ((breakeven / pd.price - 1) * 100) : null;
 
-    // IV rank for this expiration
-    var ivRank = await fetchIVRank(ticker, bestExpiry).catch(function(){ return null; });
-
-    // 7 criteria
+    // 4 criteria (IV>50% removed)
     var c1 = !isNaN(pd.meanRev) ? pd.meanRev <= -2 : null;
-    var c2 = ivRank !== null ? ivRank > 50 : null;
     var c3 = dte >= 540;
     var c4 = netCostPct !== null ? Math.abs(netCostPct) <= 5 : null;
     var c7 = (callSpreadPct !== null && putSpreadPct !== null) ? (callSpreadPct <= 10 && putSpreadPct <= 10) : null;
-    var score = [c1,c2,c3,c4,c7].filter(function(x){return x===true;}).length;
+    var score = [c1,c3,c4,c7].filter(function(x){return x===true;}).length;
 
     setStatus('gut-status', 'Done', 'ok');
 
@@ -4893,7 +4832,6 @@ async function runGut(forceTicker) {
       '<div class="info-item"><div class="info-label">Put Strike (ITM)</div><div class="info-val">' + fmtDollar(gsPut.strike) + ' (higher)</div></div>' +
       '<div class="info-item"><div class="info-label">Net Cost</div><div class="info-val">' + (netCost !== null ? (netCost >= 0 ? fmtDollar(netCost) + ' debit' : fmtDollar(Math.abs(netCost)) + ' credit') : '—') + ' (' + (netCostPct !== null ? fmt(Math.abs(netCostPct),2)+'%' : '—') + ')</div></div>' +
       '<div class="info-item"><div class="info-label">Breakeven</div><div class="info-val">' + (breakeven !== null ? fmtDollar(breakeven) : '—') + (beAboveCur !== null ? ' ('+fmt(beAboveCur,1)+'% away)' : '') + '</div></div>' +
-      (ivRank !== undefined && ivRank !== null ? '<div class="info-item"><div class="info-label">IV Rank</div><div class="info-val">' + fmt(ivRank,1) + '%</div></div>' : '') +
     '</div>';
 
     // Trade Summary
@@ -4984,11 +4922,10 @@ async function runGut(forceTicker) {
     // Scorecard
     html += '<div class="scorecard"><h3>Gut Spread SYN Long — Score</h3><div class="criteria-list">';
     html += critRow(1,'MR · Weekly (Oversold — Buy the Dip)', c1, mrZone(pd.meanRev).label);
-    html += critRow(2,'IV > 50% (High Vol — Fat Put Premiums)', c2, ivRank !== null ? fmt(ivRank,1) + '%' : 'N/A');
-    html += critRow(3,'Duration ≥ 540 DTE (LEAPS-Length)', c3, dte + ' days');
-    html += critRow(4,'Net Debit ≤ 5% (Put Funds the Call)', c4, netCostPct !== null ? fmt(Math.abs(netCostPct),2) + '%' : 'N/A');
-    html += critRow(5,'Both Spreads ≤ 10% (Tight)', c7, (callSpreadPct !== null ? fmt(callSpreadPct,1)+'%' : '—')+' / '+(putSpreadPct !== null ? fmt(putSpreadPct,1)+'%' : '—'));
-    html += '</div>' + scoreSummaryHtml(score,5) + '</div>';
+    html += critRow(2,'Duration ≥ 540 DTE (LEAPS-Length)', c3, dte + ' days');
+    html += critRow(3,'Net Debit ≤ 5% (Put Funds the Call)', c4, netCostPct !== null ? fmt(Math.abs(netCostPct),2) + '%' : 'N/A');
+    html += critRow(4,'Both Spreads ≤ 10% (Tight)', c7, (callSpreadPct !== null ? fmt(callSpreadPct,1)+'%' : '—')+' / '+(putSpreadPct !== null ? fmt(putSpreadPct,1)+'%' : '—'));
+    html += '</div>' + scoreSummaryHtml(score,4) + '</div>';
 
     // Contextual suggestions
     var suggWarn = [], suggGood = [];
@@ -4998,9 +4935,6 @@ async function runGut(forceTicker) {
       } else {
         suggWarn.push('💡 <strong>Not oversold:</strong> Weekly Mean Reversion is ' + mrZone(pd.meanRev).label + ' — gut spreads work best at market lows when put premiums are fattest.');
       }
-    }
-    if (!c2 && ivRank !== null) {
-      suggWarn.push('💡 <strong>Low IV:</strong> IV is ' + fmt(ivRank,1) + '% — below 50%. Low-vol environments reduce the put credit. Wait for a volatility spike.');
     }
     if (!c3) {
       suggWarn.push('💡 <strong>Short duration:</strong> ' + dte + ' DTE is below 540-day target. Longer expirations give the thesis time to play out.');
@@ -5192,30 +5126,13 @@ async function runMsl(forceTicker) {
     var breakeven = (netDebit !== null) ? callStrike + netDebit : null;
     var beAboveCur = (breakeven !== null && pd.price) ? ((breakeven / pd.price - 1) * 100) : null;
 
-    // IV Rank from put chain (replaces 50/50 rule — 50/50 still used in strike selection above)
-    var mslIVRank = null;
-    if (putChain && putChain.iv && putChain.iv.length > 0) {
-      var ivs = [];
-      for (var iv_i = 0; iv_i < putChain.iv.length; iv_i++) {
-        var iv_v = putChain.iv[iv_i];
-        if (iv_v !== null && iv_v !== undefined && !isNaN(iv_v) && iv_v > 0) ivs.push(iv_v <= 1 ? iv_v * 100 : iv_v);
-      }
-      if (ivs.length > 0) {
-        ivs.sort(function(a,b){return a-b;});
-        var atmIV = ivs[Math.floor(ivs.length/2)];
-        var ivRange = ivs[ivs.length-1] - ivs[0];
-        mslIVRank = ivRange > 0 ? Math.min(100, Math.max(0, (atmIV - ivs[0]) / ivRange * 100)) : 50;
-      }
-    }
-
-    // 7 criteria
+    // 4 criteria (IV Rank removed)
     var c1 = !isNaN(pd.meanRev) ? pd.meanRev <= -2 : null;
     var c2 = putCreditPct !== null ? putCreditPct >= 42 : null;  // Laura's floor; >=50% = ideal (badge)
     var c2Ideal = putCreditPct !== null && putCreditPct >= 50;
-    var c3 = mslIVRank !== null ? mslIVRank > 50 : null;
     var c4 = dte >= 540;
     var c5 = netDebitPct !== null ? netDebitPct <= 33 : null;
-    var score = [c1,c2,c3,c4,c5].filter(function(x){return x===true;}).length;
+    var score = [c1,c2,c4,c5].filter(function(x){return x===true;}).length;
 
     setStatus('msl-status', 'Done', 'ok');
 
@@ -5505,10 +5422,9 @@ async function runMsl(forceTicker) {
     html += '<div class="scorecard"><h3>MSL — Modified Synthetic Long — Score</h3><div class="criteria-list">';
     html += critRow(1,'MR · 4H (Oversold — Buy the Dip)', c1, mrZone(pd.meanRev).label);
     html += critRow(2,'Put Credit ≥ 42% of Width (≥50% = Ideal)', c2, putCreditPct !== null ? fmt(putCreditPct,1) + '%' + (c2Ideal ? ' ✨ IDEAL' : '') : 'N/A');
-    html += critRow(3,'IV Rank > 50% (Fat Put Premiums)', c3, mslIVRank !== null ? fmt(mslIVRank,1) + '%' : 'N/A');
-    html += critRow(4,'Duration ≥ 540 DTE (LEAPS-Length)', c4, dte + ' days');
-    html += critRow(5,'Net Debit ≤ 33% of Price (~1/3 Rule)', c5, netDebitPct !== null ? fmt(netDebitPct,1) + '%' : 'N/A');
-    html += '</div>' + scoreSummaryHtml(score,5) + '</div>';
+    html += critRow(3,'Duration ≥ 540 DTE (LEAPS-Length)', c4, dte + ' days');
+    html += critRow(4,'Net Debit ≤ 33% of Price (~1/3 Rule)', c5, netDebitPct !== null ? fmt(netDebitPct,1) + '%' : 'N/A');
+    html += '</div>' + scoreSummaryHtml(score,4) + '</div>';
 
     // Contextual suggestions
     var suggWarn = [], suggGood = [];
@@ -5521,12 +5437,6 @@ async function runMsl(forceTicker) {
     }
     if (!c2 && putCreditPct !== null) {
       suggWarn.push('💡 <strong>Low put credit:</strong> ' + fmt(putCreditPct,1) + '% of spread width — below Laura’s 42% floor. She targets ~50%+ so the spread "pays for itself."');
-    }
-    if (!c3) {
-      suggWarn.push('💡 <strong>IV Rank low:</strong> ' + (mslIVRank !== null ? fmt(mslIVRank,1) + '%' : 'N/A') + ' — below 50% threshold. Laura wants elevated IV so the bull put spread collects fat premiums.');
-    }
-    if (c3 && mslIVRank !== null && mslIVRank >= 75) {
-      suggGood.push('✅ <strong>High IV Rank:</strong> ' + fmt(mslIVRank,1) + '% — put premiums are rich, the spread credit will offset more of the call cost.');
     }
     if (!c4) {
       suggWarn.push('💡 <strong>Short duration:</strong> ' + dte + ' DTE is below 540-day target. Laura uses farthest Dec LEAPS for maximum time.');
